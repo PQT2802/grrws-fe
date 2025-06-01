@@ -1,7 +1,17 @@
 import http from "@/lib/http";
 import { AuthUser } from "@/types/auth.type";
+import {
+  SUGGEST_OBJECT_REQUEST,
+  SUGGEST_OBJECT_RESPONSE,
+} from "@/types/comon.type";
+import { CREATE_ERROR_DETAIL } from "@/types/error.type";
 import { REQUEST_SUMMARY } from "@/types/request.type";
-import { CREATE_TASK_WEB, SPAREPART_WEB } from "@/types/task.type";
+import {
+  CREATE_SIMPLE_TASK_WEB,
+  CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB,
+  CREATE_TASK_WEB,
+  SPAREPART_WEB,
+} from "@/types/task.type";
 import { GET_MECHANIC_USER } from "@/types/user.type";
 import { create } from "domain";
 
@@ -52,14 +62,6 @@ class APIClient {
       return http.get<REQUEST_SUMMARY>("/api/Request/get-summary"); // ✅ Auto token
     },
     getRequestDetail: (requestId: string): Promise<any> => {
-      console.log(
-        "🔥 API CLIENT: getRequestDetail called with requestId:",
-        requestId
-      );
-      console.log(
-        "🔥 API CLIENT: About to call:",
-        `/api/Request/detail/${requestId}`
-      );
       return http.get(`/api/Request/detail/${requestId}`); // ✅ Auto token
     },
     getErrorOfRequest: (requestId: string): Promise<any> => {
@@ -72,14 +74,6 @@ class APIClient {
   task = {
     // Get spare parts for a specific request
     getSpareParts: (errorIds: string[]): Promise<SPAREPART_WEB[]> => {
-      console.log(
-        "🔥 API CLIENT: getSpareParts called with errorIds:",
-        errorIds
-      );
-      console.log(
-        "🔥 API CLIENT: About to call:",
-        "/api/Error/spare-parts/list"
-      );
       // ✅ Send error IDs as direct array, not wrapped in object
       return http.post<SPAREPART_WEB[]>(
         "/api/Error/spare-parts/list",
@@ -89,15 +83,48 @@ class APIClient {
 
     // Create a new task from errors
     createTaskFromErrors: (data: CREATE_TASK_WEB): Promise<any> => {
+      return http.post("/api/Task/create-task", data); // ✅ Auto token
+    },
+    createTaskFromTechnicalIssue: (
+      data: CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB
+    ): Promise<any> => {
       console.log(
-        "🔥 API CLIENT: createTaskFromErrors called with data:",
+        "🔧 API Client createTaskFromTechnicalIssue called with:",
         data
       );
+      console.log("🔗 Target URL: /api/Task/create-from-technical-issue");
+      return http.post("/api/Task/create-from-technical-issue", data);
+    },
+
+    // ✅ Create simple task (Replace tasks) - /api/Task/create-simple
+    createSimpleTask: (data: CREATE_SIMPLE_TASK_WEB): Promise<any> => {
+      console.log("🔧 API Client createSimpleTask called with:", data);
+      console.log("🔗 Target URL: /api/Task/create-simple");
+      return http.post("/api/Task/create-simple", data);
+    },
+
+    // ✅ DEPRECATED - keeping for backward compatibility
+    createTaskFromErrorsLegacy: (
+      data: CREATE_SIMPLE_TASK_WEB
+    ): Promise<any> => {
       console.log(
-        "🔥 API CLIENT: About to call:",
-        "/api/Task/create-from-errors"
+        "🔧 API Client createTaskFromErrorsLegacy called with:",
+        data
       );
-      return http.post("/api/Task/create-task", data); // ✅ Auto token
+      console.log("🔗 Target URL: /api/Task/create-task");
+      return http.post("/api/Task/create-task", data);
+    },
+  };
+  error = {
+    getSuggestedErrors: (
+      request: SUGGEST_OBJECT_REQUEST
+    ): Promise<SUGGEST_OBJECT_RESPONSE> => {
+      return http.get(
+        `/api/Error/suggestions?query=${request.query}&maxResults=${request.maxResults}`
+      ); // ✅ Auto token
+    },
+    createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
+      return http.post("/api/Error/create-error-detail", errorDetail); // ✅ Auto token
     },
   };
 }
