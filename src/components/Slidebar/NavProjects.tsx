@@ -1,0 +1,142 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import useWorkspaceStore, { WorkspaceStoreState } from "@/store/workspace";
+import Link from "next/link";
+import { Folder, Forward, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { SLIDEBAR_ITEM_TYPE } from "@/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getFirstLetterUppercase } from "@/lib/utils";
+import CreateProjectForm from "../CreateProjectForm/CreateProjectForm";
+
+interface PropType {
+  items: SLIDEBAR_ITEM_TYPE[];
+}
+
+export function NavProjects(props: PropType) {
+  const { items } = props;
+
+  const pathname = usePathname();
+
+  const { workspace }: WorkspaceStoreState = useWorkspaceStore();
+
+  const { isMobile } = useSidebar();
+
+  return (
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel>
+        <CreateProjectForm>
+          <div className="w-full flex items-center justify-between">
+            <span>Projects</span>
+            <button
+              className="bg-primary hover:bg-primary/90 p-1 rounded-full text-white"
+              onClick={() => {}}
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        </CreateProjectForm>
+      </SidebarGroupLabel>
+      <SidebarMenu>
+        {items?.map((item: SLIDEBAR_ITEM_TYPE, index: number) => {
+          if (index < 3) {
+            return (
+              <SidebarMenuItem key={item.title} className="my-1">
+                <SidebarMenuButton
+                  asChild
+                  className={`${
+                    pathname === item.url &&
+                    "text-white bg-primary hover:text-white hover:bg-primary/90"
+                  }`}
+                >
+                  <Link href={item.url}>
+                    <Avatar className="h-6 w-6 rounded-md">
+                      <AvatarImage
+                        src={item?.icon as string}
+                        alt={item?.title}
+                      />
+                      <AvatarFallback
+                        className={`rounded-md text-white text-[0.7rem] ${
+                          pathname === item.url
+                            ? "text-gray-500 bg-zinc-50 dark:text-white dark:bg-slate-700"
+                            : "bg-primary"
+                        }`}
+                      >
+                        {item?.title
+                          ? getFirstLetterUppercase(item?.title)
+                          : "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuAction
+                      showOnHover
+                      className={`${
+                        pathname === item.url &&
+                        "hover:bg-blue-500 dark:hover:bg-blue-600"
+                      }`}
+                    >
+                      <MoreHorizontal
+                        className={`${pathname === item.url && "text-white"}`}
+                      />
+                      <span className="sr-only">More</span>
+                    </SidebarMenuAction>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    className="w-48 rounded-lg"
+                    side={isMobile ? "bottom" : "right"}
+                    align={isMobile ? "end" : "start"}
+                  >
+                    <DropdownMenuItem>
+                      <Folder className="text-muted-foreground" />
+                      <span>View Project</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Forward className="text-muted-foreground" />
+                      <span>Share Project</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Trash2 className="text-muted-foreground" />
+                      <span>Delete Project</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            );
+          }
+        })}
+
+        <Link href={`/workspace/${workspace?.id}/project`}>
+          <SidebarMenuItem>
+            <SidebarMenuButton className="text-sidebar-foreground/70">
+              <MoreHorizontal className="text-sidebar-foreground/70" />
+              <span>More</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </Link>
+      </SidebarMenu>
+    </SidebarGroup>
+  );
+}
