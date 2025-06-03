@@ -4,6 +4,7 @@ import {
   REQUEST_DETAIL_WEB,
   ERROR_FOR_REQUEST_DETAIL_WEB,
   TASK_FOR_REQUEST_DETAIL_WEB,
+  TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB,
 } from "@/types/request.type";
 
 export const requestService = {
@@ -37,6 +38,25 @@ export const requestService = {
     return http.get<TASK_FOR_REQUEST_DETAIL_WEB[]>(`/api/task/${requestId}`, {
       useInternalRoute: true,
     });
+  },
+
+  // ✅ NEW: Get technical issues for a specific request
+  getTechnicalIssuesByRequestId: async (
+    requestId: string
+  ): Promise<TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]> => {
+    console.log(
+      "🔧 RequestService getTechnicalIssuesByRequestId called with requestId:",
+      requestId
+    );
+
+    const technicalIssues = await http.get<
+      TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]
+    >(`/api/technical-issue/${requestId}`, {
+      useInternalRoute: true,
+    });
+
+    console.log("✅ Technical issues fetched:", technicalIssues);
+    return technicalIssues;
   },
 
   // ✅ Create task from selected errors

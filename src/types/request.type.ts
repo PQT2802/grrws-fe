@@ -15,6 +15,7 @@ export interface REQUEST_DETAIL_WEB {
   remainingWarratyDate: number;
   deviceId: string;
   deviceName: string;
+  location: string;
   issues: ISSUE_FOR_REQUEST_DETAIL_WEB[];
 }
 
@@ -41,4 +42,12 @@ export interface TASK_FOR_REQUEST_DETAIL_WEB {
   assigneeName: string;
   expectedTime?: string | null;
   numberOfErrors?: number | null;
+}
+export interface TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB {
+  technicalIssueId: string; // Guid → string
+  symptomCode: string;
+  name: string;
+  description?: string; // Optional string
+  isCommon: boolean;
+  status: string; // Indicates if the technical issue has been processed (Unassigned/Assigned)
 }

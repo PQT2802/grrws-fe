@@ -24,13 +24,20 @@ import {
   ISSUE_FOR_REQUEST_DETAIL_WEB,
   ERROR_FOR_REQUEST_DETAIL_WEB,
   TASK_FOR_REQUEST_DETAIL_WEB,
+  TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB,
 } from "@/types/request.type";
 import IssueTableCpn from "@/components/IssueTableCpn/IssueTableCpn";
 import ErrorTableCpn from "@/components/ErrorTableCpn/ErrorTableCpn";
 import TaskTableCpn from "@/components/TaskTableCpn/TaskTableCpn";
+import TechnicalIssueTableCpn from "@/components/TechnicalIssueTableCpn/TechnicalIssueTableCpn";
 import requestService from "@/app/service/request.service";
+import WarrantyHistoryModal from "@/components/WarrantyHistoryModal/WarrantyHistoryModal";
+import WarrantiesModal from "@/components/WarrantiesModal/WarrantiesModal";
+import CreateTaskFromErrorsCpn from "@/components/CreateTaskFromErrorsCpn/CreateTaskFromErrorsCpn";
+import CreateTaskFromTechnicalIssuesCpn from "@/components/CreateTaskFromTechnicalIssuesCpn/CreateTaskFromTechnicalIssuesCpn";
 
-const TAB_CONTENT_LIST = ["Issues", "Errors", "Tasks"];
+// ✅ Updated to include Technical Issues
+const TAB_CONTENT_LIST = ["Issues", "Errors", "Tasks", "Technical Issues"];
 
 const RequestDetailPage = () => {
   const params = useParams();
@@ -42,13 +49,27 @@ const RequestDetailPage = () => {
     null
   );
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"issues" | "errors" | "tasks">(
-    "issues"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "issues" | "technical-issues" | "errors" | "tasks"
+  >("issues");
   const [selectedErrors, setSelectedErrors] = useState<
     ERROR_FOR_REQUEST_DETAIL_WEB[]
   >([]);
+  // ✅ Add state for selected technical issues
+  const [selectedTechnicalIssues, setSelectedTechnicalIssues] = useState<
+    TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]
+  >([]);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [showWarrantyHistory, setShowWarrantyHistory] = useState(false);
+  const [showWarranties, setShowWarranties] = useState(false);
+
+  // ✅ Add state for modals
+  const [showCreateTaskFromErrors, setShowCreateTaskFromErrors] =
+    useState(false);
+  const [
+    showCreateTaskFromTechnicalIssues,
+    setShowCreateTaskFromTechnicalIssues,
+  ] = useState(false);
 
   useEffect(() => {
     const fetchRequestDetail = async () => {
@@ -73,22 +94,36 @@ const RequestDetailPage = () => {
     router.back();
   };
 
+  // ✅ Updated to use modal instead of direct service call
   const handleCreateTaskFromErrors = async () => {
     if (selectedErrors.length === 0) {
       alert("Please select at least one error to create a task.");
       return;
     }
 
-    try {
-      await requestService.createTaskFromErrors(requestId, selectedErrors);
+    setShowCreateTaskFromErrors(true);
+  };
 
-      setSelectedErrors([]);
-      setRefreshTrigger((prev) => prev + 1);
-      alert("Task created successfully!");
-    } catch (error) {
-      console.error("Failed to create task:", error);
-      alert("Failed to create task. Please try again.");
+  // ✅ Updated to use modal instead of direct service call
+  const handleCreateTaskFromTechnicalIssues = async () => {
+    if (selectedTechnicalIssues.length === 0) {
+      alert("Please select at least one technical issue to create a task.");
+      return;
     }
+
+    setShowCreateTaskFromTechnicalIssues(true);
+  };
+
+  // ✅ Callback functions for when tasks are created
+  const handleTaskCreated = () => {
+    setSelectedErrors([]);
+    setSelectedTechnicalIssues([]);
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // ✅ Helper function to get tab value for technical issues
+  const getTabValue = (tab: string) => {
+    return tab.toLowerCase().replace(" ", "-");
   };
 
   return (
@@ -131,12 +166,38 @@ const RequestDetailPage = () => {
                 <h1 className="text-[1.05rem] font-semibold">
                   Request Overview
                 </h1>
+
+                {/* ✅ Add warranty buttons */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWarrantyHistory(true)}
+                    className="flex items-center gap-2"
+                    disabled={!requestDetail?.deviceId}
+                  >
+                    <Eye size={16} />
+                    View History
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowWarranties(true)}
+                    className="flex items-center gap-2"
+                    disabled={!requestDetail?.deviceId}
+                  >
+                    <Eye size={16} />
+                    View Warranties
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
             <CardContent className="px-5 pt-0 pb-5">
               <div className="pt-5 flex border-t border-dashed border-gray-300 dark:border-gray-700">
                 <div className="basis-full flex flex-col gap-5">
+                  {/* ✅ Request Title */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
                       Title
@@ -144,23 +205,7 @@ const RequestDetailPage = () => {
                     <span>{requestDetail?.requestTitle}</span>
                   </div>
 
-                  <div className="text-[0.9rem] flex items-center gap-3">
-                    <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Priority
-                    </h1>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        requestDetail?.priority === "High"
-                          ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                          : requestDetail?.priority === "Medium"
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                          : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      }`}
-                    >
-                      {requestDetail?.priority}
-                    </span>
-                  </div>
-
+                  {/* ✅ Status */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
                       Status
@@ -178,6 +223,7 @@ const RequestDetailPage = () => {
                     </span>
                   </div>
 
+                  {/* ✅ Request Date */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
                       Request Date
@@ -191,13 +237,7 @@ const RequestDetailPage = () => {
                     </span>
                   </div>
 
-                  <div className="text-[0.9rem] flex items-center gap-3">
-                    <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Device
-                    </h1>
-                    <span>{requestDetail?.deviceName}</span>
-                  </div>
-
+                  {/* ✅ Warranty Status */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
                       Warranty
@@ -214,6 +254,22 @@ const RequestDetailPage = () => {
                         : "Expired"}
                     </span>
                   </div>
+
+                  {/* ✅ Device Name */}
+                  <div className="text-[0.9rem] flex items-center gap-3">
+                    <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
+                      Device
+                    </h1>
+                    <span>{requestDetail?.deviceName}</span>
+                  </div>
+
+                  {/* ✅ Location */}
+                  <div className="text-[0.9rem] flex items-center gap-3">
+                    <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
+                      Location
+                    </h1>
+                    <span>{requestDetail?.location}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -226,16 +282,17 @@ const RequestDetailPage = () => {
                 <div className="flex flex-wrap gap-3 items-center justify-between">
                   <TabsList className="flex items-center gap-2 bg-transparent">
                     {TAB_CONTENT_LIST?.map((tab) => {
+                      const tabValue = getTabValue(tab);
                       return (
                         <TabsTrigger
                           key={tab}
                           className={`${
-                            activeTab === tab.toLowerCase() &&
+                            activeTab === tabValue &&
                             "data-[state=active]:bg-zinc-200 data-[state=active]:dark:bg-gray-700"
                           } bg-zinc-100 dark:text-white dark:bg-gray-900`}
-                          value={tab.toLowerCase()}
+                          value={tabValue}
                           onClick={() => {
-                            setActiveTab(tab.toLowerCase() as any);
+                            setActiveTab(tabValue as any);
                           }}
                         >
                           {tab}
@@ -245,14 +302,26 @@ const RequestDetailPage = () => {
                   </TabsList>
 
                   <div className="flex items-center gap-3">
+                    {/* ✅ Show create task button for errors */}
                     {activeTab === "errors" && selectedErrors.length > 0 && (
                       <ButtonCpn
                         type="button"
-                        title={`Create Task (${selectedErrors.length})`}
+                        title={`Create Repair Task (${selectedErrors.length})`}
                         icon={<Plus />}
                         onClick={handleCreateTaskFromErrors}
                       />
                     )}
+
+                    {/* ✅ Show create task button for technical issues */}
+                    {activeTab === "technical-issues" &&
+                      selectedTechnicalIssues.length > 0 && (
+                        <ButtonCpn
+                          type="button"
+                          title={`Create Warranty Task (${selectedTechnicalIssues.length})`}
+                          icon={<Plus />}
+                          onClick={handleCreateTaskFromTechnicalIssues}
+                        />
+                      )}
                   </div>
                 </div>
               </CardHeader>
@@ -279,10 +348,55 @@ const RequestDetailPage = () => {
                       refreshTrigger={refreshTrigger}
                     />
                   </TabsContent>
+                  {/* ✅ Add Technical Issues tab content */}
+                  <TabsContent value="technical-issues">
+                    <TechnicalIssueTableCpn
+                      requestId={requestId}
+                      selectedTechnicalIssues={selectedTechnicalIssues}
+                      onSelectionChange={setSelectedTechnicalIssues}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </TabsContent>
                 </>
               </CardContent>
             </Tabs>
           </Card>
+
+          {/* ✅ Warranty and History Modals */}
+          <WarrantyHistoryModal
+            open={showWarrantyHistory}
+            onOpenChange={setShowWarrantyHistory}
+            deviceId={requestDetail?.deviceId || ""}
+            deviceName={requestDetail?.deviceName || ""}
+          />
+
+          <WarrantiesModal
+            open={showWarranties}
+            onOpenChange={setShowWarranties}
+            deviceId={requestDetail?.deviceId || ""}
+            deviceName={requestDetail?.deviceName || ""}
+          />
+
+          {/* ✅ Task Creation Modals */}
+          <CreateTaskFromErrorsCpn
+            open={showCreateTaskFromErrors}
+            setOpen={setShowCreateTaskFromErrors}
+            requestId={requestId}
+            selectedErrors={selectedErrors}
+            onTaskCreated={handleTaskCreated}
+          >
+            <></>
+          </CreateTaskFromErrorsCpn>
+
+          <CreateTaskFromTechnicalIssuesCpn
+            open={showCreateTaskFromTechnicalIssues}
+            setOpen={setShowCreateTaskFromTechnicalIssues}
+            requestId={requestId}
+            selectedTechnicalIssues={selectedTechnicalIssues}
+            onTaskCreated={handleTaskCreated}
+          >
+            <></>
+          </CreateTaskFromTechnicalIssuesCpn>
         </div>
       )}
     </>
