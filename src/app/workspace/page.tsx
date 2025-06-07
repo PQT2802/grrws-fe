@@ -13,7 +13,7 @@ import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import { Input } from "@/components/ui/input";
 import JoinWorkspaceForm from "@/components/JoinWorkspaceForm/JoinWorkspaceForm";
 import { Button } from "@/components/ui/button";
-import { getRoleName } from "@/types/auth.type";
+import { getRoleName, USER_ROLES } from "@/types/auth.type";
 import AccessDenied from "@/components/AccessDenied/AccessDenied";
 import { toast } from "sonner"; // ✅ Add toast for better UX
 
@@ -64,9 +64,37 @@ const WorkspacePage = () => {
     }
   }, [user?.id, canAccessWorkspace]);
 
-  const handleAccessWorkSpace = (workspace: WORKSPACE_TYPE) => {
-    router.push(`/workspace/${workspace.id}`);
+
+  const getDefaultEntryByRole = (role: number, workspaceId: string) => {
+    switch (role) {
+      case USER_ROLES.ADMIN:
+        const adminPath = `/workspace/${workspaceId}/admin/dashboard`;
+        return adminPath;
+      case USER_ROLES.HOT:
+        const hotPath = `/workspace/${workspaceId}`;
+        return hotPath;
+      default:
+        return "/access-denied";
+    }
   };
+
+  const handleAccessWorkSpace = async (workspace: WORKSPACE_TYPE) => {
+    try {
+      if (!user?.role || !workspace?.id) {
+        toast.error("Unable to access workspace");
+        return;
+      }
+      const targetPath = getDefaultEntryByRole(user.role, workspace.id);
+      await router.push(targetPath);
+      router.refresh();
+    } catch (error) {
+      toast.error("Failed to access workspace");
+    }
+  };
+
+  // const handleAccessWorkSpace = (workspace: WORKSPACE_TYPE) => {
+  //   router.push(`/workspace/${workspace.id}`);
+  // };
 
   const handleSearchWorkspace = (searchStr: string) => {
     const filterWorkspace = SAMPLE_WORKSPACES?.filter(

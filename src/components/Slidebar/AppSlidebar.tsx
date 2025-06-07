@@ -11,6 +11,7 @@ import {
 import { NavMain } from "@/components/Slidebar/NavMain";
 import { NavProjects } from "@/components/Slidebar/NavProjects";
 import { NavUser } from "@/components/Slidebar/NavUser";
+import { NavAdmin } from "@/components/Slidebar/NavAdmin";
 import { WorkspaceSwitcher } from "@/components/Slidebar/NavWorkspace";
 import {
   Sidebar,
@@ -27,7 +28,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user }: any = useAuth();
+  const { user, isAdmin, isHOT }: any = useAuth();
   const params = useParams();
   const workspaceId = params?.["workspace-id"] as string; // ✅ Get workspace ID from URL
 
@@ -105,8 +106,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain items={MAIN_ITEMS} />
-        <NavProjects items={PROJECT_ITEMS} />
+        {isAdmin && (
+            <NavAdmin />
+        )}
+
+        {isHOT && (
+          <>
+            <NavMain items={MAIN_ITEMS} />
+            <NavProjects items={PROJECT_ITEMS} />
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

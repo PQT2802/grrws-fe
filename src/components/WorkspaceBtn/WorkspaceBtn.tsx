@@ -35,7 +35,7 @@ const WorkspaceBtn = (props: PropType) => {
           </CardContent>
         </Card>
       ) : (
-        <Link href={`/workspace/${workspace?.id}`}>
+        // <Link href={`/workspace/${workspace?.id}`}>
           <Card
             className="w-[300px] h-[300px] border-dashed hover:bg-zinc-100 dark:hover:bg-slate-900 hover:cursor-pointer"
             onClick={onClick}
@@ -79,7 +79,7 @@ const WorkspaceBtn = (props: PropType) => {
               </span>
             </CardContent>
           </Card>
-        </Link>
+        // </Link>
       )}
     </>
   );
