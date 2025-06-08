@@ -65,6 +65,11 @@ const WorkspacePage = () => {
   }, [user?.id, canAccessWorkspace]);
 
   const handleAccessWorkSpace = (workspace: WORKSPACE_TYPE) => {
+    if (user?.role === 4) {
+      // Redirect Stock Keeper to their dashboard
+      router.push(`/workspace/${workspace.id}/stock_keeper/dashboard`);
+      return;
+    }
     router.push(`/workspace/${workspace.id}`);
   };
 

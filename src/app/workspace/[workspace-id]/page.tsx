@@ -193,7 +193,7 @@ const DetailWorkspacePage = () => {
               <ProjectCpn />
             </div>
           </div>
-
+            
           <div className="mt-3 flex lg:hidden flex-col gap-3">
             <WorkspaceJoinForm />
             <ProjectCpn />

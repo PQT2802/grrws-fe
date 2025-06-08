@@ -7,6 +7,10 @@ import {
   Settings,
   House,
   CircleCheckBig,
+  ClipboardList,
+  Home,
+  Box,
+  FileText,
 } from "lucide-react";
 import { NavMain } from "@/components/Slidebar/NavMain";
 import { NavProjects } from "@/components/Slidebar/NavProjects";
@@ -46,34 +50,66 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     );
   }, [workspaceId, projects]); // ✅ Updated dependency
 
-  const MAIN_ITEMS: SLIDEBAR_ITEM_TYPE[] = [
+  // Define sidebar items for the stock_keeper role
+  const STOCK_KEEPER_ITEMS = [
     {
-      title: "Home",
-      url: `/workspace/${workspaceId ?? "#"}`, // ✅ Use workspaceId from URL
-      icon: House,
+      title: "Dashboard",
+      url: `/workspace/${workspaceId}/stock_keeper/dashboard`,
+      icon: Home,
       items: [],
     },
     {
-      title: "My Tasks",
-      url: `/workspace/${workspaceId ?? "#"}/tasks`, // ✅ Use workspaceId from URL
-      icon: CircleCheckBig,
+      title: "Spare Part Requests",
+      url: `/workspace/${workspaceId}/stock_keeper/requests`,
+      icon: ClipboardList,
       items: [],
     },
     {
-      title: "Requests",
-      url: `/workspace/${workspaceId ?? "#"}/requests`, // ✅ Use workspaceId from URL
-      icon: Frame,
+      title: "Parts Inventory",
+      url: `/workspace/${workspaceId}/stock_keeper/inventory`,
+      icon: Box,
       items: [],
     },
     {
-      title: "Projects",
-      url: `/workspace/${workspaceId ?? "#"}/projects`, // ✅ Use workspaceId from URL
-      icon: Map,
-      items: PROJECT_ITEMS,
+      title: "Stock In/Out Logs",
+      url: `/workspace/${workspaceId}/stock_keeper/logs`,
+      icon: FileText,
+      items: [],
+    },
+    {
+      title: "Settings",
+      url: "#",
+      icon: Settings,
+      items: [
+        {
+          title: "General",
+          url: "#",
+        },
+        {
+          title: "Workspace",
+          url: "#",
+        },
+      ],
+    },
+  ];
+
+  // Define sidebar items for the head of technical role
+  const HEAD_OF_TECHNICAL_ITEMS = [
+    {
+      title: "Dashboard",
+      url: `/workspace/${workspaceId}/head_of_technical/dashboard`,
+      icon: Home,
+      items: [],
+    },
+    {
+      title: "Manage Requests",
+      url: `/workspace/${workspaceId}/head_of_technical/requests`,
+      icon: ClipboardList,
+      items: [],
     },
     {
       title: "Reports",
-      url: `/workspace/${workspaceId ?? "#"}/reports`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId}/head_of_technical/reports`,
       icon: PieChart,
       items: [],
     },
@@ -90,13 +126,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           title: "Workspace",
           url: "#",
         },
-        {
-          title: "Project",
-          url: "#",
-        },
       ],
     },
   ];
+
+  // Dynamically select sidebar items based on the user's role
+  const MAIN_ITEMS =
+    user?.role === 4
+      ? STOCK_KEEPER_ITEMS // Role 4: Stock Keeper
+      : user?.role === 5
+      ? HEAD_OF_TECHNICAL_ITEMS // Role 5: Head of Technical
+      : []; // Default: No items for other roles
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -106,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <NavMain items={MAIN_ITEMS} />
-        <NavProjects items={PROJECT_ITEMS} />
+        {user?.role !== 4 && <NavProjects items={PROJECT_ITEMS} />}
       </SidebarContent>
 
       <SidebarFooter>
