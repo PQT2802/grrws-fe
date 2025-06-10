@@ -70,6 +70,9 @@ const WorkspacePage = () => {
       case USER_ROLES.ADMIN:
         const adminPath = `/workspace/${workspaceId}/admin/dashboard`;
         return adminPath;
+      case USER_ROLES.STOCK_KEEPER:
+        const stockKeeperPath = `/workspace/${workspaceId}/stock_keeper/dashboard`;
+        return stockKeeperPath; 
       case USER_ROLES.HOT:
         const hotPath = `/workspace/${workspaceId}`;
         return hotPath;
@@ -91,10 +94,6 @@ const WorkspacePage = () => {
       toast.error("Failed to access workspace");
     }
   };
-
-  // const handleAccessWorkSpace = (workspace: WORKSPACE_TYPE) => {
-  //   router.push(`/workspace/${workspace.id}`);
-  // };
 
   const handleSearchWorkspace = (searchStr: string) => {
     const filterWorkspace = SAMPLE_WORKSPACES?.filter(

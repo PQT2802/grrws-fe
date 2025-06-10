@@ -33,7 +33,7 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 // ✅ Fix: Allow role 2 (HOT) and role 5 (ADMIN)
 export const canAccessWorkspace = (role: number): boolean => {
-  const allowedRoles = [USER_ROLES.HOT, USER_ROLES.ADMIN]; // [2, 5]
+  const allowedRoles = [USER_ROLES.HOT, USER_ROLES.ADMIN, USER_ROLES.STOCK_KEEPER]; // [2, 5]
 
   console.log("🔍 Checking workspace access:");
   console.log("  User role:", role);

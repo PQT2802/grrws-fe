@@ -116,62 +116,42 @@ const LoginCpn = ({
       }
 
       // ✅ Step 3: Get user information
-      try {
-        const userInfo = await authService.getCurrentUser();
-        console.log("✅ User info received:", userInfo);
+      const userInfo = await authService.getCurrentUser();
+      console.log("✅ User info received:", userInfo);
 
-        // ✅ Step 4: Store user data
-        localStorage.setItem("currentUser", JSON.stringify(userInfo));
-        localStorage.setItem("lastUserVerified", Date.now().toString());
-        console.log("✅ User info stored in localStorage");
+      // ✅ Step 4: Store user data
+      localStorage.setItem("currentUser", JSON.stringify(userInfo));
+      localStorage.setItem("lastUserVerified", Date.now().toString());
+      console.log("✅ User info stored in localStorage");
 
-        // ✅ Step 5: Check permissions using the correct function
-        console.log("🔍 Checking role permissions:");
-        console.log("  User role:", userInfo.role);
-        console.log("  Is HOT (role 2):", userInfo.role === USER_ROLES.HOT);
-        console.log("  Is ADMIN (role 5):", userInfo.role === USER_ROLES.ADMIN);
-        console.log(
-          "  Can access workspace:",
-          canAccessWorkspace(userInfo.role)
+      // ✅ Step 5: Determine redirection based on role
+      let redirectPath = "/access-denied"; // Default redirection
+      if (canAccessWorkspace(userInfo.role)) {
+        redirectPath = "/workspace";
+      } 
+
+      // ✅ Step 6: Trigger custom event to force AuthProvider refresh
+      console.log("🔄 Triggering auth change event...");
+      window.dispatchEvent(new Event("authChange"));
+
+      // Small delay to let AuthProvider process
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // ✅ Step 7: Redirect to the determined path
+      console.log(`✅ Redirecting to: ${redirectPath}`);
+      router.refresh();
+      router.push(redirectPath);
+
+      // Show success toast
+      if (redirectPath !== "/access-denied") {
+        toast.success(
+          `Welcome ${userInfo.fullName}! (${getRoleName(userInfo.role)})`
         );
-
-        // ✅ Step 6: Trigger custom event to force AuthProvider refresh
-        console.log("🔄 Triggering auth change event...");
-        window.dispatchEvent(new Event("authChange"));
-
-        // Small delay to let AuthProvider process
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        if (canAccessWorkspace(userInfo.role)) {
-          console.log(
-            "✅ User has workspace access, redirecting to workspace..."
-          );
-
-          router.refresh();
-          router.push("/workspace");
-          toast.success(
-            `Welcome ${userInfo.fullName}! (${getRoleName(userInfo.role)})`
-          );
-        } else {
-          const roleName = getRoleName(userInfo.role);
-          console.log(
-            "❌ User doesn't have workspace access, redirecting to access-denied..."
-          );
-
-          router.refresh();
-          router.push("/access-denied");
-          toast.warning(
-            `You are logged in as ${roleName}, but don't have workspace access. Only HOT and Admin can access workspace.`
-          );
-        }
-      } catch (userError: any) {
-        console.error("❌ Failed to get user info:", userError);
-        toast.error("Failed to get user information");
-
-        // Clear tokens if user info fetch fails
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("currentUser");
+      } else {
+        const roleName = getRoleName(userInfo.role);
+        toast.warning(
+          `You are logged in as ${roleName}, but don't have workspace access. Only HOT and Admin can access workspace.`
+        );
       }
 
       setLoginForm({ email: "", password: "" });

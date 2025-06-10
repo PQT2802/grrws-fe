@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   isHOT: boolean;
   isAdmin: boolean;
+  isStockKeeper: boolean;
   canAccessWorkspace: boolean;
   logout: () => Promise<void>; // ✅ Add logout function
 }
@@ -75,8 +76,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // ✅ Only role 2 (HOT) and 5 (ADMIN) can access workspace
   const isHOT = user?.role === USER_ROLES.HOT; // Role 2
   const isAdmin = user?.role === USER_ROLES.ADMIN; // Role 5
+  const isStockKeeper = user?.role === USER_ROLES.STOCK_KEEPER; // Role 4
   const canAccess =
-    user?.role === USER_ROLES.HOT || user?.role === USER_ROLES.ADMIN; // Role 2 or 5
+    user?.role === USER_ROLES.HOT ||
+    user?.role === USER_ROLES.ADMIN ||
+    user?.role === USER_ROLES.STOCK_KEEPER; // Role 2 or 5 or 4
 
   // ... existing useEffect code for auth check ...
   useEffect(() => {
@@ -99,7 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               parsedUser.role,
               "Can access workspace:",
               parsedUser.role === USER_ROLES.HOT ||
-                parsedUser.role === USER_ROLES.ADMIN
+                parsedUser.role === USER_ROLES.ADMIN ||
+                parsedUser.role === USER_ROLES.STOCK_KEEPER
             );
             setUser(parsedUser);
 
@@ -238,8 +243,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         loading,
         isHOT,
         isAdmin,
+        isStockKeeper, // ✅ Provide Stock Keeper role check
         canAccessWorkspace: canAccess,
-        logout, // ✅ Provide logout function
+        logout,
       }}
     >
       {children}
