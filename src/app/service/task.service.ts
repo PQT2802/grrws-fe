@@ -1,9 +1,9 @@
 import http from "@/lib/http";
 import {
-  CREATE_TASK_WEB,
-  CREATE_TASK_FROM_ERRORS_WEB,
-  CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB,
-  CREATE_SIMPLE_TASK_WEB,
+  CREATE_REPAIR_TASK,
+  CREATE_WARRANTY_TASK,
+  CREATE_UNINSTALL_TASK,
+  CREATE_INSTALL_TASK,
   SPAREPART_WEB,
 } from "@/types/task.type";
 
@@ -19,72 +19,53 @@ class TaskService {
     );
   };
 
-  // ✅ Create task from errors (repair tasks) - /api/Task/create-from-errors
-  createTaskFromErrors = async (
-    data: CREATE_TASK_FROM_ERRORS_WEB
-  ): Promise<string> => {
-    console.log("🔧 TaskService createTaskFromErrors called with:", data);
+  // ✅ NEW: Create repair task - /api/Task/repair-task
+  createRepairTask = async (data: CREATE_REPAIR_TASK): Promise<string> => {
+    console.log("🔧 TaskService createRepairTask called with:", data);
 
-    const taskId = await http.post<string>(
-      `/api/task/create-from-errors`,
-      data,
-      {
-        useInternalRoute: true,
-      }
-    );
+    const taskId = await http.post<string>(`/api/task/repair-task`, data, {
+      useInternalRoute: true,
+    });
 
     console.log("✅ Repair task created, received ID:", taskId);
     return taskId;
   };
 
-  // ✅ NEW: Create task from technical issues (warranty tasks) - /api/Task/create-from-technical-issue
-  createTaskFromTechnicalIssue = async (
-    data: CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB
-  ): Promise<string> => {
-    console.log(
-      "🔧 TaskService createTaskFromTechnicalIssue called with:",
-      data
-    );
+  // ✅ NEW: Create warranty task - /api/Task/warranty-task/submit
+  createWarrantyTask = async (data: CREATE_WARRANTY_TASK): Promise<string> => {
+    console.log("🔧 TaskService createWarrantyTask called with:", data);
 
-    const taskId = await http.post<string>(
-      `/api/task/create-from-technical-issue`,
-      data,
-      {
-        useInternalRoute: true,
-      }
-    );
+    const taskId = await http.post<string>(`/api/task/warranty-task`, data, {
+      useInternalRoute: true,
+    });
 
     console.log("✅ Warranty task created, received ID:", taskId);
     return taskId;
   };
 
-  // ✅ Create simple task (replace tasks) - /api/Task/create-simple
-  createSimpleTask = async (data: CREATE_SIMPLE_TASK_WEB): Promise<string> => {
-    console.log("🔧 TaskService createSimpleTask called with:", data);
+  // ✅ NEW: Create uninstall task - /api/Task/uninstall-task
+  createUninstallTask = async (
+    data: CREATE_UNINSTALL_TASK
+  ): Promise<string> => {
+    console.log("🔧 TaskService createUninstallTask called with:", data);
 
-    const taskId = await http.post<string>(`/api/task/create-simple`, data, {
+    const taskId = await http.post<string>(`/api/task/uninstall-task`, data, {
       useInternalRoute: true,
     });
 
-    console.log("✅ Simple task created, received ID:", taskId);
+    console.log("✅ Uninstall task created, received ID:", taskId);
     return taskId;
   };
 
-  // ✅ LEGACY: Create task from errors (old format) - /api/Task/create-task
-  createTaskFromErrorsLegacy = async (
-    data: CREATE_TASK_WEB
-  ): Promise<string> => {
-    console.log("🔧 TaskService createTaskFromErrorsLegacy called with:", data);
+  // ✅ NEW: Create install task - /api/Task/install-task
+  createInstallTask = async (data: CREATE_INSTALL_TASK): Promise<string> => {
+    console.log("🔧 TaskService createInstallTask called with:", data);
 
-    const taskId = await http.post<string>(
-      `/api/task/create-task-legacy`,
-      data,
-      {
-        useInternalRoute: true,
-      }
-    );
+    const taskId = await http.post<string>(`/api/task/install-task`, data, {
+      useInternalRoute: true,
+    });
 
-    console.log("✅ Legacy task created, received ID:", taskId);
+    console.log("✅ Install task created, received ID:", taskId);
     return taskId;
   };
 

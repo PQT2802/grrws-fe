@@ -4,19 +4,25 @@ import {
   SUGGEST_OBJECT_REQUEST,
   SUGGEST_OBJECT_RESPONSE,
 } from "@/types/comon.type";
-import { CREATE_ERROR_DETAIL } from "@/types/error.type";
+import { DEVICE_WEB } from "@/types/device.type";
+import { CREATE_ERROR_DETAIL, ErrorGuideline } from "@/types/error.type";
 import {
   REQUEST_SUMMARY,
   TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB,
 } from "@/types/request.type";
 import {
-  CREATE_SIMPLE_TASK_WEB,
-  CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB,
-  CREATE_TASK_WEB,
+  CREATE_INSTALL_TASK,
+  CREATE_REPAIR_TASK,
+  CREATE_UNINSTALL_TASK,
+  CREATE_WARRANTY_TASK,
   SPAREPART_WEB,
 } from "@/types/task.type";
 import { GET_MECHANIC_USER } from "@/types/user.type";
-import { WARRANTY_HISTORY_LIST, WARRANTY_LIST } from "@/types/warranty.type";
+import {
+  WARRANTY_HISTORY_LIST,
+  WARRANTY_LIST,
+  WarrantyInfo,
+} from "@/types/warranty.type";
 import { create } from "domain";
 
 class APIClient {
@@ -74,55 +80,29 @@ class APIClient {
     getTechnicalIssueOfRequest: (
       requestId: string
     ): Promise<TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]> => {
-      console.log(
-        "🔧 API Client getTechnicalIssueOfRequest called with requestId:",
-        requestId
-      );
-      console.log("🔗 Target URL: /api/Request/technical-issues/{requestId}");
       return http.get<TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]>(
         `/api/Request/technical-issues/${requestId}`
       );
     },
   };
   task = {
-    // Get spare parts for a specific request
     getSpareParts: (errorIds: string[]): Promise<SPAREPART_WEB[]> => {
-      // ✅ Send error IDs as direct array, not wrapped in object
       return http.post<SPAREPART_WEB[]>(
         "/api/Error/spare-parts/list",
-        errorIds // ✅ Direct array: ["id1", "id2"] instead of { errorIds: ["id1", "id2"] }
+        errorIds
       );
     },
-    // Create a new task from errors
-    createTaskFromErrors: (data: CREATE_TASK_WEB): Promise<any> => {
-      return http.post("/api/Task/create-task", data); // ✅ Auto token
+    createRepairTask: (data: CREATE_REPAIR_TASK): Promise<any> => {
+      return http.post("/api/Task/repair-task", data);
     },
-    createTaskFromTechnicalIssue: (
-      data: CREATE_TASK_FROM_TECHNICAL_ISSUE_WEB
-    ): Promise<any> => {
-      console.log(
-        "🔧 API Client createTaskFromTechnicalIssue called with:",
-        data
-      );
-      console.log("🔗 Target URL: /api/Task/create-from-technical-issue");
-      return http.post("/api/Task/create-from-technical-issue", data);
+    createWarrantyTask: (data: CREATE_WARRANTY_TASK): Promise<any> => {
+      return http.post("/api/Task/warranty-task/submit", data);
     },
-    // ✅ Create simple task (Replace tasks) - /api/Task/create-simple
-    createSimpleTask: (data: CREATE_SIMPLE_TASK_WEB): Promise<any> => {
-      console.log("🔧 API Client createSimpleTask called with:", data);
-      console.log("🔗 Target URL: /api/Task/create-simple");
-      return http.post("/api/Task/create-simple", data);
+    createUninstallTask: (data: CREATE_UNINSTALL_TASK): Promise<any> => {
+      return http.post("/api/Task/uninstall", data);
     },
-    // ✅ DEPRECATED - keeping for backward compatibility
-    createTaskFromErrorsLegacy: (
-      data: CREATE_SIMPLE_TASK_WEB
-    ): Promise<any> => {
-      console.log(
-        "🔧 API Client createTaskFromErrorsLegacy called with:",
-        data
-      );
-      console.log("🔗 Target URL: /api/Task/create-task");
-      return http.post("/api/Task/create-task", data);
+    createInstallTask: (data: CREATE_INSTALL_TASK): Promise<any> => {
+      return http.post("/api/Task/install", data);
     },
   };
   error = {
@@ -134,34 +114,34 @@ class APIClient {
       ); // ✅ Auto token
     },
     createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
-      return http.post("/api/Error/create-error-detail", errorDetail); // ✅ Auto token
+      return http.post("/api/Error/create-error-detail", errorDetail);
+    },
+    getErrorGuidelines: (errorId: string): Promise<ErrorGuideline[]> => {
+      return http.get(`/api/ErrorGuideline/by-error/${errorId}`);
     },
   };
   warranty = {
-    // Get warranty history for a specific device
     getWarrantyHistory: (
       deviceId: string
     ): Promise<WARRANTY_HISTORY_LIST[]> => {
-      console.log(
-        "🔧 API Client getWarrantyHistory called with deviceId:",
-        deviceId
-      );
-      console.log("🔗 Target URL: /api/DeviceWarranty/history/{deviceId}");
       return http.get<WARRANTY_HISTORY_LIST[]>(
         `/api/DeviceWarranty/history/${deviceId}`
       );
     },
-
-    // Get warranties for a specific device
-    getDeviceWarranties: (deviceId: string): Promise<WARRANTY_LIST[]> => {
-      console.log(
-        "🔧 API Client getDeviceWarranties called with deviceId:",
-        deviceId
-      );
-      console.log("🔗 Target URL: /api/DeviceWarranty/Warranties/{deviceId}");
-      return http.get<WARRANTY_LIST[]>(
+    getDeviceWarranties: (deviceId: string): Promise<WarrantyInfo[]> => {
+      return http.get<WarrantyInfo[]>(
         `/api/DeviceWarranty/Warranties/${deviceId}`
       );
+    },
+  };
+  device = {
+    getDevices: (
+      pageNumber: number,
+      pageSize: number
+    ): Promise<DEVICE_WEB[]> => {
+      return http.get(
+        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      ); // ✅ Auto token
     },
   };
 }

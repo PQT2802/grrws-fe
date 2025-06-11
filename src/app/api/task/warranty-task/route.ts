@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiClient } from "@/lib/api-client";
 
-// POST /api/task/create-from-technical-issue - Create task from technical issues
+// POST /api/task/create-warranty - Create warranty task
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 CREATE TASK FROM TECHNICAL ISSUE API ROUTE STARTED");
+    console.log("🔄 CREATE WARRANTY TASK API ROUTE STARTED");
 
     const body = await request.json();
     console.log("📨 Request body:", body);
@@ -18,10 +18,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.TaskType) {
-      console.log("❌ Validation failed: Missing TaskType");
+    if (!body.StartDate) {
+      console.log("❌ Validation failed: Missing StartDate");
       return NextResponse.json(
-        { error: "Task type is required" },
+        { error: "Start date is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!body.DeviceWarrantyId) {
+      console.log("❌ Validation failed: Missing DeviceWarrantyId");
+      return NextResponse.json(
+        { error: "Device warranty ID is required" },
         { status: 400 }
       );
     }
@@ -46,27 +54,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.StartDate) {
-      console.log("❌ Validation failed: Missing StartDate");
-      return NextResponse.json(
-        { error: "Start date is required" },
-        { status: 400 }
-      );
-    }
-
     // Call external API through apiClient
-    const result = await apiClient.task.createTaskFromTechnicalIssue(body);
+    const result = await apiClient.task.createWarrantyTask(body);
 
-    console.log("✅ Task from technical issue created successfully:", result);
+    console.log("✅ Warranty task created successfully:", result);
     return NextResponse.json({
-      taskId: result,
+      taskId: result, // Assuming the API returns a taskId
       success: true,
       message: "Warranty task created successfully",
     });
   } catch (error) {
-    console.error("❌ Failed to create task from technical issue:", error);
+    console.error("❌ Failed to create warranty task:", error);
     return NextResponse.json(
-      { error: "Failed to create task from technical issue" },
+      { error: "Failed to create warranty task" },
       { status: 500 }
     );
   }
