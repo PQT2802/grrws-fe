@@ -1,85 +1,89 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import FilterSection from './components/FilterSection';
 import RequestsTable from './components/RequestsTable';
-import { FilterState, Request } from '../type';
-
-// Mock data
-const mockRequests: Request[] = [
-  {
-    id: "REQ-001",
-    date: "2025-06-08",
-    requestedBy: "Nguyen Van A (Mechanic)",
-    items: 3,
-    status: "Pending",
-  },
-  {
-    id: "REQ-002",
-    date: "2025-06-08",
-    requestedBy: "Tran Thi B (Mechanic)",
-    items: 2,
-    status: "Delivered",
-  },
-  {
-    id: "REQ-003",
-    date: "2025-06-07",
-    requestedBy: "Le Van C (Mechanic)",
-    items: 4,
-    status: "Pending",
-  },
-  {
-    id: "REQ-004",
-    date: "2025-06-05",
-    requestedBy: "Pham Van D (Mechanic)",
-    items: 1,
-    status: "Partial",
-  },
-  {
-    id: "REQ-005",
-    date: "2025-06-04",
-    requestedBy: "Hoang Thi E (Supervisor)",
-    items: 5,
-    status: "Delivered",
-  },
-];
+import { FILTER_STATE, SPAREPART_REQUEST } from '@/types/sparePart.type'; // ← Updated import path
+import { sparePartService } from '@/app/service/sparePart.service';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RequestsPage() {
   const router = useRouter();
+  const { user, isStockKeeper } = useAuth(); 
+  
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [requests, setRequests] = useState<SPAREPART_REQUEST[]>([]);
   
   // Filter and search state
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<FILTER_STATE>({
     search: "",
     statusFilter: "",
     startDate: "",
     endDate: "",
-    sortBy: "date",
+    sortBy: "requestDate",
     sortDirection: "desc",
   });
   
+  // Fetch data
+  useEffect(() => {
+    // Role check - redirect if not stock keeper
+    if (user && !isStockKeeper) {
+      toast.error("You don't have permission to access this page");
+      router.push('/access-denied');
+      return;
+    }
+    
+    const fetchRequests = async () => {
+      try {
+        setIsLoading(true);
+        const response = await sparePartService.getSparePartRequests();
+        console.log("API response:", response);
+        const requestData = response.data?.data || 
+                             (Array.isArray(response.data) ? response.data : []) || [];
+
+        if (requestData.length === 0) {
+          console.log("API returned an empty array");
+          toast.info("No spare part requests found");
+        }
+        
+        setRequests(requestData);
+        toast.success(`Loaded ${requestData.length} spare part requests`);
+      } catch (error) {
+        console.error("Failed to fetch spare part requests:", error);
+        toast.error("Failed to load spare part requests");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchRequests();
+  }, [router, user, isStockKeeper]);
+  
   // Get unique statuses for filter dropdown
   const statuses = useMemo(() => {
-    return [...new Set(mockRequests.map(req => req.status))];
-  }, []);
+    return [...new Set(requests.map(req => req.status))];
+  }, [requests]);
 
-  // Filter and sort the requests
+    // Filter and sort the requests
   const filteredRequests = useMemo(() => {
-    return mockRequests
+    const filtered = requests
       .filter(req => {
         // Status filter
         if (filters.statusFilter && req.status !== filters.statusFilter) return false;
         
         // Date range filter
-        if (filters.startDate && new Date(req.date) < new Date(filters.startDate)) return false;
-        if (filters.endDate && new Date(req.date) > new Date(filters.endDate)) return false;
+        if (filters.startDate && new Date(req.requestDate) < new Date(filters.startDate)) return false;
+        if (filters.endDate && new Date(req.requestDate) > new Date(filters.endDate)) return false;
         
         // Search
         if (filters.search) {
           const searchLower = filters.search.toLowerCase();
           return (
-            req.id.toLowerCase().includes(searchLower) ||
-            req.requestedBy.toLowerCase().includes(searchLower)
+            req.requestCode.toLowerCase().includes(searchLower) ||
+            req.assigneeName.toLowerCase().includes(searchLower)
           );
         }
         
@@ -87,10 +91,10 @@ export default function RequestsPage() {
       })
       .sort((a, b) => {
         // Sort logic
-        if (filters.sortBy === "date") {
+        if (filters.sortBy === "requestDate") {
           return filters.sortDirection === "asc"
-            ? new Date(a.date).getTime() - new Date(b.date).getTime()
-            : new Date(b.date).getTime() - new Date(a.date).getTime();
+            ? new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime()
+            : new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime();
         }
         
         if (filters.sortBy === "status") {
@@ -101,10 +105,18 @@ export default function RequestsPage() {
         
         return 0;
       });
-  }, [filters]);
+    
+    console.log("🔍 Filtered requests:", {
+      before: requests.length,
+      after: filtered.length,
+      filters: JSON.stringify(filters)
+    });
+    
+    return filtered;
+  }, [filters, requests]);
 
   // Handle filter changes
-  const handleFilterChange = (key: keyof FilterState, value: string) => {
+  const handleFilterChange = (key: keyof FILTER_STATE, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
@@ -120,7 +132,7 @@ export default function RequestsPage() {
       statusFilter: "",
       startDate: "",
       endDate: "",
-      sortBy: "date",
+      sortBy: "requestDate",
       sortDirection: "desc",
     });
   };
@@ -146,11 +158,26 @@ export default function RequestsPage() {
       {/* Request list */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold mb-4">Request List</h2>
-        <RequestsTable
-          requests={filteredRequests}
-          onRequestClick={handleRequestClick}
-          onClearFilters={clearFilters}
-        />
+        
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <RequestsTable
+            requests={filteredRequests.map(req => ({
+              id: req.requestCode,
+              date: new Date(req.requestDate).toLocaleDateString(),
+              requestedBy: req.assigneeName,
+              items: req.sparePartUsages?.length || 0,
+              status: req.status,
+            }))}
+            onRequestClick={handleRequestClick}
+            onClearFilters={clearFilters}
+          />
+        )}
       </div>
     </div>
   );

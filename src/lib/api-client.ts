@@ -164,6 +164,18 @@ class APIClient {
       );
     },
   };
+  sparePart = {
+    // Get all spare part requests
+    getRequests: (): Promise<any> => {
+      console.log("🔄 Calling external API: /api/SparePartUsage/requests");
+      return http.get('/api/SparePartUsage/requests'); // ✅ Auto token
+    },
+    
+    // Get a specific request by ID
+    getRequestById: (requestId: string): Promise<any> => {
+      return http.get(`/api/SparePartUsage/requests/${requestId}`); // ✅ Auto token
+    },
+  };
 }
 
 export const apiClient = new APIClient();

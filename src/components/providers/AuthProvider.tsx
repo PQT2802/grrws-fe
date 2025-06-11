@@ -192,6 +192,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         console.log("  - User role:", user.role);
         console.log("  - Is HOT (role 2):", user.role === USER_ROLES.HOT);
         console.log("  - Is ADMIN (role 5):", user.role === USER_ROLES.ADMIN);
+        console.log("  - Is SKEEPER (role 4):", user.role === USER_ROLES.STOCK_KEEPER);
         console.log("  - Final canAccess:", canAccess);
 
         if (pathName === "/") {

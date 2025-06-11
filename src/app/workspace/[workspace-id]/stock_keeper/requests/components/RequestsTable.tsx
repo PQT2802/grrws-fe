@@ -33,7 +33,7 @@ export default function RequestsTable({
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-200">
-            <th className="px-4 py-3 text-left font-medium">Request ID</th>
+            <th className="px-4 py-3 text-left font-medium">Request Code</th>
             <th className="px-4 py-3 text-left font-medium">Request Date</th>
             <th className="px-4 py-3 text-left font-medium">Requested By</th>
             <th className="px-4 py-3 text-left font-medium">Number of Items</th>
