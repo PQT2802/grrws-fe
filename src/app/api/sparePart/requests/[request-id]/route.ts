@@ -4,20 +4,26 @@ import { apiClient } from '@/lib/api-client';
 // GET /api/sparePart/requests/[request-id] - Get spare part request by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { 'request-id': string } }
+  { params }: { params: { 'request-id': string } | Promise<{ 'request-id': string }> }
 ) {
   try {
-    const requestId = params['request-id'];
+    // Properly await params if it's a Promise
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const requestParam = resolvedParams['request-id'];
     
-    if (!requestId) {
+    if (!requestParam) {
       return NextResponse.json(
-        { error: "Request ID is required" },
+        { error: "Request identifier is required" },
         { status: 400 }
       );
     }
-    // Call external API through apiClient
-    const sparePartRequest = await apiClient.sparePart.getRequestById(requestId);
+    
+    console.log(`Fetching details for request: ${requestParam}`);
+    
+    // Get the specific request by ID
+    const sparePartRequest = await apiClient.sparePart.getRequestById(requestParam);
     return NextResponse.json(sparePartRequest);
+    
   } catch (error) {
     console.error("Failed to fetch spare part request:", error);
     return NextResponse.json(

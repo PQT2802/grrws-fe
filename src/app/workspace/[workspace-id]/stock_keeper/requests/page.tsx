@@ -168,7 +168,7 @@ export default function RequestsPage() {
         ) : (
           <RequestsTable
             requests={filteredRequests.map(req => ({
-              id: req.requestCode,
+              id: req.id,
               date: new Date(req.requestDate).toLocaleDateString(),
               requestedBy: req.assigneeName,
               items: req.sparePartUsages?.length || 0,

@@ -1,30 +1,30 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import StatusBadge from '../components/StatusBadge';
 import PartsTable from '../components/PartsTable';
 import UnavailablePartsForm from '../components/UnavailablePartsForm';
 import UnavailablePartsDisplay from '../components/UnavailablePartsDisplay';
-import { RequestDetail, UnavailablePart } from "../../type";
+import { RequestPart, UnavailablePart } from "../../type";
+import { sparePartService } from '@/app/service/sparePart.service';
+import { SPAREPART_REQUEST_DETAIL } from "@/types/sparePart.type";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock data for a single request
-const mockRequestDetail: RequestDetail = {
-  id: "REQ-001",
-  date: "2025-06-08",
-  requestedBy: "Nguyen Van A (Mechanic)",
-  parts: [
-    { id: "P-001", name: "Needle Bar", requested: 2 },
-    { id: "P-002", name: "Thread Guide", requested: 1 },
-    { id: "P-003", name: "Presser Foot", requested: 3 },
-  ],
-  status: "Pending",
-};
-
-export default function RequestDetailPage({ params }: { params: Promise<{ "request-id": string }>}) {
+export default function RequestDetailPage({ params }: { params: Promise<{ "request-id": string }> }) {
   const router = useRouter();
-  const {"request-id": requestId} = React.use(params);
+  // Use React.use() to unwrap the Promise
+  const resolvedParams = React.use(params);
+  const requestId = resolvedParams["request-id"];
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [requestDetail, setRequestDetail] = useState<SPAREPART_REQUEST_DETAIL | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Convert API data to RequestPart format
+  const [requestParts, setRequestParts] = useState<RequestPart[]>([]);
   
   // State for unavailable parts
   const [unavailableParts, setUnavailableParts] = useState<UnavailablePart[]>([]);
@@ -35,6 +35,51 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [restockDate, setRestockDate] = useState("");
+  
+  // Fetch request detail
+  useEffect(() => {
+    const fetchRequestDetail = async () => {
+      try {
+        setIsLoading(true);
+        const response = await sparePartService.getSparePartRequestDetail(requestId);
+        
+        console.log("Request detail full response:", response);
+        
+        // Handle both possible response structures
+        const requestData = response.data || response;
+        if (!requestData) {
+          console.error("API response structure:", response);
+          throw new Error("Request data not found");
+        }
+        
+        setRequestDetail(requestData);
+        
+        // Transform spare parts to the format expected by PartsTable
+        const parts = requestData.sparePartUsages.map(usage => ({
+          id: usage.sparePartId,
+          name: usage.spareparts[0]?.sparepartName || "Unknown Part",
+          requested: usage.quantityUsed,
+          code: usage.spareparts[0]?.sparepartCode || "",
+          stockQuantity: usage.spareparts[0]?.stockQuantity || 0,
+          specification: usage.spareparts[0]?.specification || "",
+          isTakenFromStock: usage.isTakenFromStock
+        }));
+        
+        setRequestParts(parts);
+        toast.success("Request details loaded successfully");
+      } catch (err) {
+        console.error("Failed to fetch request detail:", err);
+        setError("Failed to load request details");
+        toast.error("Failed to load request details");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (requestId) {
+      fetchRequestDetail();
+    }
+  }, [requestId]);
   
   // Calculate if a part is already marked unavailable
   const isPartUnavailable = (partId: string) => {
@@ -62,6 +107,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     
     setUnavailableParts([...unavailableParts, ...newUnavailableParts]);
     setSubmittedUnavailable(true);
+    toast.success("Parts marked as unavailable");
     
     // Reset form
     setSelectedPartIds([]);
@@ -81,6 +127,53 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     router.push("../requests");
   };
 
+  // Format date for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Not confirmed";
+    return new Date(dateString).toLocaleString();
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+          <Skeleton className="h-8 w-1/3 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+          <Skeleton className="h-6 w-1/4 mb-4" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+          <Skeleton className="h-6 w-1/4 mb-4" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
+        <div className="text-center py-8">
+          <div className="text-red-500 text-lg font-medium mb-2">Error</div>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+          <button 
+            onClick={goBack}
+            className="px-4 py-2 bg-primary text-white rounded text-sm"
+          >
+            Back to Requests
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -94,7 +187,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
               <ArrowLeft className="h-4 w-4 mr-1" />
               <span className="text-sm">Back to Requests</span>
             </button>
-            <h1 className="text-xl font-bold">Request Detail: {requestId}</h1>
+            <h1 className="text-xl font-bold">Request: {requestDetail?.requestCode}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               View and manage request information
             </p>
@@ -102,7 +195,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
           
           <div className="flex items-center">
             <span className="mr-2 text-sm text-gray-500">Status:</span>
-            <StatusBadge status={mockRequestDetail.status} />
+            <StatusBadge status={requestDetail?.status || "Unknown"} />
           </div>
         </div>
       </div>
@@ -114,12 +207,19 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Requested by</p>
-            <p className="font-medium">{mockRequestDetail.requestedBy}</p>
+            <p className="font-medium">{requestDetail?.assigneeName || "Unknown"}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Request Date</p>
-            <p className="font-medium">{mockRequestDetail.date}</p>
+            <p className="font-medium">{formatDate(requestDetail?.requestDate || null)}</p>
           </div>
+          
+          {requestDetail?.notes && (
+            <div className="col-span-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Notes</p>
+              <p className="font-medium">{requestDetail.notes}</p>
+            </div>
+          )}
         </div>
       </div>
       
@@ -140,7 +240,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         
         {/* Parts Table */}
         <PartsTable
-          parts={mockRequestDetail.parts}
+          parts={requestParts}
           showUnavailableForm={showUnavailableForm}
           selectedPartIds={selectedPartIds}
           isPartUnavailable={isPartUnavailable}
@@ -167,7 +267,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         {/* Unavailable Parts Display */}
         <UnavailablePartsDisplay
           unavailableParts={unavailableParts}
-          parts={mockRequestDetail.parts}
+          parts={requestParts}
           submittedUnavailable={submittedUnavailable}
         />
       </div>
@@ -182,7 +282,10 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         </button>
         <button
           className="px-4 py-2 bg-primary text-white rounded text-sm"
-          onClick={() => alert("Status updated!")}
+          onClick={() => {
+            // Here you would implement the actual status update API call
+            toast.success(`${requestDetail?.requestCode} marked as delivered`);
+          }}
         >
           Mark as Delivered
         </button>
