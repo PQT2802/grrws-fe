@@ -120,8 +120,9 @@ export default function RequestsPage() {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // Navigate to request detail
+  // Navigate to request detail with ID, not code
   const handleRequestClick = (id: string) => {
+    console.log(`Navigating to request detail with ID: ${id}`);
     router.push(`./requests/${id}`);
   };
   
@@ -168,7 +169,8 @@ export default function RequestsPage() {
         ) : (
           <RequestsTable
             requests={filteredRequests.map(req => ({
-              id: req.id,
+              id: req.id,                 // Keep the ID for navigation
+              code: req.requestCode,      // Map the code for display 
               date: new Date(req.requestDate).toLocaleDateString(),
               requestedBy: req.assigneeName,
               items: req.sparePartUsages?.length || 0,

@@ -45,9 +45,9 @@ export default function RequestsTable({
             <tr
               key={req.id}
               className="hover:bg-primary/5 cursor-pointer transition-colors"
-              onClick={() => onRequestClick(req.id)}
+              onClick={() => onRequestClick(req.id)} 
             >
-              <td className="px-4 py-3 font-medium">{req.id}</td>
+              <td className="px-4 py-3 font-medium">{req.code}</td> 
               <td className="px-4 py-3">{req.date}</td>
               <td className="px-4 py-3">{req.requestedBy}</td>
               <td className="px-4 py-3">{req.items}</td>
