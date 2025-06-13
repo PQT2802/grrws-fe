@@ -1,13 +1,92 @@
 "use client";
 
-import { X, AlertTriangle, MapPin, Calendar, Package } from "lucide-react";
+import { 
+  X, 
+  AlertTriangle, 
+  Package, 
+  Edit, 
+  CheckCircle,
+  Settings,      // For Machine Type
+  Tag,           // For Category
+  Truck,         // For Supplier
+  DollarSign,    // For Unit Price
+  FileText,      // For Description
+  Wrench         // For Specification
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { PartDetailModalProps } from "../../type";
+import { PartDetailModalProps, PartType } from "../../type";
 import UpdateQuantityModal from "./UpdateQuantityModal";
+import UpdateSparePartModal from "./UpdateSparePartModal";
+import { toast } from "react-toastify";
+import { sparePartService } from "@/app/service/sparePart.service";
+import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 
-export default function PartDetailModal({ isOpen, onClose, part }: PartDetailModalProps) {
+// Add onUpdate prop to the interface
+interface ExtendedPartDetailModalProps extends PartDetailModalProps {
+  onUpdate?: () => void; // Callback for when a part is updated
+}
+
+export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: ExtendedPartDetailModalProps) {
   const isLowStock = part.quantity < part.minThreshold;
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showUpdateSpModal, setShowUpdateSpModal] = useState(false);
+  const [originalData, setOriginalData] = useState<SPAREPART_INVENTORY_ITEM | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPart, setCurrentPart] = useState<PartType>(part);
+
+  // Update current part when prop changes
+  useEffect(() => {
+    if (part) {
+      setCurrentPart(part);
+      console.log("PartDetailModal: Part updated:", part);
+    }
+  }, [part]);
+
+  // Fetch original data for the update modal if needed
+  useEffect(() => {
+    if (isOpen && currentPart?.id && !originalData) {
+      fetchOriginalData();
+    }
+  }, [isOpen, currentPart?.id]);
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setOriginalData(undefined);
+      setShowUpdateModal(false);
+      setShowUpdateSpModal(false);
+    }
+  }, [isOpen]);
+
+  const fetchOriginalData = async () => {
+    if (!currentPart?.id) {
+      console.warn("PartDetailModal: No part ID available for fetching original data");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log(`Fetching original data for part ID: ${currentPart.id}`);
+
+      // Actually fetch the data from the API
+      const response = await sparePartService.getSparePartById(currentPart.id);
+
+      if (response?.data) {
+        setOriginalData(response.data);
+        console.log("Original data fetched successfully:", response.data);
+      } else {
+        console.warn("No data returned from API");
+      }
+    } catch (error: any) {
+      console.error("Error fetching part details:", error);
+      // Only show error if it's not a 404 (which might be expected for some parts)
+      if (error?.status !== 404) {
+        // Optionally show a toast error here
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Close modal on escape key
   useEffect(() => {
@@ -32,165 +111,252 @@ export default function PartDetailModal({ isOpen, onClose, part }: PartDetailMod
     };
   }, [isOpen]);
 
-  // Handle form submission
-  const handleUpdateSubmit = (data: { date: string; qty: number; method: string}) => {
-    // Here you would typically call an API to update the quantity
-    console.log("Updating quantity:", {
-      partId: part.id,
-      ...data
-    });
-    
-    // For demo purposes, show an alert
-    alert(`Updated ${part.name} quantity by ${data.qty} units (${data.method})`);
+  // Handle form submission for quantity update
+  const handleUpdateQuantitySubmit = async (data: { date: string; qty: number; method: string }) => {
+    if (!currentPart?.id) {
+      console.error("No part ID available for quantity update");
+      return;
+    }
+
+    try {
+      console.log("Updating quantity:", {
+        partId: currentPart.id,
+        ...data
+      });
+      
+      // Call the actual API to update quantity
+      const response = await sparePartService.updateSparePartQuantity(
+        currentPart.id, 
+        data.qty, 
+        data.method as any, 
+        data.date
+      );
+      
+      // Update the current part state with new quantity based on the method
+      let newQuantity = currentPart.quantity;
+      if (data.method === 'Export') {
+        newQuantity = Math.max(0, currentPart.quantity - data.qty);
+      } else if (data.method === 'Import') {
+        newQuantity = currentPart.quantity + data.qty;
+      } else if (data.method === 'Adjustment') {
+        newQuantity = data.qty;
+      }
+      
+      const updatedPart = {
+        ...currentPart,
+        quantity: newQuantity
+      };
+      setCurrentPart(updatedPart);
+      
+      toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units (${data.method})`);
+      
+      // Reload the original data to ensure we're showing the latest data
+      setOriginalData(undefined);
+      fetchOriginalData();
+      
+      // Trigger parent refresh
+      onUpdate?.();
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      toast.error("Failed to update quantity");
+    }
   };
 
-  if (!isOpen) return null;
+  // Handle success for Spare Part update - modified to call onUpdate and refresh modal data
+  const handleUpdateSuccess = () => {
+    console.log("Part updated successfully");
+    // Close the update modal
+    setShowUpdateSpModal(false);
+    // Clear original data to force refresh
+    setOriginalData(undefined);
+    // Explicitly fetch the updated data immediately
+    fetchOriginalData();
+    // Call the onUpdate callback from parent to refresh data
+    onUpdate?.();
+    // Note: The parent will pass the updated part data, which will trigger useEffect above
+  };
+
+  if (!isOpen || !currentPart) return null;
+
+  // Use currentPart instead of part throughout the component
+  const displayPart = currentPart;
+  const isCurrentLowStock = displayPart.quantity < displayPart.minThreshold;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-4 flex justify-between items-center border-b dark:border-gray-700">
-          <h2 className="text-lg font-bold">{part.name}</h2>
+      {/* Modal content using displayPart instead of part */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            {displayPart.name}
+          </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
-            <X className="h-5 w-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Image and basic info */}
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Left side - Image */}
-            <div className="md:w-1/3">
-              <div className="bg-gray-100 dark:bg-slate-700 rounded-lg p-4 flex items-center justify-center h-48">
+            <div className="flex-shrink-0">
+              <div className="w-48 h-48 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
                 <img
-                  src={part.image || "/assets/parts/placeholder.jpg"}
-                  alt={part.name}
+                  src={displayPart.image || "/file.svg"}
+                  alt={displayPart.name}
                   className="max-h-40 max-w-full object-contain"
                   onError={(e) => {
-                    // Avoid infinite loop by checking current src
-                    if (!e.currentTarget.src.includes("placeholder.jpg")) {
-                      e.currentTarget.src = "/assets/parts/placeholder.jpg";
+                    if (!e.currentTarget.src.includes("file.svg")) {
+                      e.currentTarget.src = "/file.svg";
                     }
                   }}
                 />
               </div>
-
-              <div
-                className={`mt-4 p-3 rounded-lg ${
-                  isLowStock
-                    ? "bg-red-50 dark:bg-red-900/20"
-                    : "bg-green-50 dark:bg-green-900/20"
-                }`}
-              >
-                {/* Stock information - unchanged */}
-                <div className="flex items-center gap-2">
-                  {isLowStock ? (
-                    <>
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      <span className="font-medium text-red-600 dark:text-red-400">
-                        Low Stock
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                      <span className="font-medium text-green-600 dark:text-green-400">
-                        In Stock
-                      </span>
-                    </>
-                  )}
-                </div>
-                <div className="mt-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Current Stock:</span>
-                    <span className="font-bold">
-                      {part.quantity} {part.unit}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span>Min Threshold:</span>
-                    <span>
-                      {part.minThreshold} {part.unit}
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* Right side - Details */}
-            <div className="md:w-2/3">
-              <h3 className="font-medium text-lg mb-2">Part Details</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {part.description}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Package className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <div className="text-gray-500">Machine Type</div>
-                    <div className="font-medium">{part.machineType}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="text-gray-500 w-4 h-4 flex items-center justify-center">
-                    #
-                  </div>
-                  <div>
-                    <div className="text-gray-500">Category</div>
-                    <div className="font-medium">{part.category}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <div className="text-gray-500">Imported Date</div>
-                    <div className="font-medium">{part.importedDate}</div>
-                  </div>
-                </div>
-
-                {part.location && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <div className="text-gray-500">Storage Location</div>
-                      <div className="font-medium">{part.location}</div>
-                    </div>
-                  </div>
+            <div className="flex-1 space-y-4">
+              {/* Stock Status */}
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                isCurrentLowStock 
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" 
+                  : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              }`}>
+                {isCurrentLowStock ? (
+                  <>
+                    <AlertTriangle className="w-4 h-4 mr-1" />
+                    Low Stock
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    In Stock
+                  </>
                 )}
               </div>
 
-              <div className="mt-8 flex flex-col gap-2">
-                <h3 className="font-medium text-sm">
-                  Part ID: <span className="font-normal">{part.id}</span>
-                </h3>
+              {/* Key Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Current Stock
+                  </label>
+                  <p className="text-lg font-semibold">
+                    {displayPart.quantity} {displayPart.unit}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Min Threshold
+                  </label>
+                  <p className="text-lg font-semibold">
+                    {displayPart.minThreshold} {displayPart.unit}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpdateModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Package className="w-4 h-4" />
+                  Update Stock
+                </button>
+                <button
+                  onClick={() => setShowUpdateSpModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Details
+                </button>
+                {/* {isLowStock && (
+                  <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Order More
+                  </button>
+                )} */}
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="border-t dark:border-gray-700 p-4 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
-          >
-            Close
-          </button>
-          <button 
-            className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm"
-            onClick={() => setShowUpdateModal(true)}
-          >
-            Update Quantity
-          </button>
-          {isLowStock && (
-            <button className="px-4 py-2 bg-green-500 text-white rounded-md text-sm">
-              Order More
-            </button>
-          )}
+          {/* Detailed Information - Redesigned Layout */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
+              Part Details
+            </h3>
+            
+            <div className="space-y-6">
+              {/* Row 1: Machine Type & Category */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <Settings className="w-4 h-4 text-blue-500" />
+                    Machine Type
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.machineType || "N/A"}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <Tag className="w-4 h-4 text-green-500" />
+                    Category
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.category || "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Row 2: Supplier & Unit Price */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <Truck className="w-4 h-4 text-orange-500" />
+                    Supplier
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.supplier || "N/A"}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
+                    Unit Price
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.unitPrice ? `đ${displayPart.unitPrice.toFixed(2)}` : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Row 3: Description & Specification */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <FileText className="w-4 h-4 text-purple-500" />
+                    Description
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.description || "No description available"}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <Wrench className="w-4 h-4 text-red-500" />
+                    Specification
+                  </label>
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {displayPart.specification || "No specification available"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -198,9 +364,21 @@ export default function PartDetailModal({ isOpen, onClose, part }: PartDetailMod
       <UpdateQuantityModal
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
-        onSubmit={handleUpdateSubmit}
-        defaultMethod="Import"
+        onSubmit={handleUpdateQuantitySubmit}
+        defaultMethod="Adjustment"
+        currentQuantity={displayPart.quantity}
       />
+
+      {/* Update Spare Part Modal */}
+      {displayPart && (
+        <UpdateSparePartModal
+          isOpen={showUpdateSpModal}
+          onClose={() => setShowUpdateSpModal(false)}
+          onSuccess={handleUpdateSuccess}
+          part={displayPart}
+          originalData={originalData}
+        />
+      )}
     </div>
   );
 }

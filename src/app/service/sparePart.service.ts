@@ -3,7 +3,8 @@ import {
   SPAREPART_REQUEST, 
   SPAREPART_REQUESTS_RESPONSE,
   SPAREPART_REQUEST_DETAIL,
-  SPAREPART_REQUEST_DETAIL_RESPONSE
+  SPAREPART_REQUEST_DETAIL_RESPONSE,
+  SPAREPART_INVENTORY_RESPONSE
 } from '@/types/sparePart.type';
 
 // Spare part service for stock keeper operations
@@ -27,5 +28,114 @@ export const sparePartService = {
     return http.get<SPAREPART_REQUEST_DETAIL_RESPONSE>(`/api/sparePart/requests/${requestId}`, {
       useInternalRoute: true,
     });
+  },
+
+  // Get spare part inventory with pagination
+  getSparePartInventory: async (
+    pageNumber: number = 1, 
+    pageSize: number = 10
+  ): Promise<SPAREPART_INVENTORY_RESPONSE> => {
+    return http.get<SPAREPART_INVENTORY_RESPONSE>(
+      `/api/sparePart/inventory?pageNumber=${pageNumber}&pageSize=${pageSize}`, 
+      {
+        useInternalRoute: true,
+      }
+    );
+  },
+
+  // Import a new spare part
+  importSparePart: async (formData: FormData): Promise<any> => {
+    return http.post('/api/sparePart/import', formData, {
+      useInternalRoute: true,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // Update a spare part
+  updateSparePart: async (id: string, formData: FormData | any): Promise<any> => {
+    // Convert FormData to JSON if needed
+    let jsonData: any;
+    
+    if (formData instanceof FormData) {
+      jsonData = {};
+      formData.forEach((value, key) => {
+        // Skip image file for now
+        if (key !== 'ImageFile') {
+          // Convert number strings to numbers
+          if (!isNaN(Number(value)) && typeof value === 'string' && value !== '') {
+            jsonData[key] = Number(value);
+          } else {
+            jsonData[key] = value;
+          }
+        }
+      });
+    } else {
+      // Already JSON format
+      jsonData = formData;
+    }
+    
+    const response = await http.put(`/api/sparePart/${id}`, jsonData, {
+      useInternalRoute: true,
+    });
+    
+    // Add this log to verify the data returned
+    console.log('Updated spare part data:', response);
+    
+    return response;
+  },
+
+  // Update just the quantity of a spare part
+  updateSparePartQuantity: async (
+    sparePartId: string,
+    quantity: number,
+    method: 'Import' | 'Export' | 'Adjustment' = 'Adjustment',
+    date: string = new Date().toISOString()
+  ): Promise<any> => {
+    // Calculate final quantity based on method
+    let finalQuantity = quantity;
+    
+    if (method === 'Export' || method === 'Import') {
+      // For Export/Import, we need to first get the current quantity
+      try {
+        const currentPart = await sparePartService.getSparePartById(sparePartId);
+        if (currentPart?.data) {
+          const currentQuantity = currentPart.data.stockQuantity;
+          
+          // Calculate new quantity based on method
+          if (method === 'Export') {
+            finalQuantity = Math.max(0, currentQuantity - quantity);
+          } else if (method === 'Import') {
+            finalQuantity = currentQuantity + quantity;
+          }
+        }
+      } catch (error) {
+        console.error("Error getting current quantity:", error);
+        throw error;
+      }
+    }
+    const data = {
+      quantity: finalQuantity,
+      method
+    };
+    
+    return http.put(`/api/sparePart/${sparePartId}/quantity`, data, {
+      useInternalRoute: true
+    });
+  },
+
+  // Get a specific spare part by ID
+  getSparePartById: async (partId: string): Promise<any> => {
+    try {
+      console.log(`Service: Fetching spare part by ID: ${partId}`);
+      const response = await http.get<any>(`/api/sparePart/${partId}`, {
+        useInternalRoute: true,
+      });
+      return response;
+    } catch (error) {
+      console.error(`Service: Error fetching spare part ${partId}:`, error);
+      throw error;
+    }
   },
 };

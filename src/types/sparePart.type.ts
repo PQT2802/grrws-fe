@@ -65,3 +65,37 @@ export interface SPAREPART_REQUEST_DETAIL {
 export interface SPAREPART_REQUEST_DETAIL_RESPONSE {
   data: SPAREPART_REQUEST_DETAIL;
 }
+
+export interface SPAREPART_INVENTORY_ITEM {
+  id: string;
+  sparepartCode: string;
+  sparepartName: string;
+  description: string;
+  specification: string;
+  stockQuantity: number;
+  isAvailable: boolean;
+  unit: string;
+  unitPrice: number;
+  expectedAvailabilityDate: string | null;
+  supplierId: string;
+  supplierName: string;
+  category: string | null;
+  machineIds: string[];
+  machineNames: string[];
+  imgUrl: string | null;
+}
+
+export interface SPAREPART_INVENTORY_RESPONSE {
+  data: {
+    data: SPAREPART_INVENTORY_ITEM[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+  }
+}
+
+// Add a new type for pagination params
+export interface PAGINATION_PARAMS {
+  pageNumber: number;
+  pageSize: number;
+}

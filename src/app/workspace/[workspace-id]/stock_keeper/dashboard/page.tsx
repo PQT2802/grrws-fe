@@ -11,11 +11,11 @@ export default function DashboardPage() {
         <NotificationArea />
       </div>
       <div className="lg:w-1/4 flex flex-col gap-4">
-        <Link href="../requests">
+        {/* <Link href="../requests">
           <button className="w-full bg-primary text-white rounded-md py-3 px-4 font-semibold shadow hover:bg-primary/90 transition">
             Go to Requests
           </button>
-        </Link>
+        </Link> */}
       </div>
     </div>
   );

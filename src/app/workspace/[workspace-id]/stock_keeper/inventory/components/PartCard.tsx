@@ -14,9 +14,14 @@ export default function PartCard({ part, onClick }: PartCardProps) {
       <div className="flex items-center mb-3">
         <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded flex items-center justify-center mr-3">
           <img
-            src={part.image}
+            src={part.image || "/file.svg"} // Use existing file.svg as fallback
             alt={part.name}
             className="w-12 h-12 object-contain"
+            onError={(e) => {
+              if (!e.currentTarget.src.includes("file.svg")) {
+                e.currentTarget.src = "/file.svg";
+              }
+            }}
           />
         </div>
         <div className="flex-1">

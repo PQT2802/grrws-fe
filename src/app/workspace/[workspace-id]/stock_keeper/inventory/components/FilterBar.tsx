@@ -24,7 +24,7 @@ export default function FilterBar({
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="w-full md:w-48">
+        {/* <div className="w-full md:w-48">
           <div className="relative">
             <select
               className="w-full appearance-none border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 
@@ -39,7 +39,7 @@ export default function FilterBar({
             </select>
             <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
           </div>
-        </div>
+        </div> */}
         <div className="w-full md:w-40">
           <div className="relative">
             <select
@@ -66,7 +66,7 @@ export default function FilterBar({
             >
               <option value="name">Sort by Name</option>
               <option value="quantity">Sort by Quantity</option>
-              <option value="importedDate">Sort by Date</option>
+              {/* <option value="importedDate">Sort by Date</option> */}
             </select>
             <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
           </div>

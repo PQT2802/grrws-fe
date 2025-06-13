@@ -175,7 +175,76 @@ class APIClient {
     getRequestById: (requestId: string): Promise<any> => {
       console.log(`Getting spare part request by ID: ${requestId}`);
       return http.get(`/api/SparePartUsage/requests/${requestId}`);
-    }
+    },
+    
+    // Get spare parts inventory
+    getInventory: async (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Getting spare parts inventory from external API (page ${pageNumber}, size ${pageSize})`);
+      try {
+        const response = await http.get(`/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+        console.log("External API response status:", (response as any)?.status || "unknown");
+        console.log("Response data sample:", 
+          JSON.stringify(response).substring(0, 100) + "...");
+        return response;
+      } catch (error) {
+        console.error("Error in external API call:", error);
+        throw error;
+      }
+    },
+
+    // Import spare part
+    importSparePart: async (formData: FormData): Promise<any> => {
+      console.log("Importing spare part to external API");
+      try {
+        const response = await http.post('/api/Sparepart', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        return response;
+      } catch (error) {
+        console.error("Error in external API call:", error);
+        throw error;
+      }
+    },
+
+    // Update spare part
+    updateSparePart: async (id: string, jsonData: any): Promise<any> => {
+      console.log(`Updating spare part with ID ${id} to external API`);
+      try {
+        console.log("Sending update data:", jsonData);
+        
+        // Send JSON directly to backend
+        const response = await http.put(`/api/Sparepart/${id}`, jsonData);
+        return response;
+      } catch (error) {
+        console.error("Error in external API call:", error);
+        throw error;
+      }
+    },
+
+    // Get a specific spare part by ID
+    getPartById: async (id: string): Promise<any> => {
+      console.log(`API Client: Getting spare part by ID: ${id}`);
+      // Fix: Use correct casing for the API endpoint - Sparepart with capital S
+      return http.get(`/api/Sparepart/${id}`); 
+    },
+
+    // Update stock quantity with the correct endpoint
+    updateStockQuantity: async (sparePartId: string, stockQuantity: number): Promise<any> => {
+      console.log(`Updating stock quantity for spare part with ID: ${sparePartId}`);
+      try {
+        // Use the correct API endpoint and structure
+        const response = await http.put('/api/Sparepart/update-stock-quantity', {
+          SparepartId: sparePartId,
+          StockQuantity: stockQuantity
+        });
+        return response;
+      } catch (error) {
+        console.error("Error in external API call:", error);
+        throw error;
+      }
+    },
   };
 }
 

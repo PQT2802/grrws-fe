@@ -11,6 +11,11 @@ export interface PartType {
   importedDate: string;
   unit: string;
   location?: string;
+  specification?: string; 
+  supplier?: string;
+  supplierId?: string; // Add this field
+  unitPrice?: number;
+  expectedAvailabilityDate?: string; // Add this field
 }
 export interface PartCardProps {
   part: PartType;
@@ -35,6 +40,7 @@ export interface PartDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   part: PartType;
+  onUpdate?: () => void; // Add this line
 }
 
 //request  
