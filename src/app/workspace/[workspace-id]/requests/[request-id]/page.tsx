@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw, Eye, Plus } from "lucide-react";
@@ -35,6 +35,7 @@ import WarrantyHistoryModal from "@/components/WarrantyHistoryModal/WarrantyHist
 import WarrantiesModal from "@/components/WarrantiesModal/WarrantiesModal";
 import CreateTaskFromErrorsCpn from "@/components/CreateTaskFromErrorsCpn/CreateTaskFromErrorsCpn";
 import CreateTaskFromTechnicalIssuesCpn from "@/components/CreateTaskFromTechnicalIssuesCpn/CreateTaskFromTechnicalIssuesCpn";
+import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn";
 
 // ✅ Updated to include Technical Issues
 const TAB_CONTENT_LIST = ["Issues", "Errors", "Tasks", "Technical Issues"];
@@ -71,6 +72,28 @@ const RequestDetailPage = () => {
     setShowCreateTaskFromTechnicalIssues,
   ] = useState(false);
 
+  const [tasks, setTasks] = useState<TASK_FOR_REQUEST_DETAIL_WEB[]>([]);
+
+  // Add new state for the task creation modal
+  const [showCreateInstallUninstallTask, setShowCreateInstallUninstallTask] =
+    useState(false);
+
+  // Check if uninstall task exists
+  const hasUninstallTask = useMemo(() => {
+    return tasks.some((task) =>
+      task.taskType.toLowerCase().includes("uninstall")
+    );
+  }, [tasks]);
+
+  const fetchTasks = async () => {
+    try {
+      const tasksData = await requestService.getTasksByRequestId(requestId);
+      setTasks(tasksData);
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchRequestDetail = async () => {
       try {
@@ -87,6 +110,7 @@ const RequestDetailPage = () => {
 
     if (requestId) {
       fetchRequestDetail();
+      fetchTasks(); // ✅ Fetch tasks to check for uninstall task
     }
   }, [requestId]);
 
@@ -302,26 +326,74 @@ const RequestDetailPage = () => {
                   </TabsList>
 
                   <div className="flex items-center gap-3">
-                    {/* ✅ Show create task button for errors */}
-                    {activeTab === "errors" && selectedErrors.length > 0 && (
+                    {/* ✅ Add New Issue Button */}
+                    {activeTab === "issues" && (
                       <ButtonCpn
                         type="button"
-                        title={`Create Repair Task (${selectedErrors.length})`}
+                        title="Add New Issue"
                         icon={<Plus />}
-                        onClick={handleCreateTaskFromErrors}
+                        onClick={() => {
+                          // TODO: Implement add new issue functionality
+                          console.log("Add new issue");
+                        }}
                       />
                     )}
 
-                    {/* ✅ Show create task button for technical issues */}
-                    {activeTab === "technical-issues" &&
-                      selectedTechnicalIssues.length > 0 && (
+                    {/* ✅ Add New Error Button */}
+                    {activeTab === "errors" && (
+                      <>
                         <ButtonCpn
                           type="button"
-                          title={`Create Warranty Task (${selectedTechnicalIssues.length})`}
+                          title="Add New Error"
                           icon={<Plus />}
-                          onClick={handleCreateTaskFromTechnicalIssues}
+                          onClick={() => {
+                            // TODO: Implement add new error functionality
+                            console.log("Add new error");
+                          }}
                         />
-                      )}
+                        {selectedErrors.length > 0 && (
+                          <ButtonCpn
+                            type="button"
+                            title={`Create Repair Task (${selectedErrors.length})`}
+                            icon={<Plus />}
+                            onClick={handleCreateTaskFromErrors}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {/* ✅ Add New Task Button */}
+                    {activeTab === "tasks" && (
+                      <ButtonCpn
+                        type="button"
+                        title="Add New Task"
+                        icon={<Plus />}
+                        onClick={() => setShowCreateInstallUninstallTask(true)}
+                      />
+                    )}
+
+                    {/* ✅ Add New Technical Issue Button */}
+                    {activeTab === "technical-issues" && (
+                      <>
+                        <ButtonCpn
+                          type="button"
+                          title="Add New Technical Issue"
+                          icon={<Plus />}
+                          onClick={() => {
+                            // TODO: Implement add new technical issue functionality
+                            console.log("Add new technical issue");
+                          }}
+                        />
+                        {selectedTechnicalIssues.length > 0 && (
+                          <ButtonCpn
+                            type="button"
+                            title={`Create Warranty Task (${selectedTechnicalIssues.length})`}
+                            icon={<Plus />}
+                            onClick={handleCreateTaskFromTechnicalIssues}
+                          />
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -383,10 +455,12 @@ const RequestDetailPage = () => {
             setOpen={setShowCreateTaskFromErrors}
             requestId={requestId}
             selectedErrors={selectedErrors}
-            onTaskCreated={handleTaskCreated}
-          >
-            <></>
-          </CreateTaskFromErrorsCpn>
+            onTaskCreated={() => {
+              handleTaskCreated();
+              fetchTasks();
+            }}
+            hasUninstallTask={hasUninstallTask}
+          />
 
           <CreateTaskFromTechnicalIssuesCpn
             open={showCreateTaskFromTechnicalIssues}
@@ -394,9 +468,18 @@ const RequestDetailPage = () => {
             requestId={requestId}
             selectedTechnicalIssues={selectedTechnicalIssues}
             onTaskCreated={handleTaskCreated}
-          >
-            <></>
-          </CreateTaskFromTechnicalIssuesCpn>
+            deviceId={requestDetail?.deviceId || ""}
+          ></CreateTaskFromTechnicalIssuesCpn>
+
+          <CreateInstallUninstallTaskCpn
+            open={showCreateInstallUninstallTask}
+            setOpen={setShowCreateInstallUninstallTask}
+            requestId={requestId}
+            onTaskCreated={() => {
+              handleTaskCreated();
+              fetchTasks();
+            }}
+          />
         </div>
       )}
     </>

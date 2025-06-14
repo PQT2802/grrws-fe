@@ -16,3 +16,19 @@ export interface WARRANTY_HISTORY_LIST {
   provider?: string; // Optional string
   note?: string; // Optional string
 }
+export interface WarrantyInfo {
+  id: string; // Unique identifier for the warranty
+  isUnderWarranty: boolean;
+  warrantyStatus: string; // tùy vào các trạng thái có thể có
+  warrantyCode: string;
+  warrantyType: string;
+  warrantyReason: string;
+  provider: string;
+  warrantyStartDate: string; // ISO 8601 datetime string
+  warrantyEndDate: string; // ISO 8601 datetime string
+  notes: string;
+  cost: number;
+  documentUrl: string;
+  daysRemaining: number;
+  lowDayWarning: boolean;
+}
