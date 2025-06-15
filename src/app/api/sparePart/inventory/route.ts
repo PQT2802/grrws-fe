@@ -11,28 +11,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`INTERNAL API: Fetching spare part inventory (page ${pageNumber}, size ${pageSize})`);
     
-    // Pass pagination to external API
     const response = await apiClient.sparePart.getInventory(pageNumber, pageSize);
     
-    // Format the response to match expected structure if necessary
     let formattedResponse;
     
     if (response && response.data) {
-      // If response has the expected structure with data and pagination info
       if (response.data.data && Array.isArray(response.data.data)) {
-        // Better detection of incorrect totalCount
-        if (response.data.totalCount <= response.data.pageSize || 
-            response.data.totalCount === response.data.data.length) {
-          // Try to calculate a better totalCount estimation
+        if (response.data.totalCount <= response.data.pageSize || response.data.totalCount === response.data.data.length) {
+       
           let estimatedTotalCount = response.data.totalCount;
           
-          // If this is page 1 and we got fewer items than page size, use actual count
-          if (pageNumber === 1 && response.data.data.length < pageSize) {
-            estimatedTotalCount = response.data.data.length;
-          } 
-          // If we have a full page, we know there's at least one more page worth of data
+          
+          if (pageNumber === 1 && response.data.data.length < pageSize) { estimatedTotalCount = response.data.data.length;} 
+
           else if (response.data.data.length === pageSize) {
-            // Use header info if available (some APIs provide x-total-count)
             const headerTotalCount = response.headers?.get('x-total-count');
             if (headerTotalCount) {
               estimatedTotalCount = parseInt(headerTotalCount, 10);
@@ -56,7 +48,6 @@ export async function GET(request: NextRequest) {
           console.log(`Found ${response.data.data.length} spare parts (page ${response.data.pageNumber} of ${Math.ceil(response.data.totalCount / response.data.pageSize)})`);
         }
       }
-      // If response.data is an array (needs wrapping)
       else if (Array.isArray(response.data)) {
         formattedResponse = { 
           data: { 

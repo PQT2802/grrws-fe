@@ -1,32 +1,24 @@
 'use client';
 
-import { AuthContext } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
-import { useContext, useEffect } from 'react';
+import { useEffect } from 'react';
 import NotificationArea from "./components/NotificationArea";
 import QuickSummary from "./components/QuickSummary";
 import StockOverviewChart from "./components/StockOverviewChart";
 import QuickActions from "./components/QuickActions";
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("error using useAuth");
-  }
-  return context;
-};
-
 export default function DashboardPage() {
-  const { user, isStockKeeper, isLoading } = useAuth();
+  const { user, isStockKeeper, loading } = useAuth(); // Use the correct property names
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isStockKeeper) {
+    if (!loading && !isStockKeeper) {
       router.push('/unauthorized');
     }
-  }, [isLoading, isStockKeeper, router]);
+  }, [loading, isStockKeeper, router]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

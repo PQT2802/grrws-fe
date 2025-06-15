@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart3, PieChart } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { sparePartService } from '@/app/service/sparePart.service';
 
 interface StockData {
@@ -13,7 +13,6 @@ interface StockData {
 
 export default function StockOverviewChart() {
   const [stockData, setStockData] = useState<StockData[]>([]);
-  const [viewType, setViewType] = useState<'category' | 'status'>('category');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,14 +22,15 @@ export default function StockOverviewChart() {
   const fetchStockData = async () => {
     try {
       setIsLoading(true);
-      const response = await sparePartService.getInventory(1, 1000);
+      // Fix: Use the correct method name
+      const response = await sparePartService.getSparePartInventory(1, 1000);
       const inventory = response?.data?.data || [];
 
       // Group by category
       const categoryMap = new Map<string, StockData>();
 
       inventory.forEach((item: any) => {
-        const category = item.category || 'Uncategorized';
+        const category = item.category || 'Chung';
         
         if (!categoryMap.has(category)) {
           categoryMap.set(category, {
@@ -86,61 +86,65 @@ export default function StockOverviewChart() {
       </div>
 
       <div className="space-y-4">
-        {stockData.map((data) => (
-          <div key={data.category} className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-medium">{data.category}</span>
-              <span className="text-sm text-gray-500">{data.totalItems} items</span>
-            </div>
-            
-            <div className="relative">
-              {/* Background bar */}
-              <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3">
-                {/* Stock level bar */}
-                <div className="relative h-3 rounded-full overflow-hidden">
-                  {/* Good stock */}
-                  <div 
-                    className="absolute left-0 top-0 h-full bg-green-500"
-                    style={{ 
-                      width: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%` 
-                    }}
-                  ></div>
-                  {/* Low stock */}
-                  <div 
-                    className="absolute top-0 h-full bg-yellow-500"
-                    style={{ 
-                      left: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%`,
-                      width: `${(data.lowStockItems / maxTotal) * 100}%` 
-                    }}
-                  ></div>
-                  {/* Out of stock */}
-                  <div 
-                    className="absolute top-0 h-full bg-red-500"
-                    style={{ 
-                      left: `${((data.totalItems - data.outOfStockItems) / maxTotal) * 100}%`,
-                      width: `${(data.outOfStockItems / maxTotal) * 100}%` 
-                    }}
-                  ></div>
+        {stockData.length === 0 ? (
+          <p className="text-gray-500 text-center py-4">No stock data available</p>
+        ) : (
+          stockData.map((data) => (
+            <div key={data.category} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">{data.category}</span>
+                <span className="text-sm text-gray-500">{data.totalItems} items</span>
+              </div>
+              
+              <div className="relative">
+                {/* Background bar */}
+                <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3">
+                  {/* Stock level bar */}
+                  <div className="relative h-3 rounded-full overflow-hidden">
+                    {/* Good stock */}
+                    <div 
+                      className="absolute left-0 top-0 h-full bg-green-500"
+                      style={{ 
+                        width: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%` 
+                      }}
+                    ></div>
+                    {/* Low stock */}
+                    <div 
+                      className="absolute top-0 h-full bg-yellow-500"
+                      style={{ 
+                        left: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%`,
+                        width: `${(data.lowStockItems / maxTotal) * 100}%` 
+                      }}
+                    ></div>
+                    {/* Out of stock */}
+                    <div 
+                      className="absolute top-0 h-full bg-red-500"
+                      style={{ 
+                        left: `${((data.totalItems - data.outOfStockItems) / maxTotal) * 100}%`,
+                        width: `${(data.outOfStockItems / maxTotal) * 100}%` 
+                      }}
+                    ></div>
+                  </div>
                 </div>
               </div>
+              
+              <div className="flex justify-between text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Good: {data.totalItems - data.lowStockItems - data.outOfStockItems}
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  Low: {data.lowStockItems}
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  Out: {data.outOfStockItems}
+                </span>
+              </div>
             </div>
-            
-            <div className="flex justify-between text-xs text-gray-500">
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Good: {data.totalItems - data.lowStockItems - data.outOfStockItems}
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                Low: {data.lowStockItems}
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                Out: {data.outOfStockItems}
-              </span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

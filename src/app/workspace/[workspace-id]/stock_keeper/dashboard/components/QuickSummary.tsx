@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, AlertTriangle, Clock, TrendingUp } from 'lucide-react';
+import { Package, AlertTriangle, Clock, AlertCircle } from 'lucide-react'; // Changed TrendingUp to AlertCircle
 import { sparePartService } from '@/app/service/sparePart.service';
 
 interface SummaryData {
   totalRequests: number;
   outOfStockItems: number;
-  pendingDeliveries: number;
+  unconfirmedRequests: number; // Changed from pendingDeliveries
   lowStockItems: number;
 }
 
@@ -15,7 +15,7 @@ export default function QuickSummary() {
   const [summaryData, setSummaryData] = useState<SummaryData>({
     totalRequests: 0,
     outOfStockItems: 0,
-    pendingDeliveries: 0,
+    unconfirmedRequests: 0, // Changed from pendingDeliveries
     lowStockItems: 0
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -28,36 +28,82 @@ export default function QuickSummary() {
     try {
       setIsLoading(true);
       
-      // Fetch requests and inventory data
+      console.log("🔍 Fetching dashboard data...");
+      
       const [requestsResponse, inventoryResponse] = await Promise.all([
-        sparePartService.getRequests(),
-        sparePartService.getInventory(1, 1000) // Get all items for analysis
+        sparePartService.getSparePartRequests(),
+        sparePartService.getSparePartInventory(1, 1000)
       ]);
+
+      console.log("🔍 Raw requests response:", requestsResponse);
+      console.log("🔍 Raw inventory response:", inventoryResponse);
 
       // Calculate summary metrics
       const today = new Date().toDateString();
-      const todayRequests = requestsResponse?.data?.filter((req: any) => 
+      
+      // Try different possible data structures
+      let requests: any[] = [];
+      if (requestsResponse?.data?.data) {
+        requests = requestsResponse.data.data;
+      } else if (requestsResponse?.data) {
+        requests = Array.isArray(requestsResponse.data) ? requestsResponse.data : [];
+      } else if (Array.isArray(requestsResponse)) {
+        requests = requestsResponse;
+      }
+      
+      console.log("🔍 Processed requests:", requests);
+      console.log("🔍 Request count:", requests.length);
+      
+      if (requests.length > 0) {
+        console.log("🔍 Sample request:", requests[0]);
+        console.log("🔍 Available statuses:", 
+          [...new Set(requests.map((req: any) => req.status))]
+        );
+      }
+      
+      // Filter today's requests
+      const todayRequests = requests.filter((req: any) => 
         new Date(req.requestDate).toDateString() === today
-      ) || [];
+      );
 
-      const pendingRequests = requestsResponse?.data?.filter((req: any) => 
-        req.status === 'Pending' || req.status === 'Submitted'
-      ) || [];
+      // Filter unconfirmed requests
+      const unconfirmedRequests = requests.filter((req: any) => 
+        req.status === 'Unconfirmed'
+      );
 
-      const inventory = inventoryResponse?.data?.data || [];
+      console.log('🔍 Debug Summary:');
+      console.log('  - Total requests:', requests.length);
+      console.log('  - Today requests:', todayRequests.length);
+      console.log('  - Unconfirmed requests:', unconfirmedRequests.length);
+
+      // Handle inventory data
+      let inventory: any[] = [];
+      if (inventoryResponse?.data?.data) {
+        inventory = inventoryResponse.data.data;
+      } else if (inventoryResponse?.data) {
+        inventory = Array.isArray(inventoryResponse.data) ? inventoryResponse.data : [];
+      } else if (Array.isArray(inventoryResponse)) {
+        inventory = inventoryResponse;
+      }
+
       const outOfStock = inventory.filter((item: any) => item.stockQuantity === 0);
       const lowStock = inventory.filter((item: any) => 
-        item.stockQuantity > 0 && item.stockQuantity <= 5 // Assuming 5 as low stock threshold
+        item.stockQuantity > 0 && item.stockQuantity < 10
       );
+
+      console.log('🔍 Inventory Summary:');
+      console.log('  - Total inventory items:', inventory.length);
+      console.log('  - Out of stock:', outOfStock.length);
+      console.log('  - Low stock (< 10):', lowStock.length);
 
       setSummaryData({
         totalRequests: todayRequests.length,
         outOfStockItems: outOfStock.length,
-        pendingDeliveries: pendingRequests.length,
+        unconfirmedRequests: unconfirmedRequests.length,
         lowStockItems: lowStock.length
       });
     } catch (error) {
-      console.error('Error fetching summary data:', error);
+      console.error('❌ Error fetching summary data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +125,8 @@ export default function QuickSummary() {
       iconColor: "text-red-500",
     },
     {
-      label: "Pending Requests",
-      value: summaryData.pendingDeliveries,
+      label: "Unconfirmed Requests", // Updated label
+      value: summaryData.unconfirmedRequests, // Updated value
       icon: Clock,
       color: "bg-yellow-50 text-yellow-700 border-yellow-200",
       iconColor: "text-yellow-500",
@@ -88,7 +134,7 @@ export default function QuickSummary() {
     {
       label: "Low Stock Items",
       value: summaryData.lowStockItems,
-      icon: TrendingUp,
+      icon: AlertCircle, // Changed from TrendingUp to AlertCircle (exclamation mark)
       color: "bg-orange-50 text-orange-700 border-orange-200",
       iconColor: "text-orange-500",
     },

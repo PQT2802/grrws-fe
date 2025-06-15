@@ -5,13 +5,7 @@ import { apiClient } from '@/lib/api-client';
 export async function POST(request: NextRequest) {
   try {
     console.log("INTERNAL API: Importing spare part");
-    
     const formData = await request.formData();
-    
-    // For debugging purposes
-    console.log("Form data keys:", Array.from(formData.keys()));
-    
-    // Pass to external API
     const response = await apiClient.sparePart.importSparePart(formData);
     
     console.log("Spare part imported successfully:", response);
