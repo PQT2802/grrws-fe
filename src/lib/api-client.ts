@@ -216,7 +216,43 @@ class APIClient {
         throw error;
       }
     },
-  };
+
+    // Update request status
+    updateStatus: async (requestId: string, confirmedById: string, notes: string): Promise<any> => {
+      console.log(`Updating request status to Confirmed: ${requestId}`);
+      return http.put('/api/SparePartUsage/update-status', {
+        RequestTakeSparePartUsageId: requestId,
+        Status: 'Confirmed',
+        ConfirmedById: confirmedById,
+        Notes: notes
+      });
+    },
+    
+    // Update insufficient status (mark parts as unavailable)
+    updateInsufficientStatus: async (
+      requestId: string, 
+      sparePartIds: string[], 
+      expectedAvailabilityDate: string,
+      notes: string
+    ): Promise<any> => {
+      console.log(`Marking spare parts as unavailable for request: ${requestId}`);
+      return http.put('/api/SparePartUsage/update-insufficient-status', {
+        RequestTakeSparePartUsageId: requestId,
+        SparePartIds: sparePartIds,
+        ExpectedAvailabilityDate: expectedAvailabilityDate,
+        Notes: notes
+      });
+    },
+    
+    // Mark spare parts as taken from stock (delivered)
+    updateTakenFromStock: async (sparePartUsageIds: string[]): Promise<any> => {
+      console.log(`Marking spare parts as delivered: ${sparePartUsageIds.join(', ')}`);
+      return http.put('/api/SparePartUsage/update-taken-from-stock', {
+        SparePartUsageIds: sparePartUsageIds,
+        IsTakenFromStock: true
+      });
+    },
+  }
 }
 
 export const apiClient = new APIClient();

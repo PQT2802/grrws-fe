@@ -2,28 +2,30 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from '../components/StatusBadge';
 import PartsTable from '../components/PartsTable';
 import UnavailablePartsForm from '../components/UnavailablePartsForm';
 import UnavailablePartsDisplay from '../components/UnavailablePartsDisplay';
+import ConfirmRequestModal from '../components/ConfirmRequestModal';
+import DeliveryConfirmationModal from '../components/DeliveryConfirmationModal';
 import { RequestPart, UnavailablePart } from "../../type";
 import { sparePartService } from '@/app/service/sparePart.service';
 import { SPAREPART_REQUEST_DETAIL } from "@/types/sparePart.type";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function RequestDetailPage({ params }: { params: Promise<{ "request-id": string }> }) {
   const router = useRouter();
-  // Use React.use() to unwrap the Promise
+  const { user } = useAuth();
   const resolvedParams = React.use(params);
   const requestId = resolvedParams["request-id"];
   
+  // State variables
   const [isLoading, setIsLoading] = useState(true);
   const [requestDetail, setRequestDetail] = useState<SPAREPART_REQUEST_DETAIL | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  // Convert API data to RequestPart format
   const [requestParts, setRequestParts] = useState<RequestPart[]>([]);
   
   // State for unavailable parts
@@ -35,6 +37,10 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [restockDate, setRestockDate] = useState("");
+  
+  // New state for action modals
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   
   // Fetch request detail
   useEffect(() => {
@@ -62,7 +68,8 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
           code: usage.spareparts[0]?.sparepartCode || "",
           stockQuantity: usage.spareparts[0]?.stockQuantity || 0,
           specification: usage.spareparts[0]?.specification || "",
-          isTakenFromStock: usage.isTakenFromStock
+          isTakenFromStock: usage.isTakenFromStock,
+          usageId: usage.id // Add this field for the delivery confirmation
         }));
         
         setRequestParts(parts);
@@ -95,25 +102,123 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     }
   };
   
-  // Handle form submission
-  const handleUnavailableSubmit = (e: React.FormEvent) => {
+  // Handle form submission for unavailable parts
+  const handleUnavailableSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newUnavailableParts: UnavailablePart[] = selectedPartIds.map(id => ({
-      id,
-      reason,
-      restockDate,
-    }));
-    
-    setUnavailableParts([...unavailableParts, ...newUnavailableParts]);
-    setSubmittedUnavailable(true);
-    toast.success("Parts marked as unavailable");
-    
-    // Reset form
-    setSelectedPartIds([]);
-    setReason("");
-    setRestockDate("");
-    setShowUnavailableForm(false);
+    try {
+      setIsLoading(true);
+      
+      // Call the API to mark parts as unavailable
+      await sparePartService.markPartsAsUnavailable(
+        requestId,
+        selectedPartIds,
+        restockDate,
+        reason
+      );
+      
+      // Update local state
+      const newUnavailableParts: UnavailablePart[] = selectedPartIds.map(id => ({
+        id,
+        reason,
+        restockDate,
+      }));
+      
+      setUnavailableParts([...unavailableParts, ...newUnavailableParts]);
+      setSubmittedUnavailable(true);
+      toast.success("Parts marked as unavailable");
+      
+      // Reset form and reload details to get updated status
+      setSelectedPartIds([]);
+      setReason("");
+      setRestockDate("");
+      setShowUnavailableForm(false);
+      
+      // Reload request data to get updated status
+      await refreshRequestDetail();
+      
+    } catch (error) {
+      console.error("Failed to update parts status:", error);
+      toast.error("Failed to update parts status");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to reload request detail
+  const refreshRequestDetail = async () => {
+    try {
+      setIsLoading(true);
+      const response = await sparePartService.getSparePartRequestDetail(requestId);
+      const requestData = response.data || response;
+      
+      setRequestDetail(requestData);
+      
+      // Transform spare parts to the format expected by PartsTable
+      const parts = requestData.sparePartUsages.map(usage => ({
+        id: usage.sparePartId,
+        name: usage.spareparts[0]?.sparepartName || "Unknown Part",
+        requested: usage.quantityUsed,
+        code: usage.spareparts[0]?.sparepartCode || "",
+        stockQuantity: usage.spareparts[0]?.stockQuantity || 0,
+        specification: usage.spareparts[0]?.specification || "",
+        isTakenFromStock: usage.isTakenFromStock,
+        usageId: usage.id
+      }));
+      
+      setRequestParts(parts);
+    } catch (err) {
+      console.error("Failed to refresh request detail:", err);
+      toast.error("Failed to refresh request details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle confirming the request
+  const handleConfirmRequest = async (notes: string) => {
+    try {
+      setIsLoading(true);
+      
+      await sparePartService.confirmSparePartRequest(
+        requestId,
+        user?.id || "", // Use the current user ID or empty string if not available
+        notes
+      );
+      
+      setShowConfirmModal(false);
+      toast.success("Request confirmed successfully");
+      
+      // Reload request data to get updated status
+      await refreshRequestDetail();
+      
+    } catch (error) {
+      console.error("Failed to confirm request:", error);
+      toast.error("Failed to confirm request");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle completing delivery
+  const handleCompleteDelivery = async (partUsageIds: string[]) => {
+    try {
+      setIsLoading(true);
+      
+      await sparePartService.markPartsAsDelivered(partUsageIds);
+      
+      setShowDeliveryModal(false);
+      toast.success("Parts marked as delivered");
+      
+      // Reload request data to get updated status
+      await refreshRequestDetail();
+      
+    } catch (error) {
+      console.error("Failed to mark parts as delivered:", error);
+      toast.error("Failed to mark parts as delivered");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Handle form cancel
@@ -131,6 +236,53 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Not confirmed";
     return new Date(dateString).toLocaleString();
+  };
+
+  // Determine what actions are available based on status
+  const getActionButtons = () => {
+    if (!requestDetail) return null;
+    
+    const isUnconfirmed = requestDetail.status === "Unconfirmed";
+    const isConfirmed = requestDetail.status === "Confirmed";
+    
+    return (
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={goBack}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm"
+        >
+          Back to Requests
+        </button>
+        
+        {isUnconfirmed && (
+          <>
+            {/* <button
+              onClick={() => setShowUnavailableForm(true)}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm"
+              disabled={showUnavailableForm || submittedUnavailable}
+            >
+              Mark Parts as Unavailable
+            </button> */}
+            
+            <button
+              onClick={() => setShowConfirmModal(true)}
+              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
+            >
+              Confirm Request
+            </button>
+          </>
+        )}
+        
+        {isConfirmed && (
+          <button
+            onClick={() => setShowDeliveryModal(true)}
+            className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
+          >
+            Mark as Delivered
+          </button>
+        )}
+      </div>
+    );
   };
 
   // Loading state
@@ -214,6 +366,13 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
             <p className="font-medium">{formatDate(requestDetail?.requestDate || null)}</p>
           </div>
           
+          {requestDetail?.confirmedDate && (
+            <div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Confirmation Date</p>
+              <p className="font-medium">{formatDate(requestDetail?.confirmedDate)}</p>
+            </div>
+          )}
+          
           {requestDetail?.notes && (
             <div className="col-span-2">
               <p className="text-sm text-gray-500 dark:text-gray-400">Notes</p>
@@ -228,7 +387,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Requested Parts</h2>
           
-          {!submittedUnavailable && !showUnavailableForm && (
+          {requestDetail?.status === "Unconfirmed" && !submittedUnavailable && !showUnavailableForm && (
             <button
               onClick={() => setShowUnavailableForm(true)}
               className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm font-medium"
@@ -273,23 +432,31 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       </div>
       
       {/* Action Buttons */}
-      <div className="flex justify-end">
-        <button
-          onClick={goBack}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm mr-2"
-        >
-          Back to Requests
-        </button>
-        <button
-          className="px-4 py-2 bg-primary text-white rounded text-sm"
-          onClick={() => {
-            // Here you would implement the actual status update API call
-            toast.success(`${requestDetail?.requestCode} marked as delivered`);
-          }}
-        >
-          Mark as Delivered
-        </button>
-      </div>
+      {getActionButtons()}
+      
+      {/* Confirmation Modal */}
+      <ConfirmRequestModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmRequest}
+        title="Confirm Spare Part Request"
+        description="Confirming this request will notify the requester that the spare parts are ready for pickup."
+        confirmButtonText="Confirm Request"
+      />
+      
+      {/* Delivery Confirmation Modal */}
+      <DeliveryConfirmationModal
+        isOpen={showDeliveryModal}
+        onClose={() => setShowDeliveryModal(false)}
+        onConfirm={handleCompleteDelivery}
+        parts={requestParts.map(part => ({
+          id: part.id,
+          name: part.name,
+          code: part.code || part.id.substring(0, 8),
+          quantity: part.requested,
+          usageId: part.usageId || part.id 
+        }))}
+      />
     </div>
   );
 }

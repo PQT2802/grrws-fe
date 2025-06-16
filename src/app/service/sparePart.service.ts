@@ -135,7 +135,53 @@ export const sparePartService = {
       return response;
     } catch (error) {
       console.error(`Service: Error fetching spare part ${partId}:`, error);
-      throw error;
+      throw error; 
     }
+  },
+
+  // Update request status to Confirmed
+  confirmSparePartRequest: async (
+    requestId: string,
+    confirmedById: string,
+    notes: string
+  ): Promise<any> => {
+    console.log(`Service: Confirming request ${requestId}`);
+    return http.put('/api/sparePart/requests/confirm', {
+      requestId: requestId,
+      confirmedById: confirmedById,
+      notes: notes
+    }, {
+      useInternalRoute: true,
+    });
+  },
+
+  // Mark parts as insufficient/unavailable
+  markPartsAsUnavailable: async (
+    requestId: string,
+    sparePartIds: string[],
+    expectedAvailabilityDate: string,
+    notes: string
+  ): Promise<any> => {
+    console.log(`Service: Marking parts as unavailable for request ${requestId}`);
+    return http.put('/api/sparePart/requests/insufficient', {
+      requestId: requestId,
+      sparePartIds: sparePartIds,
+      expectedAvailabilityDate: expectedAvailabilityDate,
+      notes: notes
+    }, {
+      useInternalRoute: true,
+    });
+  },
+
+  // Mark parts as delivered (taken from stock)
+  markPartsAsDelivered: async (
+    sparePartUsageIds: string[]
+  ): Promise<any> => {
+    console.log(`Service: Marking parts as delivered: ${sparePartUsageIds.join(', ')}`);
+    return http.put('/api/sparePart/requests/delivered', {
+      sparePartUsageIds: sparePartUsageIds
+    }, {
+      useInternalRoute: true,
+    });
   },
 };

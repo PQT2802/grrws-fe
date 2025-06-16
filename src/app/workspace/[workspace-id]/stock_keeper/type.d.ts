@@ -54,6 +54,8 @@ export interface Request {
 }
 
 export interface RequestPart {
+  usageId: string;
+  code: string;
   id: string;
   name: string;
   requested: number;
