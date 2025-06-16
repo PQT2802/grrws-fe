@@ -71,22 +71,19 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
     // We're on a workspace detail page
     workspaceId = params["workspace-id"] as string;
   } else {
-    // We're on workspace list page or other page - need to get workspaceId differently
-    console.warn(
-      "⚠️ No workspace-id in URL params, cannot navigate to request detail"
-    );
     workspaceId = "";
   }
-
-  console.log("🔍 REQUEST TABLE: Current pathname:", pathname);
-  console.log("🔍 REQUEST TABLE: All params:", params);
-  console.log("🔍 REQUEST TABLE: Final workspaceId:", workspaceId);
 
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(5);
   const [rowSelection, setRowSelection] = useState({});
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "requestDate", // ✅ Sort by requestDate column
+      desc: true, // ✅ Newest first (descending order)
+    },
+  ]);
 
   // Convert single request summary to array format for table
   const tableData = useMemo(() => {
@@ -112,7 +109,6 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
 
   const handleViewDetail = (request: REQUEST_SUMMARY) => {
     if (!workspaceId) {
-      console.error("❌ Cannot navigate: no workspaceId available");
       toast.error("Cannot navigate: workspace not identified");
       return;
     }
