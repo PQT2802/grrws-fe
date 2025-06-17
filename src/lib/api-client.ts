@@ -16,6 +16,7 @@ import {
   CREATE_UNINSTALL_TASK,
   CREATE_WARRANTY_TASK,
   SPAREPART_WEB,
+  TASK_GROUP_RESPONSE,
 } from "@/types/task.type";
 import { GET_MECHANIC_USER } from "@/types/user.type";
 import {
@@ -103,6 +104,53 @@ class APIClient {
     },
     createInstallTask: (data: CREATE_INSTALL_TASK): Promise<any> => {
       return http.post("/api/Task/install", data);
+    },
+    getTaskGroups: (
+      requestId: string,
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
+      return http.get(
+        `/api/Task/groups/request/${requestId}?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
+    },
+    // New methods for single tasks and all task groups
+    getSingleTasks: (
+      pageNumber: number = 1,
+      pageSize: number = 10,
+      taskType?: string,
+      status?: string,
+      priority?: string,
+      order?: string
+    ): Promise<any> => {
+      const params = new URLSearchParams({
+        PageNumber: pageNumber.toString(),
+        PageSize: pageSize.toString(),
+      });
+
+      // Only append parameters if they have actual values (not undefined and not "all")
+      if (taskType && taskType !== "all") {
+        params.append("TaskType", taskType);
+      }
+      if (status && status !== "all") {
+        params.append("Status", status);
+      }
+      if (priority && priority !== "all") {
+        params.append("Priority", priority);
+      }
+      if (order) {
+        params.append("Order", order);
+      }
+
+      return http.get(`/api/Task/single-tasks?${params.toString()}`);
+    },
+    getAllTaskGroups: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<TASK_GROUP_RESPONSE> => {
+      return http.get<TASK_GROUP_RESPONSE>(
+        `/api/Task/groups?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
   };
   error = {

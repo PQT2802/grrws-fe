@@ -20,14 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   PaginationContent,
   PaginationItem,
@@ -40,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TASK_FOR_REQUEST_DETAIL_WEB } from "@/types/request.type";
+import { TASK_GROUP_WEB, TASK_GROUP_RESPONSE } from "@/types/task.type";
 import { formatTimeStampDate } from "@/lib/utils";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import {
@@ -48,31 +42,52 @@ import {
   ArrowUp,
   ArrowUpDown,
   Eye,
-  MoreHorizontal,
   Search,
+  Package,
+  Clock,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import requestService from "@/app/service/request.service";
+import { apiClient } from "@/lib/api-client";
+import TaskGroupModal from "@/components/TaskGroupModal/TaskGroupModal";
 
 interface TaskTableCpnProps {
   requestId: string;
-  refreshTrigger?: number; // Add this to trigger refresh
+  refreshTrigger?: number;
 }
 
 const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
-  const [tasks, setTasks] = useState<TASK_FOR_REQUEST_DETAIL_WEB[]>([]);
+  const [taskGroups, setTaskGroups] = useState<TASK_GROUP_WEB[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(5);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "createdDate",
+      desc: true, // Newest first
+    },
+  ]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [selectedTaskGroup, setSelectedTaskGroup] =
+    useState<TASK_GROUP_WEB | null>(null);
+  const [showTaskGroupModal, setShowTaskGroupModal] = useState(false);
 
-  const fetchTasks = async () => {
+  const fetchTaskGroups = async () => {
     try {
       setLoading(true);
-      const data = await requestService.getTasksByRequestId(requestId);
-      setTasks(data);
+      const response: TASK_GROUP_RESPONSE = await apiClient.task.getTaskGroups(
+        requestId,
+        pageIndex + 1, // API uses 1-based pagination
+        pageSize
+      );
+
+      setTaskGroups(response.data || []);
+      setTotalCount(response.totalCount || 0);
     } catch (error) {
-      console.error("Failed to fetch tasks:", error);
+      console.error("Failed to fetch task groups:", error);
+      setTaskGroups([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -80,144 +95,202 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
 
   useEffect(() => {
     if (requestId) {
-      fetchTasks();
+      fetchTaskGroups();
     }
-  }, [requestId, refreshTrigger]); // Refresh when refreshTrigger changes
+  }, [requestId, refreshTrigger, pageIndex, pageSize]);
 
   const filteredData = useMemo(() => {
-    return tasks.filter((task) => {
-      const searchableText = `${task.taskType || ""} ${task.status || ""} ${
-        task.assigneeName || ""
-      }`.toLowerCase();
+    return taskGroups.filter((group) => {
+      const searchableText = `${group.groupName || ""} ${
+        group.groupType || ""
+      } ${group.createdByName || ""}`.toLowerCase();
       return searchableText.includes(search.toLowerCase());
     });
-  }, [tasks, search]);
+  }, [taskGroups, search]);
 
-  const handleViewDetail = (task: TASK_FOR_REQUEST_DETAIL_WEB) => {
-    console.log("View task detail:", task);
+  const handleViewTaskGroup = (taskGroup: TASK_GROUP_WEB) => {
+    setSelectedTaskGroup(taskGroup);
+    setShowTaskGroupModal(true);
   };
 
-  const columns: ColumnDef<TASK_FOR_REQUEST_DETAIL_WEB>[] = [
+  const getGroupTypeIcon = (groupType: string) => {
+    switch (groupType.toLowerCase()) {
+      case "replacement":
+        return <Package className="h-4 w-4 text-blue-500" />;
+      case "repair":
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case "warranty":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getGroupTypeColor = (groupType: string) => {
+    switch (groupType.toLowerCase()) {
+      case "replacement":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "repair":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "warranty":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getTasksSummary = (taskGroup: TASK_GROUP_WEB) => {
+    const total = taskGroup.tasks.length;
+    const completed = taskGroup.tasks.filter(
+      (task) => task.status === "Completed"
+    ).length;
+    const inProgress = taskGroup.tasks.filter(
+      (task) => task.status === "In Progress"
+    ).length;
+    const pending = taskGroup.tasks.filter(
+      (task) => task.status === "Pending"
+    ).length;
+
+    return { total, completed, inProgress, pending };
+  };
+
+  const columns: ColumnDef<TASK_GROUP_WEB>[] = [
     {
-      accessorKey: "taskType",
+      accessorKey: "groupName",
       header: ({ column }) => (
-        <span className="flex items-center gap-2">
-          Task Type <ArrowUpDown size={15} />
-        </span>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="hover:bg-transparent p-0 h-auto font-semibold"
+        >
+          Group Name
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
       ),
       cell: (info) => {
-        const value = info.getValue();
+        const value = info.getValue() as string;
+        const taskGroup = info.row.original;
         if (!value) return "---";
-        return <span className="font-medium">{String(value)}</span>;
+
+        return (
+          <div>
+            <div className="font-medium max-w-xs truncate">{value}</div>
+          </div>
+        );
       },
     },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: "groupType",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="hover:bg-transparent p-0 h-auto font-semibold"
+        >
+          Group Type
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
       cell: (info) => {
         const value = info.getValue() as string;
         if (!value) return "---";
 
         return (
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              value === "Completed"
-                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : value === "In Progress"
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-            }`}
-          >
-            {value}
-          </span>
+          <div className="flex items-center gap-2">
+            {getGroupTypeIcon(value)}
+            <Badge className={`${getGroupTypeColor(value)} text-xs`}>
+              {value}
+            </Badge>
+          </div>
         );
       },
     },
     {
-      accessorKey: "assigneeName",
-      header: "Assigned To",
+      accessorKey: "tasks",
+      header: "Tasks Summary",
+      enableSorting: false,
       cell: (info) => {
-        const value = info.getValue();
-        if (!value) return "---";
-        return <span>{String(value)}</span>;
-      },
-    },
-    {
-      accessorKey: "startTime",
-      header: "Start Time",
-      cell: (info) => {
-        const value = info.getValue();
-        if (!value) return "---";
+        const taskGroup = info.row.original;
+        const summary = getTasksSummary(taskGroup);
 
-        try {
-          return (
-            <span className="text-gray-600 dark:text-gray-400">
-              {formatTimeStampDate(String(value), "datetime")}
-            </span>
-          );
-        } catch (error) {
-          return <span>{String(value)}</span>;
-        }
-      },
-    },
-    {
-      accessorKey: "expectedTime",
-      header: "Expected Time",
-      cell: (info) => {
-        const value = info.getValue();
-        if (!value) return "---";
-
-        try {
-          return (
-            <span className="text-gray-600 dark:text-gray-400">
-              {formatTimeStampDate(String(value), "datetime")}
-            </span>
-          );
-        } catch (error) {
-          return <span>{String(value)}</span>;
-        }
-      },
-    },
-    {
-      accessorKey: "numberOfErrors",
-      header: "Errors Count",
-      cell: (info) => {
-        const value = info.getValue();
-        if (value === null || value === undefined) return "---";
         return (
-          <span className="font-medium">
-            {value === 0 ? "No errors" : `${value} error(s)`}
-          </span>
+          <div className="space-y-1">
+            <div className="text-sm font-medium">
+              Total: {summary.total} tasks
+            </div>
+            <div className="flex gap-2 text-xs">
+              <span className="text-green-600">✓ {summary.completed}</span>
+              <span className="text-blue-600">⟳ {summary.inProgress}</span>
+              <span className="text-yellow-600">⏸ {summary.pending}</span>
+            </div>
+          </div>
         );
       },
     },
+    {
+      accessorKey: "createdDate",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="hover:bg-transparent p-0 h-auto font-semibold"
+        >
+          Created Date
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: (info) => {
+        const value = info.getValue() as string;
+        if (!value) return "---";
+
+        try {
+          return (
+            <span className="text-gray-600 dark:text-gray-400">
+              {formatTimeStampDate(value, "datetime")}
+            </span>
+          );
+        } catch (error) {
+          return <span>{value}</span>;
+        }
+      },
+      sortingFn: "datetime",
+    },
+
     {
       id: "actions",
       header: "Actions",
+      enableSorting: false,
       cell: (info) => {
-        const task = info.row.original;
+        const taskGroup = info.row.original;
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  handleViewDetail(task);
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Eye size={15} /> View detail
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleViewTaskGroup(taskGroup)}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            View Tasks
+          </Button>
         );
       },
     },
@@ -237,20 +310,23 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    manualPagination: true,
+    pageCount: Math.ceil(totalCount / pageSize),
   });
 
   if (loading) {
     return <SkeletonCard />;
   }
 
-  if (tasks.length === 0) {
+  if (taskGroups.length === 0) {
     return (
       <div className="text-center py-12">
+        <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No tasks found
+          No task groups found
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Tasks will appear here when available
+          Task groups will appear here when available
         </div>
       </div>
     );
@@ -265,7 +341,7 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
           </div>
           <Input
             className="pl-8"
-            placeholder="Search tasks..."
+            placeholder="Search task groups..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -280,8 +356,7 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="bg-zinc-100 dark:bg-slate-900 rounded-none cursor-pointer"
+                    className="bg-zinc-100 dark:bg-slate-900 rounded-none"
                   >
                     {header.isPlaceholder ? null : (
                       <div className="flex items-center gap-2">
@@ -289,10 +364,6 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                        {{
-                          asc: <ArrowUp size={15} />,
-                          desc: <ArrowDown size={15} />,
-                        }[header.column.getIsSorted() as string] ?? null}
                       </div>
                     )}
                   </TableHead>
@@ -306,7 +377,8 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="rounded-none hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="rounded-none hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => handleViewTaskGroup(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -334,7 +406,7 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
 
       <div className="flex items-center justify-between mt-5">
         <div>
-          <span className="text-sm">{`${filteredData.length} task(s) found`}</span>
+          <span className="text-sm">{`${totalCount} task group(s) found`}</span>
         </div>
 
         <div className="flex items-center gap-5">
@@ -343,22 +415,21 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
               Items per page
             </span>
             <Select
-              defaultValue={pageSize.toString()}
+              value={pageSize.toString()}
               onValueChange={(value: string) => {
                 setPageSize(Number(value));
+                setPageIndex(0); // Reset to first page
               }}
             >
               <SelectTrigger className="w-[80px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[3, 5, 10, 100].map((size) => {
-                  return (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  );
-                })}
+                {[3, 5, 10, 20].map((size) => (
+                  <SelectItem key={size} value={size.toString()}>
+                    {size}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -379,6 +450,13 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
           </PaginationContent>
         </div>
       </div>
+
+      {/* Task Group Modal */}
+      <TaskGroupModal
+        open={showTaskGroupModal}
+        onOpenChange={setShowTaskGroupModal}
+        taskGroup={selectedTaskGroup}
+      />
     </div>
   );
 };

@@ -41,7 +41,7 @@ import userService from "@/app/service/user.service";
 
 import { apiClient } from "@/lib/api-client";
 import { DateTimePicker } from "../DateTimePicker/DateTimePicker";
-import { getFirstLetterUppercase } from "@/lib/utils";
+import { getFirstLetterUppercase, formatTimeStampDate } from "@/lib/utils";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import {
   ChevronLeft,
@@ -64,7 +64,22 @@ interface CreateInstallUninstallTaskCpnProps {
 }
 
 type TaskType = "Install" | "Uninstall";
-type Step = "task-type" | "mechanic" | "device" | "overview";
+type Step =
+  | "group-selection"
+  | "task-type"
+  | "mechanic"
+  | "device"
+  | "overview";
+type TASK_GROUP_WEB = {
+  taskGroupId: string;
+  groupName: string;
+  groupType: string;
+  tasks: any[];
+  createdDate: string;
+};
+type TASK_GROUP_RESPONSE = {
+  data: TASK_GROUP_WEB[];
+};
 
 const CreateInstallUninstallTaskCpn = ({
   open,
@@ -75,26 +90,88 @@ const CreateInstallUninstallTaskCpn = ({
   const { user: authUser } = useAuth();
 
   // ✅ Navigation state
-  const [currentStep, setCurrentStep] = useState<Step>("task-type");
+  const [currentStep, setCurrentStep] = useState<Step>("group-selection"); // ✅ Start with group selection
   const [canProceed, setCanProceed] = useState(false);
 
   // ✅ Form state
   const [taskType, setTaskType] = useState<TaskType | "">("");
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [selectedTaskGroupId, setSelectedTaskGroupId] = useState<string>(""); // ✅ Add task group selection
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
 
   // ✅ Data state
   const [mechanics, setMechanics] = useState<GET_MECHANIC_USER[]>([]);
   const [devices, setDevices] = useState<DEVICE_WEB[]>([]);
+  const [taskGroups, setTaskGroups] = useState<TASK_GROUP_WEB[]>([]); // ✅ Add task groups
   const [selectedMechanic, setSelectedMechanic] =
     useState<GET_MECHANIC_USER | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<DEVICE_WEB | null>(null);
+  const [selectedTaskGroup, setSelectedTaskGroup] =
+    useState<TASK_GROUP_WEB | null>(null); // ✅ Add selected task group
 
   // ✅ Loading states
   const [loadingMechanics, setLoadingMechanics] = useState<boolean>(false);
   const [loadingDevices, setLoadingDevices] = useState<boolean>(false);
+  const [loadingTaskGroups, setLoadingTaskGroups] = useState<boolean>(false); // ✅ Add loading state
   const [creating, setCreating] = useState<boolean>(false);
+
+  // ✅ Add helper functions after the state declarations:
+  const getIncompleteTaskTypes = (
+    taskGroup: TASK_GROUP_WEB | null
+  ): string[] => {
+    if (!taskGroup) return [];
+
+    return taskGroup.tasks
+      .filter((task) => task.status !== "Completed")
+      .map((task) => task.taskType.toLowerCase());
+  };
+
+  const isTaskTypeAvailable = (
+    taskType: TaskType,
+    taskGroup: TASK_GROUP_WEB | null
+  ): boolean => {
+    if (!taskGroup) return true; // If no group selected, all types are available
+
+    const incompleteTaskTypes = getIncompleteTaskTypes(taskGroup);
+    const normalizedTaskType = taskType.toLowerCase();
+
+    // Check for different variations of task type names
+    const taskTypeVariations = {
+      install: ["install", "installation"],
+      uninstall: ["uninstall", "uninstallation"],
+    };
+
+    const variations = taskTypeVariations[
+      normalizedTaskType as keyof typeof taskTypeVariations
+    ] || [normalizedTaskType];
+
+    return !variations.some((variation) =>
+      incompleteTaskTypes.includes(variation)
+    );
+  };
+
+  const getUnavailableTaskTypeMessage = (
+    taskType: TaskType,
+    taskGroup: TASK_GROUP_WEB | null
+  ): string => {
+    if (!taskGroup) return "";
+
+    const incompleteTask = taskGroup.tasks.find(
+      (task) =>
+        task.status !== "Completed" &&
+        (task.taskType.toLowerCase().includes(taskType.toLowerCase()) ||
+          taskType.toLowerCase().includes(task.taskType.toLowerCase()))
+    );
+
+    if (incompleteTask) {
+      return `A ${
+        incompleteTask.taskType
+      } task is already ${incompleteTask.status.toLowerCase()} in this group.`;
+    }
+
+    return "";
+  };
 
   // ✅ Fetch mechanics
   const fetchMechanics = async () => {
@@ -110,7 +187,7 @@ const CreateInstallUninstallTaskCpn = ({
     }
   };
 
-  // ✅ Fix the fetchDevices function (around line 110):
+  // ✅ Fetch devices
   const fetchDevices = async () => {
     try {
       setLoadingDevices(true);
@@ -131,18 +208,41 @@ const CreateInstallUninstallTaskCpn = ({
     }
   };
 
+  // ✅ Fetch task groups
+  const fetchTaskGroups = async () => {
+    try {
+      setLoadingTaskGroups(true);
+      const response: TASK_GROUP_RESPONSE = await apiClient.task.getTaskGroups(
+        requestId,
+        1,
+        50 // Get more task groups
+      );
+      setTaskGroups(response.data || []);
+      console.log("✅ Task groups fetched:", response.data);
+    } catch (error) {
+      console.error("Failed to fetch task groups:", error);
+      toast.error("Failed to fetch task groups");
+      setTaskGroups([]);
+    } finally {
+      setLoadingTaskGroups(false);
+    }
+  };
+
   // ✅ Effect to fetch data when modal opens
   useEffect(() => {
     if (open) {
       fetchMechanics();
       fetchDevices();
+      fetchTaskGroups(); // ✅ Fetch task groups
       // Reset state
-      setCurrentStep("task-type");
+      setCurrentStep("group-selection");
       setTaskType("");
       setAssigneeId("");
       setSelectedDeviceId("");
+      setSelectedTaskGroupId(""); // ✅ Reset task group selection
       setSelectedMechanic(null);
       setSelectedDevice(null);
+      setSelectedTaskGroup(null); // ✅ Reset selected task group
       setStartDate(new Date());
       setCanProceed(false);
     }
@@ -151,6 +251,9 @@ const CreateInstallUninstallTaskCpn = ({
   // ✅ Check if current step can proceed
   useEffect(() => {
     switch (currentStep) {
+      case "group-selection":
+        setCanProceed(true);
+        break;
       case "task-type":
         setCanProceed(taskType !== "");
         break;
@@ -159,13 +262,21 @@ const CreateInstallUninstallTaskCpn = ({
         break;
       case "device":
         // Only needed for Install tasks
-        setCanProceed(taskType === "Uninstall" || !!selectedDevice);
+        setCanProceed(!!selectedDevice);
         break;
       case "overview":
-        setCanProceed(true);
+        // ✅ Fix: Check all required fields are completed
+        const baseRequirements =
+          !!taskType && !!selectedMechanic && !!startDate;
+        const installRequirements =
+          taskType === "Install" ? !!selectedDevice : true;
+        setCanProceed(baseRequirements && installRequirements);
+        break;
+      default:
+        setCanProceed(false);
         break;
     }
-  }, [currentStep, taskType, selectedMechanic, selectedDevice]);
+  }, [currentStep, taskType, selectedMechanic, selectedDevice, startDate]);
 
   // ✅ Handle task type selection
   const handleTaskTypeSelection = (type: TaskType) => {
@@ -184,24 +295,44 @@ const CreateInstallUninstallTaskCpn = ({
     setSelectedDeviceId(device.id);
   };
 
-  // ✅ Navigation functions
+  // ✅ Handle task group selection
+  const handleTaskGroupSelection = (taskGroup: TASK_GROUP_WEB | null) => {
+    if (taskGroup) {
+      setSelectedTaskGroup(taskGroup);
+      setSelectedTaskGroupId(taskGroup.taskGroupId);
+    } else {
+      setSelectedTaskGroup(null);
+      setSelectedTaskGroupId("");
+    }
+  };
+
+  // ✅ Fix the navigation functions:
   const goToNextStep = () => {
-    if (currentStep === "task-type") setCurrentStep("mechanic");
-    else if (currentStep === "mechanic") {
-      // Skip device step for Uninstall tasks
+    if (currentStep === "group-selection") {
+      setCurrentStep("task-type");
+    } else if (currentStep === "task-type") {
+      setCurrentStep("mechanic");
+    } else if (currentStep === "mechanic") {
+      // ✅ Skip device step for Uninstall tasks
       if (taskType === "Uninstall") {
         setCurrentStep("overview");
       } else {
         setCurrentStep("device");
       }
-    } else if (currentStep === "device") setCurrentStep("overview");
+    } else if (currentStep === "device") {
+      setCurrentStep("overview");
+    }
   };
 
   const goToPreviousStep = () => {
-    if (currentStep === "mechanic") setCurrentStep("task-type");
-    else if (currentStep === "device") setCurrentStep("mechanic");
-    else if (currentStep === "overview") {
-      // Skip device step for Uninstall tasks when going back
+    if (currentStep === "task-type") {
+      setCurrentStep("group-selection");
+    } else if (currentStep === "mechanic") {
+      setCurrentStep("task-type");
+    } else if (currentStep === "device") {
+      setCurrentStep("mechanic");
+    } else if (currentStep === "overview") {
+      // ✅ Skip device step for Uninstall tasks when going back
       if (taskType === "Uninstall") {
         setCurrentStep("mechanic");
       } else {
@@ -231,23 +362,33 @@ const CreateInstallUninstallTaskCpn = ({
           StartDate: startDate.toISOString(),
           AssigneeId: assigneeId,
           NewDeviceId: selectedDeviceId,
+          ...(selectedTaskGroupId && { TaskGroupId: selectedTaskGroupId }), // ✅ Include TaskGroupId if selected
         };
 
         console.log("Creating install task with data:", taskData);
         const result = await apiClient.task.createInstallTask(taskData);
         console.log("Install task created successfully:", result);
-        toast.success("Install task created successfully!");
+        toast.success(
+          selectedTaskGroup
+            ? `Install task added to group "${selectedTaskGroup.groupName}"!`
+            : "Install task created successfully!"
+        );
       } else {
         const taskData: CREATE_UNINSTALL_TASK = {
           RequestId: requestId,
           StartDate: startDate.toISOString(),
           AssigneeId: assigneeId,
+          ...(selectedTaskGroupId && { TaskGroupId: selectedTaskGroupId }), // ✅ Include TaskGroupId if selected
         };
 
         console.log("Creating uninstall task with data:", taskData);
         const result = await apiClient.task.createUninstallTask(taskData);
         console.log("Uninstall task created successfully:", result);
-        toast.success("Uninstall task created successfully!");
+        toast.success(
+          selectedTaskGroup
+            ? `Uninstall task added to group "${selectedTaskGroup.groupName}"!`
+            : "Uninstall task created successfully!"
+        );
       }
 
       // Reset and close
@@ -263,9 +404,167 @@ const CreateInstallUninstallTaskCpn = ({
     }
   };
 
-  // ✅ Render step content
+  // ✅ Update renderStepContent to include group selection first:
   const renderStepContent = () => {
     switch (currentStep) {
+      case "group-selection":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <Package className="mx-auto h-12 w-12 text-blue-500 mb-4" />
+              <h3 className="text-lg font-semibold">
+                Select Task Group (Optional)
+              </h3>
+              <p className="text-sm text-gray-600">
+                Choose an existing task group or create a standalone task
+              </p>
+            </div>
+
+            {loadingTaskGroups ? (
+              <SkeletonCard />
+            ) : (
+              <div className="space-y-4">
+                {/* Standalone Option */}
+                <Card
+                  className={`border cursor-pointer hover:bg-gray-50 transition-colors ${
+                    !selectedTaskGroup ? "border-blue-500 bg-blue-50" : ""
+                  }`}
+                  onClick={() => handleTaskGroupSelection(null)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={!selectedTaskGroup}
+                        onCheckedChange={() => handleTaskGroupSelection(null)}
+                      />
+                      <div>
+                        <div className="font-medium">
+                          Create Standalone Task
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Create a new independent task without grouping
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Task Groups */}
+                {taskGroups.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Package className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <div className="text-sm">No task groups available</div>
+                    <div className="text-xs text-gray-400">
+                      You can create a standalone task
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-gray-700">
+                      Available Task Groups:
+                    </div>
+                    <div className="grid gap-3 max-h-60 overflow-y-auto">
+                      {taskGroups.map((group) => {
+                        const incompleteTaskTypes =
+                          getIncompleteTaskTypes(group);
+                        const hasIncompleteTasks =
+                          incompleteTaskTypes.length > 0;
+
+                        return (
+                          <Card
+                            key={group.taskGroupId}
+                            className={`border cursor-pointer hover:bg-gray-50 transition-colors ${
+                              selectedTaskGroup?.taskGroupId ===
+                              group.taskGroupId
+                                ? "border-blue-500 bg-blue-50"
+                                : ""
+                            }`}
+                            onClick={() => handleTaskGroupSelection(group)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <Checkbox
+                                    checked={
+                                      selectedTaskGroup?.taskGroupId ===
+                                      group.taskGroupId
+                                    }
+                                    onCheckedChange={() =>
+                                      handleTaskGroupSelection(group)
+                                    }
+                                  />
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm max-w-xs truncate">
+                                      {group.groupName}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {group.groupType}
+                                      </Badge>
+                                      <span className="text-xs text-gray-500">
+                                        {group.tasks.length} task(s)
+                                      </span>
+                                    </div>
+                                    {hasIncompleteTasks && (
+                                      <div className="text-xs text-orange-600 mt-1">
+                                        ⚠️ Has incomplete:{" "}
+                                        {incompleteTaskTypes.join(", ")}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  {formatTimeStampDate(
+                                    group.createdDate,
+                                    "date"
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {selectedTaskGroup && (
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-blue-800 text-sm">
+                            Selected Group: {selectedTaskGroup.groupName}
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            Type: {selectedTaskGroup.groupType} •{" "}
+                            {selectedTaskGroup.tasks.length} existing task(s)
+                          </div>
+                          {getIncompleteTaskTypes(selectedTaskGroup).length >
+                            0 && (
+                            <div className="text-xs text-orange-700 mt-1">
+                              Incomplete tasks:{" "}
+                              {getIncompleteTaskTypes(selectedTaskGroup).join(
+                                ", "
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="default" className="text-xs">
+                          {selectedTaskGroup.groupType}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
       case "task-type":
         return (
           <div className="space-y-6">
@@ -277,48 +576,150 @@ const CreateInstallUninstallTaskCpn = ({
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card
-                className={`border cursor-pointer hover:bg-gray-50 ${
-                  taskType === "Install" ? "border-blue-500 bg-blue-50" : ""
-                }`}
-                onClick={() => handleTaskTypeSelection("Install")}
-              >
-                <CardContent className="p-6 text-center">
-                  <Monitor className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                  <h4 className="text-lg font-semibold mb-2">Install Task</h4>
-                  <p className="text-sm text-gray-600">
-                    Install a new device at the location
-                  </p>
-                  <div className="mt-4">
-                    <Checkbox
-                      checked={taskType === "Install"}
-                      onCheckedChange={() => handleTaskTypeSelection("Install")}
-                    />
+            {/* Show selected group info */}
+            {selectedTaskGroup && (
+              <Card className="bg-gray-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Package className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <div className="font-medium text-sm">
+                        Adding to group: {selectedTaskGroup.groupName}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {selectedTaskGroup.groupType} •{" "}
+                        {selectedTaskGroup.tasks.length} existing tasks
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+            )}
 
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Install Task Option */}
               <Card
-                className={`border cursor-pointer hover:bg-gray-50 ${
-                  taskType === "Uninstall" ? "border-blue-500 bg-blue-50" : ""
+                className={`border cursor-pointer transition-colors ${
+                  !isTaskTypeAvailable("Install", selectedTaskGroup)
+                    ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                    : taskType === "Install"
+                    ? "border-blue-500 bg-blue-50 hover:bg-blue-50"
+                    : "hover:bg-gray-50"
                 }`}
-                onClick={() => handleTaskTypeSelection("Uninstall")}
+                onClick={() => {
+                  if (isTaskTypeAvailable("Install", selectedTaskGroup)) {
+                    handleTaskTypeSelection("Install");
+                  }
+                }}
               >
                 <CardContent className="p-6 text-center">
-                  <Package className="mx-auto h-12 w-12 text-red-500 mb-4" />
-                  <h4 className="text-lg font-semibold mb-2">Uninstall Task</h4>
-                  <p className="text-sm text-gray-600">
+                  <Monitor
+                    className={`mx-auto h-12 w-12 mb-4 ${
+                      !isTaskTypeAvailable("Install", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : "text-green-500"
+                    }`}
+                  />
+                  <h4
+                    className={`text-lg font-semibold mb-2 ${
+                      !isTaskTypeAvailable("Install", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : ""
+                    }`}
+                  >
+                    Install Task
+                  </h4>
+                  <p
+                    className={`text-sm mb-4 ${
+                      !isTaskTypeAvailable("Install", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    Install a new device at the location
+                  </p>
+
+                  {!isTaskTypeAvailable("Install", selectedTaskGroup) ? (
+                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                      ❌{" "}
+                      {getUnavailableTaskTypeMessage(
+                        "Install",
+                        selectedTaskGroup
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <Checkbox
+                        checked={taskType === "Install"}
+                        onCheckedChange={() =>
+                          handleTaskTypeSelection("Install")
+                        }
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Uninstall Task Option */}
+              <Card
+                className={`border cursor-pointer transition-colors ${
+                  !isTaskTypeAvailable("Uninstall", selectedTaskGroup)
+                    ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                    : taskType === "Uninstall"
+                    ? "border-blue-500 bg-blue-50 hover:bg-blue-50"
+                    : "hover:bg-gray-50"
+                }`}
+                onClick={() => {
+                  if (isTaskTypeAvailable("Uninstall", selectedTaskGroup)) {
+                    handleTaskTypeSelection("Uninstall");
+                  }
+                }}
+              >
+                <CardContent className="p-6 text-center">
+                  <Package
+                    className={`mx-auto h-12 w-12 mb-4 ${
+                      !isTaskTypeAvailable("Uninstall", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : "text-red-500"
+                    }`}
+                  />
+                  <h4
+                    className={`text-lg font-semibold mb-2 ${
+                      !isTaskTypeAvailable("Uninstall", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : ""
+                    }`}
+                  >
+                    Uninstall Task
+                  </h4>
+                  <p
+                    className={`text-sm mb-4 ${
+                      !isTaskTypeAvailable("Uninstall", selectedTaskGroup)
+                        ? "text-gray-400"
+                        : "text-gray-600"
+                    }`}
+                  >
                     Remove an existing device from the location
                   </p>
-                  <div className="mt-4">
-                    <Checkbox
-                      checked={taskType === "Uninstall"}
-                      onCheckedChange={() =>
-                        handleTaskTypeSelection("Uninstall")
-                      }
-                    />
-                  </div>
+
+                  {!isTaskTypeAvailable("Uninstall", selectedTaskGroup) ? (
+                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                      ❌{" "}
+                      {getUnavailableTaskTypeMessage(
+                        "Uninstall",
+                        selectedTaskGroup
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <Checkbox
+                        checked={taskType === "Uninstall"}
+                        onCheckedChange={() =>
+                          handleTaskTypeSelection("Uninstall")
+                        }
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -329,6 +730,11 @@ const CreateInstallUninstallTaskCpn = ({
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-blue-800">
                       Selected: {taskType} Task
+                      {selectedTaskGroup && (
+                        <span className="text-blue-600 text-sm block">
+                          Will be added to: {selectedTaskGroup.groupName}
+                        </span>
+                      )}
                     </span>
                     <Badge variant="default">{taskType}</Badge>
                   </div>
@@ -357,31 +763,53 @@ const CreateInstallUninstallTaskCpn = ({
               </div>
             </div>
 
-            {/* Selected Task Type Info */}
+            {/* Selected Task Type and Group Info */}
             <Card className="bg-gray-50">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  {taskType === "Install" ? (
-                    <Monitor className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Package className="h-5 w-5 text-red-500" />
-                  )}
-                  <div>
-                    <div className="font-medium">Selected Task: {taskType}</div>
-                    <div className="text-sm text-gray-600">
-                      {taskType === "Install"
-                        ? "Install a new device at the location"
-                        : "Remove an existing device from the location"}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {taskType === "Install" ? (
+                      <Monitor className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Package className="h-5 w-5 text-red-500" />
+                    )}
+                    <div>
+                      <div className="font-medium">
+                        Selected Task: {taskType}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {taskType === "Install"
+                          ? "Install a new device at the location"
+                          : "Remove an existing device from the location"}
+                      </div>
                     </div>
                   </div>
+                  {selectedTaskGroup && (
+                    <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                      <Package className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <div className="font-medium text-sm">
+                          Group: {selectedTaskGroup.groupName}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {selectedTaskGroup.groupType} •{" "}
+                          {selectedTaskGroup.tasks.length} existing tasks
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Rest of mechanic selection... */}
             {loadingMechanics ? (
               <SkeletonCard />
             ) : (
               <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Select Mechanic</CardTitle>
+                </CardHeader>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -452,6 +880,37 @@ const CreateInstallUninstallTaskCpn = ({
               </p>
             </div>
 
+            {/* Show selected task type and group info */}
+            <Card className="bg-gray-50">
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Monitor className="h-5 w-5 text-green-500" />
+                    <div>
+                      <div className="font-medium">Install Task</div>
+                      <div className="text-sm text-gray-600">
+                        Install a new device at the location
+                      </div>
+                    </div>
+                  </div>
+                  {selectedTaskGroup && (
+                    <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                      <Package className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <div className="font-medium text-sm">
+                          Group: {selectedTaskGroup.groupName}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {selectedTaskGroup.groupType} •{" "}
+                          {selectedTaskGroup.tasks.length} existing tasks
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {loadingDevices ? (
               <SkeletonCard />
             ) : devices.length === 0 ? (
@@ -468,6 +927,9 @@ const CreateInstallUninstallTaskCpn = ({
               </Card>
             ) : (
               <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Available Devices</CardTitle>
+                </CardHeader>
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -505,7 +967,8 @@ const CreateInstallUninstallTaskCpn = ({
                             </div>
                           </TableCell>
                           <TableCell className="text-gray-600">
-                            {device.description}
+                            {device.model}{" "}
+                            {/* ✅ Use device.model as per your type definition */}
                           </TableCell>
                           <TableCell className="text-gray-600">
                             {device.serialNumber}
@@ -517,6 +980,27 @@ const CreateInstallUninstallTaskCpn = ({
                       ))}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {selectedDevice && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-blue-800 text-sm">
+                        Selected Device: {selectedDevice.deviceName}
+                      </div>
+                      <div className="text-xs text-blue-600">
+                        Model: {selectedDevice.model} • Serial:{" "}
+                        {selectedDevice.serialNumber}
+                      </div>
+                    </div>
+                    <Badge variant="default" className="text-xs">
+                      Selected
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -564,6 +1048,24 @@ const CreateInstallUninstallTaskCpn = ({
                     <Label>Assigned To</Label>
                     <div className="font-medium">
                       {selectedMechanic?.fullName}
+                    </div>
+                  </div>
+                  {/* ✅ Show task group info */}
+                  <div>
+                    <Label>Task Group</Label>
+                    <div className="font-medium">
+                      {selectedTaskGroup ? (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {selectedTaskGroup.groupType}
+                          </Badge>
+                          <span className="text-sm truncate max-w-xs">
+                            {selectedTaskGroup.groupName}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">Standalone Task</span>
+                      )}
                     </div>
                   </div>
                   {taskType === "Install" && selectedDevice && (
@@ -621,7 +1123,8 @@ const CreateInstallUninstallTaskCpn = ({
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        Model: {selectedDevice.deviceName}
+                        Model: {selectedDevice.model}{" "}
+                        {/* ✅ Use device.model */}
                       </div>
                       <div className="text-sm text-gray-600">
                         Serial: {selectedDevice.serialNumber}
@@ -631,6 +1134,38 @@ const CreateInstallUninstallTaskCpn = ({
                 </Card>
               )}
             </div>
+
+            {/* ✅ Show task group details if selected */}
+            {selectedTaskGroup && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Task Group Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium">
+                        {selectedTaskGroup.groupName}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Type: {selectedTaskGroup.groupType}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Existing Tasks: {selectedTaskGroup.tasks.length}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Created:{" "}
+                      {formatTimeStampDate(
+                        selectedTaskGroup.createdDate,
+                        "datetime"
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
 
@@ -640,35 +1175,56 @@ const CreateInstallUninstallTaskCpn = ({
   };
 
   // ✅ Get step progress
+  // ✅ Fix the step progress calculation:
   const getStepProgress = () => {
-    const totalSteps = taskType === "Uninstall" ? 3 : 4; // Uninstall skips device step
-    switch (currentStep) {
-      case "task-type":
-        return 25;
-      case "mechanic":
-        return taskType === "Uninstall" ? 66 : 50;
-      case "device":
-        return 75;
-      case "overview":
-        return 100;
-      default:
-        return 0;
+    if (taskType === "Uninstall") {
+      // Uninstall flow: group-selection → task-type → mechanic → overview (4 steps)
+      switch (currentStep) {
+        case "group-selection":
+          return 25;
+        case "task-type":
+          return 50;
+        case "mechanic":
+          return 75;
+        case "overview":
+          return 100;
+        default:
+          return 0;
+      }
+    } else {
+      // Install flow: group-selection → task-type → mechanic → device → overview (5 steps)
+      switch (currentStep) {
+        case "group-selection":
+          return 20;
+        case "task-type":
+          return 40;
+        case "mechanic":
+          return 60;
+        case "device":
+          return 80;
+        case "overview":
+          return 100;
+        default:
+          return 0;
+      }
     }
   };
 
   // ✅ Get step title
   const getStepTitle = () => {
     switch (currentStep) {
+      case "group-selection":
+        return "Step 1: Select Task Group";
       case "task-type":
-        return "Step 1: Select Task Type";
+        return "Step 2: Select Task Type";
       case "mechanic":
-        return "Step 2: Assign Mechanic";
+        return "Step 3: Assign Mechanic";
       case "device":
-        return "Step 3: Select Device";
+        return "Step 4: Select Device";
       case "overview":
         return taskType === "Uninstall"
-          ? "Step 3: Review & Create"
-          : "Step 4: Review & Create";
+          ? "Step 4: Review & Create"
+          : "Step 5: Review & Create";
       default:
         return "";
     }
@@ -689,12 +1245,21 @@ const CreateInstallUninstallTaskCpn = ({
             <div className="flex justify-between text-sm">
               <span
                 className={
+                  currentStep === "group-selection"
+                    ? "font-medium text-blue-600"
+                    : "text-gray-500"
+                }
+              >
+                1. Task Group
+              </span>
+              <span
+                className={
                   currentStep === "task-type"
                     ? "font-medium text-blue-600"
                     : "text-gray-500"
                 }
               >
-                1. Task Type
+                2. Task Type
               </span>
               <span
                 className={
@@ -703,7 +1268,7 @@ const CreateInstallUninstallTaskCpn = ({
                     : "text-gray-500"
                 }
               >
-                2. Mechanic
+                3. Mechanic
               </span>
               {taskType === "Install" && (
                 <span
@@ -713,7 +1278,7 @@ const CreateInstallUninstallTaskCpn = ({
                       : "text-gray-500"
                   }
                 >
-                  3. Device
+                  4. Device
                 </span>
               )}
               <span
@@ -723,7 +1288,7 @@ const CreateInstallUninstallTaskCpn = ({
                     : "text-gray-500"
                 }
               >
-                {taskType === "Uninstall" ? "3" : "4"}. Overview
+                {taskType === "Uninstall" ? "4" : "5"}. Overview
               </span>
             </div>
             <Progress value={getStepProgress()} className="h-2" />
@@ -735,7 +1300,7 @@ const CreateInstallUninstallTaskCpn = ({
         <DialogFooter>
           <div className="flex justify-between w-full">
             <div>
-              {currentStep !== "task-type" && (
+              {currentStep !== "group-selection" && (
                 <ButtonCpn
                   type="button"
                   title="Previous"

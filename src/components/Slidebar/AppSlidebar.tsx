@@ -56,7 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [],
     },
     {
-      title: "My Tasks",
+      title: "Tasks",
       url: `/workspace/${workspaceId ?? "#"}/tasks`, // ✅ Use workspaceId from URL
       icon: CircleCheckBig,
       items: [],
