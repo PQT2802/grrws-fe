@@ -46,7 +46,7 @@ export default function StockOverviewChart() {
         
         if (item.stockQuantity === 0) {
           data.outOfStockItems += 1;
-        } else if (item.stockQuantity <= 5) {
+        } else if (item.stockQuantity < 10) {
           data.lowStockItems += 1;
         }
       });
