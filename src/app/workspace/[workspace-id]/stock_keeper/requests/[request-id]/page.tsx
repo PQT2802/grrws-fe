@@ -273,14 +273,14 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
           </>
         )}
         
-        {isConfirmed && (
+        {/* {isConfirmed && (
           <button
             onClick={() => setShowDeliveryModal(true)}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
           >
             Mark as Delivered
           </button>
-        )}
+        )} */}
       </div>
     );
   };

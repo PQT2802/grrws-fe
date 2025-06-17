@@ -148,7 +148,8 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
       };
       setCurrentPart(updatedPart);
       
-      toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units (${data.method})`);
+      // toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units (${data.method})`);
+      toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units`);
       
       // Reload the original data to ensure we're showing the latest data
       setOriginalData(undefined);
