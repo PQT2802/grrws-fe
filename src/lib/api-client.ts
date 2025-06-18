@@ -10,6 +10,7 @@ import {
   REQUEST_SUMMARY,
   TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB,
 } from "@/types/request.type";
+import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import {
   CREATE_INSTALL_TASK,
   CREATE_REPAIR_TASK,
@@ -205,18 +206,27 @@ class APIClient {
       return http.get(`/api/SparePartUsage/requests/${requestId}`);
     },
     
-    getInventory: async (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
-      console.log(`Getting spare parts inventory from external API (page ${pageNumber}, size ${pageSize})`);
-      try {
-        const response = await http.get(`/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`);
-        console.log("External API response status:", (response as any)?.status || "unknown");
-        console.log("Response data sample:", 
-          JSON.stringify(response).substring(0, 100) + "...");
-        return response;
-      } catch (error) {
-        console.error("Error in external API call:", error);
-        throw error;
-      }
+    // getInventory: async (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+    //   console.log(`Getting spare parts inventory from external API (page ${pageNumber}, size ${pageSize})`);
+    //   try {
+    //     const response = await http.get(`/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    //     console.log("External API response status:", (response as any)?.status || "unknown");
+    //     console.log("Response data sample:", 
+    //       JSON.stringify(response).substring(0, 100) + "...");
+    //     return response;
+    //   } catch (error) {
+    //     console.error("Error in external API call:", error);
+    //     throw error;
+    //   }
+    // },
+
+    getInventory: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<SPAREPART_INVENTORY_ITEM[]> => {
+      return http.get<SPAREPART_INVENTORY_ITEM[]>(
+        `/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     importSparePart: async (formData: FormData): Promise<any> => {

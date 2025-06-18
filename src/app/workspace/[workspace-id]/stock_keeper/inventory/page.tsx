@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { mockParts } from "./data/mockData";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sortAndFilterParts } from "./utils/sortAndFilter";
 import PartCard from "./components/PartCard";
 import FilterBar from "./components/FilterBar";
@@ -11,78 +11,249 @@ import ImportSparePartModal from "./components/ImportSparePartModal";
 import { sparePartService } from "@/app/service/sparePart.service";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import { toast } from "react-toastify";
-import Pagination from "./components/Pagination";
-import PageSizeSelector from "./components/PageSizeSelector";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Package, Plus } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 
 export default function InventoryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // State for UI filters (client-side)
   const [search, setSearch] = useState<string>("");
   const [machineFilter, setMachineFilter] = useState<string>("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All"); // Default to "All"
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<string>("asc");
+  
+  // State for modal
   const [selectedPart, setSelectedPart] = useState<PartType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
-  // New state for AddPartModal
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
-  const [parts, setParts] = useState<PartType[]>(mockParts);
+  
+  // State for data
   const [inventory, setInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Add a new state for page loading
-  const [isPageChanging, setIsPageChanging] = useState(false);
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  // Pagination state (server-side)
+  const [pageIndex, setPageIndex] = useState<number>(0); // 0-based for UI consistency
   const [pageSize, setPageSize] = useState<number>(10);
-  const [totalItems, setTotalItems] = useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
+  // Initialize pagination from URL params
+  useEffect(() => {
+    const page = searchParams.get('page');
+    const size = searchParams.get('pageSize');
+    const category = searchParams.get('category');
+    
+    if (page) {
+      setPageIndex(parseInt(page) - 1); // Convert to 0-based
+    }
+    if (size) {
+      setPageSize(parseInt(size));
+    }
+    if (category) {
+      setCategoryFilter(category);
+    }
+  }, [searchParams]);
+
+  // Update URL when pagination or category changes
+  const updateURL = (newPageIndex: number, newPageSize: number, newCategory?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', (newPageIndex + 1).toString()); // Convert to 1-based for URL
+    params.set('pageSize', newPageSize.toString());
+    
+    // Handle category filter in URL
+    if (newCategory !== undefined) {
+      if (newCategory === "All") {
+        params.delete('category');
+      } else {
+        params.set('category', newCategory);
+      }
+    }
+    
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  // Fetch inventory data
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const apiPageNumber = pageIndex + 1; // Convert to 1-based for API
+      
+      console.log(`🔍 Fetching inventory: page ${apiPageNumber}, size ${pageSize}`);
+      
+      const response = await sparePartService.getSparePartInventory(apiPageNumber, pageSize);
+
+      console.log("🔍 Service Response:", response);
+
+      // Handle multiple possible response structures
+      let inventoryData: string | any[] | ((prevState: SPAREPART_INVENTORY_ITEM[]) => SPAREPART_INVENTORY_ITEM[]) = [];
+      let totalCount = 0;
+
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        inventoryData = response.data.data;
+        totalCount = response.data.totalCount || 0;
+      } else if (response?.data && Array.isArray(response.data)) {
+        inventoryData = response.data;
+        totalCount = response.data.length;
+      } else if (Array.isArray(response)) {
+        inventoryData = response;
+        totalCount = response.length;
+      }
+
+      console.log(`✅ Processed inventory: ${inventoryData.length} items, total: ${totalCount}`);
+      
+      setInventory(inventoryData);
+      setTotalCount(totalCount);
+
+      // Handle empty pages gracefully
+      if (inventoryData.length === 0 && pageIndex > 0) {
+        console.log("📄 Empty page detected, returning to page 1");
+        setPageIndex(0);
+        updateURL(0, pageSize);
+        return;
+      }
+
+    } catch (error) {
+      console.error("❌ Error fetching inventory:", error);
+      toast.error(`Failed to load parts inventory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setInventory([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data when pagination changes
+  useEffect(() => {
+    fetchInventory();
+  }, [pageIndex, pageSize]);
+
+  // Calculate pagination values
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const currentPage = pageIndex + 1; // Convert to 1-based for display
+
+  // Handle page changes
+  const handlePageChange = (page: number) => {
+    const newPageIndex = page - 1; // Convert to 0-based
+    setPageIndex(newPageIndex);
+    updateURL(newPageIndex, pageSize);
+  };
+
+  // Handle page size changes
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPageIndex(0); // Reset to first page
+    updateURL(0, size);
+  };
+
+  // Handle category filter changes
+  const handleCategoryFilterChange = (category: string) => {
+    setCategoryFilter(category);
+    updateURL(pageIndex, pageSize, category);
+  };
+
+  // Get filter options from current inventory (for machine types only)
   const machineTypes = useMemo(() => {
     if (!inventory) return [];
     const allMachineNames = inventory.flatMap((item) => item.machineNames);
     return [...new Set(allMachineNames)].filter(Boolean);
   }, [inventory]);
-  const categories = useMemo(() => {
-    if (!inventory) return [];
-    return [...new Set(inventory.map((item) => item.category))].filter(Boolean) as string[];
-  }, [inventory]);
 
+  // Categories are now fixed, so we don't need to derive them from data
+  const categories: string[] = []; // Empty array since we're using fixed categories
+
+  // Process inventory for display (client-side filtering)
   const processedInventory = useMemo(() => {
     if (!inventory || inventory.length === 0) return [];
 
     // Convert API data to format needed by components
-    return sortAndFilterParts(
-      inventory.map((item) => ({
-        id: item.id,
-        name: item.sparepartName,
-        machineType: item.machineNames.length > 0 ? item.machineNames[0] : "Khác",
-        category: item.category || "Chung",
-        quantity: item.stockQuantity,
-        minThreshold: 10,
-        description: item.description || "",
-        image: item.imgUrl || "/placeholder-part.png",
-        importedDate: new Date().toISOString().split("T")[0],
-        unit: item.unit || "Cái",
-        specification: item.specification || "",
-        supplier: item.supplierName || "",
-        supplierId: item.supplierId || "",
-        unitPrice: item.unitPrice || 0,
-        expectedAvailabilityDate: item.expectedAvailabilityDate 
-          ? new Date(item.expectedAvailabilityDate).toISOString().split('T')[0]
-          : ""
-      })),
-      search,
-      machineFilter,
-      categoryFilter,
-      sortBy,
-      sortDirection
-    );
+    const convertedParts = inventory.map((item) => ({
+      id: item.id,
+      name: item.sparepartName,
+      machineType: item.machineNames.length > 0 ? item.machineNames[0] : "Khác",
+      category: item.category || "Others", // Use "Others" as default instead of "Chung"
+      quantity: item.stockQuantity,
+      minThreshold: 10,
+      description: item.description || "",
+      image: item.imgUrl || "/placeholder-part.png",
+      importedDate: new Date().toISOString().split("T")[0],
+      unit: item.unit || "Cái",
+      specification: item.specification || "",
+      supplier: item.supplierName || "",
+      supplierId: item.supplierId || "",
+      unitPrice: item.unitPrice || 0,
+      expectedAvailabilityDate: item.expectedAvailabilityDate 
+        ? new Date(item.expectedAvailabilityDate).toISOString().split('T')[0]
+        : ""
+    }));
+
+    // Apply client-side filtering with updated category logic
+    let filteredParts = convertedParts;
+
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredParts = filteredParts.filter(part =>
+        part.name.toLowerCase().includes(searchLower) ||
+        part.description.toLowerCase().includes(searchLower) ||
+        part.category.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply machine filter
+    if (machineFilter) {
+      filteredParts = filteredParts.filter(part => part.machineType === machineFilter);
+    }
+
+    // Apply category filter - Updated logic for English values
+    if (categoryFilter && categoryFilter !== "All") {
+      filteredParts = filteredParts.filter(part => part.category === categoryFilter);
+    }
+
+    // Apply sorting
+    filteredParts.sort((a, b) => {
+      let aValue, bValue;
+      
+      if (sortBy === 'quantity') {
+        aValue = a.quantity;
+        bValue = b.quantity;
+      } else {
+        aValue = a.name.toLowerCase();
+        bValue = b.name.toLowerCase();
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    return filteredParts;
   }, [inventory, search, machineFilter, categoryFilter, sortBy, sortDirection]);
 
-  const totalParts = useMemo(() => inventory?.length || 0, [inventory]);
+  // Calculate summary statistics
+  const totalParts = inventory?.length || 0;
   const totalInventory = useMemo(
-    () =>
-      inventory?.reduce((sum, item) => sum + item.stockQuantity, 0) || 0,
+    () => inventory?.reduce((sum, item) => sum + item.stockQuantity, 0) || 0,
     [inventory]
   );
   const lowStockCount = useMemo(
@@ -90,101 +261,13 @@ export default function InventoryPage() {
     [inventory]
   );
 
-  // Calculate total pages
-  const totalPages = useMemo(() => 
-    Math.max(1, Math.ceil(totalItems / pageSize)), 
-    [totalItems, pageSize]
-  );
-
+  // Event handlers
   const handlePartClick = (part: PartType) => {
     console.log("Part clicked:", part);
     setSelectedPart(part);
     setIsModalOpen(true);
   };
 
-  // Handler for adding a new part
-  const handleAddPart = (newPart: Omit<PartType, "id">) => {
-    const id = `P-${String(parts.length + 1).padStart(3, "0")}`;
-    setParts([...parts, { ...newPart, id }]);
-  };
-
-  const fetchInventory = async () => {
-  try {
-    setIsLoading(true);
-    setIsPageChanging(true);
-    const response = await sparePartService.getSparePartInventory(currentPage, pageSize);
-
-    console.log("Response from service:", response);
-
-    if (response?.data?.data) {
-      console.log(`Retrieved ${response.data.data.length} spare parts (page ${response.data.pageNumber} of ${Math.ceil(response.data.totalCount / response.data.pageSize)})`);
-      setInventory(response.data.data);
-      setTotalItems(response.data.totalCount);
-
-      // Handle empty pages gracefully
-      if (response.data.data.length === 0 && currentPage > 1) {
-        console.log("Empty page detected, returning to page 1");
-        setCurrentPage(1);
-        return;
-      }
-
-      // Ensure currentPage matches backend response
-      if (response.data.pageNumber !== currentPage) {
-        setCurrentPage(response.data.pageNumber);
-      }
-    } else {
-      console.error("Invalid response structure:", response);
-      setInventory([]);
-      setTotalItems(0);
-      toast.error("Received invalid data format from server");
-    }
-  } catch (error) {
-    console.error("Error fetching inventory:", error);
-    toast.error("Failed to load parts inventory");
-    setInventory([]);
-    setTotalItems(0);
-  } finally {
-    setIsLoading(false);
-    setIsPageChanging(false);
-  }
-};
-
-  useEffect(() => {
-  fetchInventory();
-  console.log("Fetching inventory for page:", currentPage);
-}, [currentPage, pageSize]);
-
-  // Debug pagination
-  useEffect(() => {
-    console.log("Pagination Debug:", { 
-      totalItems, 
-      pageSize, 
-      totalPages, 
-      currentPage 
-    });
-  }, [totalItems, pageSize, totalPages, currentPage]);
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // No need to manually fetch as the useEffect will trigger
-  };
-
-  // Handle page size change
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1); // Reset to first page when changing page size
-  };
-
-  // Force pagination to work with 3 pages for testing
-  useEffect(() => {
-    if (totalItems <= pageSize) {
-      console.log("Forcing totalItems to 30 for testing pagination");
-      setTotalItems(30);
-    }
-  }, [totalItems, pageSize]);
-
-  // Add this new function to refresh a specific part
   const refreshSelectedPart = async () => {
     if (selectedPart?.id) {
       try {
@@ -210,43 +293,131 @@ export default function InventoryPage() {
     }
   };
 
+  const PaginationSection = () => (
+    <div className="flex flex-col sm:flex-row items-center sm:justify-end gap-4 mt-6">
+      {/* Page size selector */}
+      <div className="flex items-center gap-3 w-full sm:w-auto order-2 sm:order-1 justify-center sm:justify-start">
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Items per page
+        </span>
+        <Select
+          value={pageSize.toString()}
+          onValueChange={(value: string) => handlePageSizeChange(Number(value))}
+        >
+          <SelectTrigger className="w-[80px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[10, 20, 50, 100].map((size) => (
+              <SelectItem key={size} value={size.toString()}>
+                {size}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          {`${totalCount} total items`}
+        </span>
+      </div>
+
+      {/* Pagination controls - moved to the right */}
+      <div className="w-full sm:w-auto order-1 sm:order-2 flex justify-center sm:justify-end ml-auto">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => handlePageChange(currentPage - 1)}
+                className={
+                  currentPage <= 1 
+                    ? "pointer-events-none opacity-50" 
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
+              let pageNumber;
+              if (totalPages <= 5) {
+                pageNumber = index + 1;
+              } else if (currentPage <= 3) {
+                pageNumber = index + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNumber = totalPages - 4 + index;
+              } else {
+                pageNumber = currentPage - 2 + index;
+              }
+
+              return (
+                <PaginationItem key={pageNumber}>
+                  <PaginationLink
+                    onClick={() => handlePageChange(pageNumber)}
+                    isActive={pageNumber === currentPage}
+                    className="cursor-pointer"
+                  >
+                    {pageNumber}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => handlePageChange(currentPage + 1)}
+                className={
+                  currentPage >= totalPages 
+                    ? "pointer-events-none opacity-50" 
+                    : "cursor-pointer"
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header with stats */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Parts Inventory</h1>
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="bg-primary text-white rounded-md px-4 py-2 text-sm font-medium"
-          >
-            Import Spare Part
-          </button>
-        </div>
-        {/* Update the statistics section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 dark:bg-slate-700 p-4 rounded-lg">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Total Parts
-            </p>
-            <p className="text-2xl font-bold">{totalParts} types</p>
+      <Card>
+        <CardHeader className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold">Parts Inventory</h1>
+            <Button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Import Spare Part
+            </Button>
           </div>
-          <div className="bg-green-50 dark:bg-slate-700 p-4 rounded-lg">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Total Inventory
-            </p>
-            <p className="text-2xl font-bold">{totalInventory} units</p>
+          
+          {/* Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 dark:bg-slate-700 p-4 rounded-lg">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Total Parts
+              </p>
+              <p className="text-2xl font-bold">{totalParts} types</p>
+            </div>
+            <div className="bg-green-50 dark:bg-slate-700 p-4 rounded-lg">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Total Inventory
+              </p>
+              <p className="text-2xl font-bold">{totalInventory} units</p>
+            </div>
+            <div className="bg-red-50 dark:bg-slate-700 p-4 rounded-lg">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Low Stock Items
+              </p>
+              <p className="text-2xl font-bold text-red-600">
+                {lowStockCount} types
+              </p>
+            </div>
           </div>
-          <div className="bg-red-50 dark:bg-slate-700 p-4 rounded-lg">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Low Stock Items
-            </p>
-            <p className="text-2xl font-bold text-red-600">
-              {lowStockCount} types
-            </p>
-          </div>
-        </div>
-      </div>
+        </CardHeader>
+      </Card>
 
       {/* Search and Filter Bar */}
       <FilterBar
@@ -255,70 +426,65 @@ export default function InventoryPage() {
         machineFilter={machineFilter}
         setMachineFilter={setMachineFilter}
         categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
+        setCategoryFilter={handleCategoryFilterChange}
         sortBy={sortBy}
         setSortBy={setSortBy}
         sortDirection={sortDirection}
         setSortDirection={setSortDirection}
         machineTypes={machineTypes}
-        categories={categories}
+        categories={categories} // Pass empty array since we're using fixed categories
       />
 
-      {/* Parts Grid */}
-      {isLoading ? (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">
-            {isPageChanging ? "Changing page..." : "Loading inventory data..."}
-          </p>
-        </div>
-      ) : processedInventory.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {processedInventory.map((part) => (
-            <PartCard key={part.id} part={part} onClick={handlePartClick} />
-          ))}
-        </div>
-      ) : totalItems > 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">No parts found on this page.</p>
-          <button
-            className="mt-2 text-primary hover:underline text-sm"
-            onClick={() => setCurrentPage(1)}
-          >
-            Go to first page
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">No parts found matching your filters.</p>
-          <button
-            className="mt-2 text-primary hover:underline text-sm"
-            onClick={() => {
-              setSearch("");
-              setMachineFilter("");
-              setCategoryFilter("");
-            }}
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
+      {/* Content */}
+      <Card>
+        <CardContent className="p-6">
+          {loading ? (
+            <SkeletonCard />
+          ) : processedInventory.length > 0 ? (
+            <>
+              {/* Parts Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {processedInventory.map((part) => (
+                  <PartCard key={part.id} part={part} onClick={handlePartClick} />
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              <PaginationSection />
+            </>
+          ) : totalCount > 0 ? (
+            <div className="text-center py-8">
+              <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-500">No parts found matching your filters.</p>
+              <Button
+                variant="outline"
+                className="mt-2"
+                onClick={() => {
+                  setSearch("");
+                  setMachineFilter("");
+                  setCategoryFilter("All");
+                }}
+              >
+                Clear all filters
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-500">No parts found.</p>
+              <Button
+                variant="outline"
+                className="mt-2"
+                onClick={() => handlePageChange(1)}
+              >
+                Go to first page
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Pagination Component - Always show when not loading */}
-      {!isLoading && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-          <PageSizeSelector 
-            pageSize={pageSize} 
-            onPageSizeChange={handlePageSizeChange}
-          />
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={handlePageChange}
-          />
-        </div>
-      )}
-
-      {/* Part Detail Modal */}
+      {/* Modals */}
       {selectedPart && (
         <PartDetailModal
           isOpen={isModalOpen}
@@ -326,10 +492,11 @@ export default function InventoryPage() {
             setIsModalOpen(false);
             setSelectedPart(null);
           }}
-          part={selectedPart!}
-          onUpdate={refreshSelectedPart} // Pass the refresh function
+          part={selectedPart}
+          onUpdate={refreshSelectedPart}
         />
       )}
+      
       <ImportSparePartModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
