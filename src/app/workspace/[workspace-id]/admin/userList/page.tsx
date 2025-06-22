@@ -1,26 +1,8 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  Search,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  UserPlus,
-  Shield,
-  User,
-  Mail,
-  Calendar,
-  Phone,
-} from "lucide-react"
+import { UserPlus } from "lucide-react"
 import { useDebounce } from "@/hooks/useDebounce"
 import { toast } from "react-toastify"
 import {
@@ -43,50 +25,60 @@ import {
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Mail, Calendar, Phone } from "lucide-react"
+import { USER_LIST_ITEM } from "@/types/user.type"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
+import { UserListCpn } from "@/components/UserListCpn/UserListCpn"
+import { CreateUserModal } from "@/components/UserModalCpn/CreateUserModal"
 
-type UserRole = "Head Department" | "Head of Technical" | "Mechanic" | "Stock Keeper" | "Admin"
 type DialogMode = "view" | "edit" | "create"
 
-interface UserBase {
-  userId: string
-  fullName?: string
-  email?: string
-  roleName: UserRole
-  phoneNumber?: string
-  createdAt: string
+// Get role name from role ID
+const getRoleNameFromNumber = (role: number): string => {
+  switch (role) {
+    case 1: return "Head Department"
+    case 2: return "Head of Technical"
+    case 3: return "Mechanic"
+    case 4: return "Stock Keeper"
+    case 5: return "Admin"
+    default: return "Unknown"
+  }
 }
 
-// Mock user data
-const mockUsers: UserBase[] = Array.from({ length: 50 }, (_, i) => ({
-  userId: `user-${i + 1}`,
-  fullName: `User ${i + 1}`,
-  email: `user${i + 1}@example.com`,
-  roleName: 
-    i % 5 === 0 ? "Admin" :
-    i % 5 === 1 ? "Head Department" :
-    i % 5 === 2 ? "Head of Technical" :
-    i % 5 === 3 ? "Mechanic" :
-    "Stock Keeper",
-  phoneNumber: `+1 (555) ${100 + i}-${1000 + i}`,
-  createdAt: `2023-${(i % 12) + 1}-${(i % 28) + 1}`,
-}))
-
 export default function UserList() {
-  const [users, setUsers] = useState<UserBase[]>([])
+  const { isAdmin } = useAuth()
+  const router = useRouter()
+
+  // State for users data
+  const [users, setUsers] = useState<USER_LIST_ITEM[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  
+  // State for searching and filtering
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRole, setFilterRole] = useState<string>("all")
+  
+  // Debounce the search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000)
+  
+  // Pagination state
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(10)
-  const [selectedUser, setSelectedUser] = useState<UserBase | null>(null)
+  const [pageSize, setPageSize] = useState(10)
+  
+  // Modal state
+  const [selectedUser, setSelectedUser] = useState<USER_LIST_ITEM | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<DialogMode>("view")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [chartKey, setChartKey] = useState<string>(Date.now().toString())
-  const [selectedRole, setSelectedRole] = useState<UserRole | "">("")
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false)
 
+  // Chart data state
+  const [chartKey, setChartKey] = useState<string>(Date.now().toString())
   const [chartData, setChartData] = useState([
     { name: "Head Department", value: 0, color: "#f97316" },
     { name: "Head of Technical", value: 0, color: "#22c55e" },
@@ -94,8 +86,18 @@ export default function UserList() {
     { name: "Stock Keeper", value: 0, color: "#eab308" },
     { name: "Admin", value: 0, color: "#ef4444" },
   ])
+  const [selectedRole, setSelectedRole] = useState<string>("")
+
+  // Admin authentication check
+  useEffect(() => {
+    if (!isAdmin) {
+      toast.error("Access denied: Admin permission required")
+      router.push("/workspace")
+    }
+  }, [isAdmin, router])
 
   const formatDate = (dateString: string) => {
+    if (!dateString || dateString === "0001-01-01T00:00:00") return "N/A"
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -104,13 +106,10 @@ export default function UserList() {
     })
   }
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 1000)
-  const currentUserRole = "Admin"
-
-  const openDialog = useCallback((mode: DialogMode, user: UserBase | null = null) => {
+  const openDialog = useCallback((mode: DialogMode, user: USER_LIST_ITEM | null = null) => {
     setDialogMode(mode)
     setSelectedUser(user)
-    setSelectedRole(user ? user.roleName : "")
+    setSelectedRole(user ? getRoleNameFromNumber(user.role) : "")
     setDialogOpen(true)
   }, [])
 
@@ -124,69 +123,119 @@ export default function UserList() {
     }, 300)
   }, [])
 
-  const fetchUsers = useCallback(() => {
+  // Direct API call from API client layer without service or router
+  const fetchUsers = useCallback(async () => {
+    if (!isAdmin) return
+    
     setIsLoading(true)
-    setTimeout(() => {
-      let filteredUsers = [...mockUsers]
-
-      // Update chart data
-      const headDepartmentCount = filteredUsers.filter(user => user.roleName === "Head Department").length
-      const headOfTechnicalCount = filteredUsers.filter(user => user.roleName === "Head of Technical").length
-      const mechanicCount = filteredUsers.filter(user => user.roleName === "Mechanic").length
-      const stockKeeperCount = filteredUsers.filter(user => user.roleName === "Stock Keeper").length
-      const adminCount = filteredUsers.filter(user => user.roleName === "Admin").length
-      setChartData([
-        { name: "Head Department", value: headDepartmentCount, color: "#f97316" },
-        { name: "Head of Technical", value: headOfTechnicalCount, color: "#22c55e" },
-        { name: "Mechanic", value: mechanicCount, color: "#3b82f6" },
-        { name: "Stock Keeper", value: stockKeeperCount, color: "#eab308" },
-        { name: "Admin", value: adminCount, color: "#ef4444" },
-      ])
-      setChartKey(Date.now().toString())
-
-      // Apply search filter
-      if (debouncedSearchTerm) {
-        filteredUsers = filteredUsers.filter(
-          user =>
-            user.fullName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-            user.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-        )
+    try {
+      console.log(`🔍 Fetching users - Page: ${page}, PageSize: ${pageSize}`)
+      
+      // Direct call to API client method
+      const response = await apiClient.user.getUsersList(page, pageSize)
+      console.log("📊 API Response:", response)
+      
+      // Check the actual response structure based on the received data
+      if (response?.data || Array.isArray(response)) {
+        // Handle both possible response formats
+        const userList = Array.isArray(response) ? response : (response.data || []);
+        const total = response.totalCount || userList.length || 0;
+        
+        console.log(`✅ Retrieved ${userList.length} users out of ${total} total`)
+        
+        setUsers(userList)
+        setTotalCount(total)
+        
+        // Update chart data based on real user data
+        if (userList.length > 0) {
+          const roleStats = userList.reduce((acc: {[key: string]: number}, user: USER_LIST_ITEM) => {
+            const roleName = getRoleNameFromNumber(user.role)
+            acc[roleName] = (acc[roleName] || 0) + 1
+            return acc
+          }, {})
+          
+          setChartData([
+            { name: "Head Department", value: roleStats["Head Department"] || 0, color: "#f97316" },
+            { name: "Head of Technical", value: roleStats["Head of Technical"] || 0, color: "#22c55e" },
+            { name: "Mechanic", value: roleStats["Mechanic"] || 0, color: "#3b82f6" },
+            { name: "Stock Keeper", value: roleStats["Stock Keeper"] || 0, color: "#eab308" },
+            { name: "Admin", value: roleStats["Admin"] || 0, color: "#ef4444" },
+          ])
+          setChartKey(Date.now().toString())
+        }
+      } else if (response?.extensions?.data?.data) {
+        // This was our original expected structure, keep as a fallback
+        const userList = response.extensions.data.data || [];
+        const total = response.extensions.data.totalCount || 0;
+        
+        // Same processing as above...
+        console.log(`✅ Retrieved ${userList.length} users out of ${total} total`)
+        
+        setUsers(userList)
+        setTotalCount(total)
+        
+        if (userList.length > 0) {
+          const roleStats = userList.reduce((acc: {[key: string]: number}, user: USER_LIST_ITEM) => {
+            const roleName = getRoleNameFromNumber(user.role)
+            acc[roleName] = (acc[roleName] || 0) + 1
+            return acc
+          }, {})
+          
+          setChartData([
+            { name: "Head Department", value: roleStats["Head Department"] || 0, color: "#f97316" },
+            { name: "Head of Technical", value: roleStats["Head of Technical"] || 0, color: "#22c55e" },
+            { name: "Mechanic", value: roleStats["Mechanic"] || 0, color: "#3b82f6" },
+            { name: "Stock Keeper", value: roleStats["Stock Keeper"] || 0, color: "#eab308" },
+            { name: "Admin", value: roleStats["Admin"] || 0, color: "#ef4444" },
+          ])
+          setChartKey(Date.now().toString())
+        }
+      } else {
+        console.error("❌ Invalid API response structure:", response)
+        setUsers([])
+        setTotalCount(0)
+        toast.error("Failed to load users: Invalid response format")
       }
-
-      // Apply role filter
-      if (filterRole !== "all") {
-        filteredUsers = filteredUsers.filter(user => user.roleName === filterRole)
-      }
-
-      setTotalCount(filteredUsers.length)
-      const start = (page - 1) * pageSize
-      const paginatedUsers = filteredUsers.slice(start, start + pageSize)
-      setUsers(paginatedUsers)
+    } catch (error) {
+      console.error("❌ Error fetching users:", error)
+      setUsers([])
+      setTotalCount(0)
+      toast.error("Failed to load users")
+    } finally {
       setIsLoading(false)
-    }, 500)
-  }, [debouncedSearchTerm, filterRole, page, pageSize])
+    }
+  }, [page, pageSize, isAdmin])
 
+  // Fetch users when page or page size changes
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
 
-  const handleViewUser = useCallback((user: UserBase) => {
-    openDialog("view", user)
-  }, [openDialog])
+  // Filtered users based on search term
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return users;
+    
+    return users.filter(user => {
+      const searchTermLower = searchTerm.toLowerCase();
+      return (
+        (user.fullName?.toLowerCase().includes(searchTermLower) || false) ||
+        (user.email?.toLowerCase().includes(searchTermLower) || false) ||
+        (user.userName?.toLowerCase().includes(searchTermLower) || false)
+      );
+    });
+  }, [users, searchTerm]);
 
-  const handleEditUser = useCallback((user: UserBase) => {
-    openDialog("edit", user)
-  }, [openDialog])
+  // Also add role filtering
+  const filteredAndRoleFilteredUsers = useMemo(() => {
+    if (filterRole === "all") return filteredUsers;
+    
+    return filteredUsers.filter(user => {
+      const roleName = getRoleNameFromNumber(user.role);
+      return roleName === filterRole;
+    });
+  }, [filteredUsers, filterRole]);
 
-  const handleCreateUser = useCallback(() => {
-    if (currentUserRole !== "Admin") {
-      toast.error("Only Admins can create new users.")
-      return
-    }
-    openDialog("create", null)
-  }, [openDialog])
-
-  const openDeleteDialog = useCallback((user: UserBase) => {
+  const openDeleteDialog = useCallback((user: USER_LIST_ITEM) => {
     setSelectedUser(user)
     setDeleteDialogOpen(true)
   }, [])
@@ -199,73 +248,47 @@ export default function UserList() {
     }, 300)
   }, [])
 
-  const handleDeleteUser = useCallback((user: UserBase) => {
-    openDeleteDialog(user)
-  }, [openDeleteDialog])
+  const handleSaveUser = useCallback(
+    (formData: any) => {
+      if (dialogMode === "create") {
+        toast.success("User created successfully")
+      } else if (dialogMode === "edit" && selectedUser) {
+        toast.success("User updated successfully")
+      }
+      
+      closeDialog()
+      fetchUsers()
+    },
+    [dialogMode, selectedUser, closeDialog, fetchUsers]
+  )
 
   const confirmDeleteUser = useCallback(() => {
     if (!selectedUser) return
-
-    if (currentUserRole === "Admin" && selectedUser.roleName === "Admin") {
-      toast.error("Admins cannot delete other Admins.")
-      closeDeleteDialog()
-      return
-    }
-
-    setUsers(prev => prev.filter(user => user.userId !== selectedUser.userId))
-    setTotalCount(prev => prev - 1)
-    toast.success(`${selectedUser.fullName || "Unnamed User"} has been deleted successfully.`)
+    
+    toast.success(`${selectedUser.fullName || "User"} has been disabled successfully`)
     closeDeleteDialog()
     fetchUsers()
   }, [selectedUser, closeDeleteDialog, fetchUsers])
 
-  const handleSaveUser = useCallback(
-    (formData: any) => {
-      if (dialogMode === "create") {
-        if (currentUserRole !== "Admin") {
-          toast.error("Only Admins can create new users.")
-          closeDialog()
-          return
-        }
-        if (!selectedRole) {
-          toast.error("Please select a role for the new user.")
-          return
-        }
-        const newUser: UserBase = {
-          userId: `user-${Date.now()}`,
-          fullName: formData.name,
-          email: formData.email,
-          roleName: selectedRole,
-          phoneNumber: formData.phone || "",
-          createdAt: new Date().toISOString().split("T")[0],
-        }
-        setUsers(prev => [...prev, newUser])
-        setTotalCount(prev => prev + 1)
-        toast.success("User account created successfully")
-        closeDialog()
-        fetchUsers()
-      } else if (dialogMode === "edit" && selectedUser) {
-        const updatedUser: UserBase = {
-          ...selectedUser,
-          fullName: formData.name,
-          email: formData.email,
-          phoneNumber: formData.phone,
-        }
-        setUsers(prev =>
-          prev.map(user => (user.userId === selectedUser.userId ? updatedUser : user))
-        )
-        toast.success("User updated successfully")
-        closeDialog()
-        fetchUsers()
-      }
-    },
-    [dialogMode, selectedUser, selectedRole, closeDialog, fetchUsers]
-  )
+  const handleViewUser = useCallback((user: USER_LIST_ITEM) => {
+    openDialog("view", user)
+  }, [openDialog])
 
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const handleEditUser = useCallback((user: USER_LIST_ITEM) => {
+    openDialog("edit", user)
+  }, [openDialog])
 
-  const getRoleBadgeVariant = (role: UserRole) => {
-    switch (role) {
+  const handleCreateUser = useCallback(() => {
+    setShowCreateUserModal(true);
+  }, [])
+
+  const handleDeleteUser = useCallback((user: USER_LIST_ITEM) => {
+    openDeleteDialog(user)
+  }, [openDeleteDialog])
+
+  const getRoleBadgeVariant = (role: number) => {
+    const roleName = getRoleNameFromNumber(role)
+    switch (roleName) {
       case "Head Department":
         return "bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-400"
       case "Head of Technical":
@@ -281,220 +304,55 @@ export default function UserList() {
     }
   }
 
+  // Don't render if not admin
+  if (!isAdmin) {
+    return null
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Users Management</h1>
         <Button onClick={handleCreateUser} className="bg-blue-600 hover:bg-blue-700">
           <UserPlus className="mr-2 h-4 w-4" />
-          Add New User
+          New User
         </Button>
       </div>
 
-      {/* <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <UserRoleInfo users={users} totalCount={totalCount} />
-        </div>
+      {/* User List Component */}
+      <UserListCpn
+        users={filteredAndRoleFilteredUsers}
+        totalCount={totalCount}
+        isLoading={isLoading}
+        page={page}
+        pageSize={pageSize}
+        searchTerm={searchTerm}
+        filterRole={filterRole}
+        debouncedSearchTerm={debouncedSearchTerm}
+        setPage={setPage}
+        setPageSize={setPageSize}
+        setSearchTerm={setSearchTerm}
+        setFilterRole={setFilterRole}
+        onView={handleViewUser}
+        onEdit={handleEditUser}
+        onDelete={handleDeleteUser}
+        formatDate={formatDate}
+        getRoleNameFromNumber={getRoleNameFromNumber}
+      />
 
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>User Distribution</CardTitle>
-          </CardHeader>
-          <div className="h-[200px]">
-            <UserRoleChartImp data={chartData} chartKey={chartKey} />
-          </div>
-        </Card>
-      </div> */}
+      {/* Create User Modal */}
+      <CreateUserModal
+        open={showCreateUserModal}
+        onOpenChange={setShowCreateUserModal}
+        onSuccess={fetchUsers}
+      />
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex flex-1 gap-2">
-          <div className="relative w-1/3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-            {searchTerm && searchTerm !== debouncedSearchTerm && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">Searching...</span>
-            )}
-          </div>
-
-          <Select value={filterRole} onValueChange={setFilterRole}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="Head Department">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Head Department</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="Head of Technical">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Head of Technical</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="Mechanic">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Mechanic</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="Stock Keeper">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Stock Keeper</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="Admin">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  <span>Admin</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="rounded-md border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">User</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Role</th>
-                <th className="px-4 py-3 text-left">Created</th>
-                <th className="w-[80px] px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <tr key={`skeleton-${index}`} className="border-b animate-pulse">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700" />
-                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-40" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-8 ml-auto" />
-                    </td>
-                  </tr>
-                ))
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr key={user.userId} className="border-b hover:bg-muted/50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>{user.fullName?.charAt(0) || "U"}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{user.fullName || "Unnamed User"}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{user.email || "N/A"}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className={`${getRoleBadgeVariant(user.roleName)} border-0`}>
-                        {user.roleName}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatDate(user.createdAt)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewUser(user)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit User
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Disable User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t">
-          <div className="text-sm text-gray-500">
-            {totalCount > 0 ? (
-              <>
-                {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount} users
-              </>
-            ) : (
-              "No users"
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="h-8 w-8"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page >= totalPages}
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
+      {/* User detail modal */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open) closeDialog()
           setDialogOpen(open)
-          if (!open) {
-            closeDialog()
-          }
         }}
       >
         <DialogContent className="sm:max-w-[600px]">
@@ -524,8 +382,8 @@ export default function UserList() {
                 <div className="space-y-1 text-center sm:text-left">
                   <h3 className="text-2xl font-semibold">{selectedUser.fullName || "Unnamed User"}</h3>
                   <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                    <Badge variant="outline" className={`${getRoleBadgeVariant(selectedUser.roleName)} border-0`}>
-                      {selectedUser.roleName}
+                    <Badge variant="outline" className={`${getRoleBadgeVariant(selectedUser.role)} border-0`}>
+                      {getRoleNameFromNumber(selectedUser.role)}
                     </Badge>
                   </div>
                 </div>
@@ -552,7 +410,7 @@ export default function UserList() {
                     <Label className="text-muted-foreground">Account Created</Label>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDate(selectedUser.createdAt)}</span>
+                      <span>{formatDate(selectedUser.createdDate)}</span>
                     </div>
                   </div>
                 </div>
@@ -597,7 +455,7 @@ export default function UserList() {
                 {dialogMode === "create" && (
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
                       <SelectTrigger id="role">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
@@ -606,7 +464,6 @@ export default function UserList() {
                         <SelectItem value="Head of Technical">Head of Technical</SelectItem>
                         <SelectItem value="Mechanic">Mechanic</SelectItem>
                         <SelectItem value="Stock Keeper">Stock Keeper</SelectItem>
-                        {/* <SelectItem value="Admin">Admin</SelectItem> */}
                       </SelectContent>
                     </Select>
                   </div>
@@ -629,27 +486,26 @@ export default function UserList() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete confirmation dialog */}
       <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
+          if (!open) closeDeleteDialog()
           setDeleteDialogOpen(open)
-          if (!open) {
-            closeDeleteDialog()
-          }
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user
-              {selectedUser && ` "${selectedUser.fullName}"`} and remove their data from the system.
+              This will disable the user account
+              {selectedUser && ` "${selectedUser.fullName}"`}. The user will no longer be able to log in.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteUser} className="bg-red-600 hover:bg-red-700">
-              Delete
+              Disable
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

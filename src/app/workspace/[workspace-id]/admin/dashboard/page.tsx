@@ -24,6 +24,7 @@ import { USER_ROLES } from "@/types/auth.type";
 import MachineStatusPieChart from "@/components/ChartCpn/MachineStatusPieChart";
 import ErrorTrendLineChart from "@/components/ChartCpn/ErrorTrendLineChart";
 import OperationStatsCpn from "@/components/ChartCpn/OperationStatsCpn";
+import ActivitiesPercentageChart from "@/components/ChartCpn/ActivitiesPercentageChart";
 
 const ANALYSIS_ITEMS: ANALYSIS_TYPE[] = [
   {
@@ -137,7 +138,7 @@ const AdminDashboardPage = () => {
             description="Monitor and manage your workspace overview as Admin"
           />
 
-          <div className="my-10 w-full flex gap-3 flex-wrap lg:flex-nowrap">
+          <div className="my-4 w-full flex gap-3 flex-wrap lg:flex-nowrap">
             {analysisItems.map((item) => (
               <AnalysisCard key={uuidv4()} item={item} />
             ))}
@@ -155,21 +156,21 @@ const AdminDashboardPage = () => {
               <MachineStatusPieChart />
             </div>
 
-            <div className="basis-full hidden h-full lg:flex flex-col gap-3">
-              <WorkspaceJoinForm />
-              <ProjectCpn />
-              <PeopleCpn/>
+            {/* <div className="basis-full hidden h-full lg:flex flex-col gap-3"> */}
+            <div className="w-full lg:w-1/2">
+              <ActivitiesPercentageChart />
             </div>
+            {/* </div> */}
           </div>
 
           {/* Error Trend Chart */}
           <div className="mt-3 w-full">
-            <ErrorTrendLineChart />
+            <OperationStatsCpn />
           </div>
 
           {/* Operation Statistics */}
           <div className="my-4 w-full">
-            <OperationStatsCpn />
+            <ErrorTrendLineChart />
           </div>
         </>
       )}

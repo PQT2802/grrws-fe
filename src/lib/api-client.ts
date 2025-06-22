@@ -19,7 +19,7 @@ import {
   SPAREPART_WEB,
   TASK_GROUP_RESPONSE,
 } from "@/types/task.type";
-import { GET_MECHANIC_USER } from "@/types/user.type";
+import { CREATE_USER_REQUEST, GET_MECHANIC_USER } from "@/types/user.type";
 import {
   WARRANTY_HISTORY_LIST,
   WARRANTY_LIST,
@@ -54,8 +54,23 @@ class APIClient {
       return http.get<GET_MECHANIC_USER>("/api/User/role?role=3"); // ✅ Auto token
     },
     getUsersByRole: (role: number): Promise<GET_MECHANIC_USER> => {
-      return http.get<GET_MECHANIC_USER>(`/api/User/role?role=${role}`); // ✅ Auto token
+      return http.get<GET_MECHANIC_USER>(`/api/User/role?role=${role}`);
     },
+
+    getUsersList: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      return http.get(`/api/User/users/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+    
+    createUser: (data: CREATE_USER_REQUEST): Promise<any> => {
+      // Ensure proper data format and structure
+      const payload = {
+        ...data,
+        Role: Number(data.Role), // Ensure Role is numeric
+      };
+      
+      console.log("Creating user with final payload:", JSON.stringify(payload));
+      return http.post("/api/User", payload);
+    }
   };
   // Workspace methods (when you add them) - these require authentication
   // workspace = {
