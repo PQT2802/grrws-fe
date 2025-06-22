@@ -25,6 +25,9 @@ import MachineStatusPieChart from "@/components/ChartCpn/MachineStatusPieChart";
 import ErrorTrendLineChart from "@/components/ChartCpn/ErrorTrendLineChart";
 import OperationStatsCpn from "@/components/ChartCpn/OperationStatsCpn";
 import ActivitiesPercentageChart from "@/components/ChartCpn/ActivitiesPercentageChart";
+import QuickActions from "../../stock_keeper/dashboard/components/QuickActions";
+import AdminQuickActions from "@/components/ChartCpn/AdminQuickActions";
+import ActiveInstances from "@/components/ChartCpn/ActiveInstances";
 
 const ANALYSIS_ITEMS: ANALYSIS_TYPE[] = [
   {
@@ -149,16 +152,23 @@ const AdminDashboardPage = () => {
             <TasksAreaChart />
             <TasksLineChart />
           </div>
+          
+          {/* Active Instances Table */}
+          <div className="w-full mb-4 mt-4">
+            <ActiveInstances />
+          </div>
+
 
           {/* Machine Status Chart - Half Width */}
           <div className="mt-3 w-full h-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
             <div className="w-1/2">
-              <MachineStatusPieChart />
+              <ActivitiesPercentageChart />
             </div>
 
             {/* <div className="basis-full hidden h-full lg:flex flex-col gap-3"> */}
             <div className="w-full lg:w-1/2">
-              <ActivitiesPercentageChart />
+              <MachineStatusPieChart />
+              <AdminQuickActions/>
             </div>
             {/* </div> */}
           </div>
