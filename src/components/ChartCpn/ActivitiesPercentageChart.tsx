@@ -109,9 +109,9 @@ export default function ActivitiesPercentageChart() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle>Task Activities</CardTitle>
+        <CardTitle>Thống kê hoạt động công việc</CardTitle>
         <Button variant="outline" size="sm" className="gap-2">
-          Week
+          Tuần
           <ChevronDown className="h-4 w-4" />
         </Button>
       </CardHeader>

@@ -3,10 +3,12 @@ import { clsx, type ClassValue } from "clsx";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone"; // Add this import
 import { twMerge } from "tailwind-merge";
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
+dayjs.extend(timezone); // Add this line
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -246,7 +248,42 @@ export const formatTimeStampDate = (
 ): string => {
   if (!isoString) return "Invalid date";
 
-  const date = dayjs(isoString);
+  // Parse the date and assume it's in UTC if no timezone is specified
+  let date = dayjs(isoString);
+
+  // If the string doesn't have timezone info, treat it as UTC and convert to Ho Chi Minh
+  if (
+    !isoString.includes("Z") &&
+    !isoString.includes("+") &&
+    !isoString.includes("-")
+  ) {
+    date = dayjs.utc(isoString).tz("Asia/Ho_Chi_Minh");
+  } else {
+    // If it already has timezone info, just convert to Ho Chi Minh
+    date = dayjs(isoString).tz("Asia/Ho_Chi_Minh");
+  }
+
+  if (!date.isValid()) return "Invalid date";
+
+  switch (type) {
+    case "date":
+      return date.format("DD/MM/YYYY");
+    case "datetime":
+      return date.format("DD/MM/YYYY HH:mm:ss");
+    case "time":
+      return date.format("HH:mm:ss");
+    default:
+      return date.format("DD/MM/YYYY");
+  }
+};
+export const formatAPIDateToHoChiMinh = (
+  dateString: string | null | undefined,
+  type: "date" | "datetime" | "time" = "date"
+): string => {
+  if (!dateString) return "Invalid date";
+
+  // Parse as UTC and convert to Ho Chi Minh timezone (+7)
+  const date = dayjs.utc(dateString).tz("Asia/Ho_Chi_Minh");
 
   if (!date.isValid()) return "Invalid date";
 

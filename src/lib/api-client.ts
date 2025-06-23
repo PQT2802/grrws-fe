@@ -344,6 +344,9 @@ class APIClient {
     },
   }
   dashboard = {
+    getTechnicalHeadStats: (): Promise<any> => {
+      return http.get("/api/Dashboard/technical-head-stats");
+    },
     getTaskStatistics: (): Promise<DASHBOARD_RESPONSE<TASK_STATISTICS>> => {
       console.log("Fetching task statistics from dashboard API");
       return http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>("/api/Dashboard/get-task-statistics");
