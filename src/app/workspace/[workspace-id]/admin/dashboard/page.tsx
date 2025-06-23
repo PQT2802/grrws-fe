@@ -7,17 +7,9 @@ import useWorkspaceStore, { WorkspaceStoreState } from "@/store/workspace";
 import useTaskStore, { TaskStoreState } from "@/store/task";
 import { TASK_TYPE } from "@/types";
 import { calculateDaysLeft } from "@/lib/utils";
-
 import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import AnalysisCard, { ANALYSIS_TYPE } from "@/components/AnalysisCard/AnalysisCard";
-import TasksBarChart from "@/components/TasksBarChart/TasksBarChart";
-import TasksAreaChart from "@/components/TasksAreaChart/TasksAreaChart";
-import TasksLineChart from "@/components/TasksLineChart/TaskLineChart";
-import AssignedTask from "@/components/AssignedTask/AssignedTask";
-import WorkspaceJoinForm from "@/components/WorkspaceJoinForm/WorkspaceJoinForm";
-import ProjectCpn from "@/components/ProjectsCpn/ProjectCpn";
-import PeopleCpn from "@/components/PeopleCpn/PeopleCpn";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-toastify";
 import { USER_ROLES } from "@/types/auth.type";
@@ -25,9 +17,11 @@ import MachineStatusPieChart from "@/components/ChartCpn/MachineStatusPieChart";
 import ErrorTrendLineChart from "@/components/ChartCpn/ErrorTrendLineChart";
 import OperationStatsCpn from "@/components/ChartCpn/OperationStatsCpn";
 import ActivitiesPercentageChart from "@/components/ChartCpn/ActivitiesPercentageChart";
-import QuickActions from "../../stock_keeper/dashboard/components/QuickActions";
 import AdminQuickActions from "@/components/ChartCpn/AdminQuickActions";
 import ActiveInstances from "@/components/ChartCpn/ActiveInstances";
+import IssuesErrorsTrendChart from "@/components/ChartGroupCpn/IssuesErrorsTrendChart";
+import TopErrorDevicesChart from "@/components/ChartGroupCpn/TopErrorDevicesChart";
+import TopMechanicsChart from "@/components/ChartGroupCpn/TopMechanicsChart";
 
 const ANALYSIS_ITEMS: ANALYSIS_TYPE[] = [
   {
@@ -36,7 +30,7 @@ const ANALYSIS_ITEMS: ANALYSIS_TYPE[] = [
     count: 0,
     analysis: 10,
     direction: "up",
-    icon: <></>, // Thêm icon nếu cần
+    icon: <></>,
   },
   {
     id: "totaltasks",
@@ -148,9 +142,9 @@ const AdminDashboardPage = () => {
           </div>
 
           <div className="w-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
-            <TasksBarChart />
-            <TasksAreaChart />
-            <TasksLineChart />
+            <TopErrorDevicesChart />
+            <TopMechanicsChart />
+            <IssuesErrorsTrendChart />
           </div>
           
           {/* Active Instances Table */}
