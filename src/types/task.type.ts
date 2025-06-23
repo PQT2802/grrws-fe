@@ -90,3 +90,66 @@ export interface SINGLE_TASK_RESPONSE {
   pageNumber: number;
   pageSize: number;
 }
+export interface UNINSTALL_TASK_DETAIL {
+  deviceName: string;
+  deviceCode: string;
+  location: string;
+  taskGroupName: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+}
+
+export interface INSTALL_TASK_DETAIL {
+  deviceName: string;
+  deviceCode: string;
+  location: string;
+  taskGroupName: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+}
+
+export interface WARRANTY_TASK_DETAIL {
+  claimNumber: string;
+  warrantyProvider: string;
+  warrantyCode: string;
+  contractNumber: string | null;
+  claimStatus: string;
+  startDate: string;
+  expectedReturnDate: string | null;
+  actualReturnDate: string | null;
+  location: string;
+  resolution: string | null;
+  issueDescription: string;
+  warrantyNotes: string | null;
+  claimAmount: number | null;
+  hotNumber: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string | null;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+}

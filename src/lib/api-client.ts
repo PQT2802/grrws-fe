@@ -16,8 +16,11 @@ import {
   CREATE_REPAIR_TASK,
   CREATE_UNINSTALL_TASK,
   CREATE_WARRANTY_TASK,
+  INSTALL_TASK_DETAIL,
   SPAREPART_WEB,
   TASK_GROUP_RESPONSE,
+  UNINSTALL_TASK_DETAIL,
+  WARRANTY_TASK_DETAIL,
 } from "@/types/task.type";
 import { CREATE_USER_REQUEST, GET_MECHANIC_USER } from "@/types/user.type";
 import {
@@ -66,17 +69,22 @@ class APIClient {
       return http.get<GET_MECHANIC_USER>(`/api/User/role?role=${role}`);
     },
 
-    getUsersList: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
-      return http.get(`/api/User/users/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    getUsersList: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
+      return http.get(
+        `/api/User/users/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
-    
+
     createUser: (data: CREATE_USER_REQUEST): Promise<any> => {
       // Ensure proper data format and structure
       const payload = {
         ...data,
-        Role: Number(data.Role), 
+        Role: Number(data.Role),
       };
-      
+
       console.log("Creating user with final payload:", JSON.stringify(payload));
       return http.post("/api/User", payload);
     },
@@ -186,6 +194,30 @@ class APIClient {
         `/api/Task/groups?pageNumber=${pageNumber}&pageSize=${pageSize}`
       );
     },
+    applySuggestedGroupTasks: (taskGroupId: string): Promise<any> => {
+      return http.post(
+        `/api/Task/apply-suggested-group-assignments/${taskGroupId}`,
+        {}
+      );
+    },
+
+    getUninstallTaskDetail: (
+      taskId: string
+    ): Promise<UNINSTALL_TASK_DETAIL> => {
+      return http.get<UNINSTALL_TASK_DETAIL>(
+        `/api/Task/uninstall-task/${taskId}`
+      );
+    },
+
+    getInstallTaskDetail: (taskId: string): Promise<INSTALL_TASK_DETAIL> => {
+      return http.get<INSTALL_TASK_DETAIL>(`/api/Task/install-task/${taskId}`);
+    },
+
+    getWarrantyTaskDetail: (taskId: string): Promise<WARRANTY_TASK_DETAIL> => {
+      return http.get<WARRANTY_TASK_DETAIL>(
+        `/api/Task/warranty-task-submit/${taskId}`
+      );
+    },
   };
   error = {
     getSuggestedErrors: (
@@ -226,25 +258,29 @@ class APIClient {
         `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
       ); // ✅ Auto token
     },
+
+    getDeviceById: (deviceId: string): Promise<DEVICE_WEB> => {
+      return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
+    },
   };
-  
+
   sparePart = {
     getRequests: (): Promise<any> => {
       console.log("Getting all spare part requests");
-      return http.get('/api/SparePartUsage/requests');
+      return http.get("/api/SparePartUsage/requests");
     },
-    
+
     getRequestById: (requestId: string): Promise<any> => {
       console.log(`Getting spare part request by ID: ${requestId}`);
       return http.get(`/api/SparePartUsage/requests/${requestId}`);
     },
-    
+
     // getInventory: async (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
     //   console.log(`Getting spare parts inventory from external API (page ${pageNumber}, size ${pageSize})`);
     //   try {
     //     const response = await http.get(`/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`);
     //     console.log("External API response status:", (response as any)?.status || "unknown");
-    //     console.log("Response data sample:", 
+    //     console.log("Response data sample:",
     //       JSON.stringify(response).substring(0, 100) + "...");
     //     return response;
     //   } catch (error) {
@@ -265,10 +301,10 @@ class APIClient {
     importSparePart: async (formData: FormData): Promise<any> => {
       console.log("Importing spare part to external API");
       try {
-        const response = await http.post('/api/Sparepart', formData, {
+        const response = await http.post("/api/Sparepart", formData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+            "Content-Type": "multipart/form-data",
+          },
         });
         return response;
       } catch (error) {
@@ -291,16 +327,24 @@ class APIClient {
 
     getPartById: async (id: string): Promise<any> => {
       console.log(`API Client: Getting spare part by ID: ${id}`);
-      return http.get(`/api/Sparepart/${id}`); 
+      return http.get(`/api/Sparepart/${id}`);
     },
 
-    updateStockQuantity: async (sparePartId: string, stockQuantity: number): Promise<any> => {
-      console.log(`Updating stock quantity for spare part with ID: ${sparePartId}`);
+    updateStockQuantity: async (
+      sparePartId: string,
+      stockQuantity: number
+    ): Promise<any> => {
+      console.log(
+        `Updating stock quantity for spare part with ID: ${sparePartId}`
+      );
       try {
-        const response = await http.put('/api/Sparepart/update-stock-quantity', {
-          SparepartId: sparePartId,
-          StockQuantity: stockQuantity
-        });
+        const response = await http.put(
+          "/api/Sparepart/update-stock-quantity",
+          {
+            SparepartId: sparePartId,
+            StockQuantity: stockQuantity,
+          }
+        );
         return response;
       } catch (error) {
         console.error("Error in external API call:", error);
@@ -309,70 +353,92 @@ class APIClient {
     },
 
     // Update request status
-    updateStatus: async (requestId: string, confirmedById: string, notes: string): Promise<any> => {
+    updateStatus: async (
+      requestId: string,
+      confirmedById: string,
+      notes: string
+    ): Promise<any> => {
       console.log(`Updating request status to Confirmed: ${requestId}`);
-      return http.put('/api/SparePartUsage/update-status', {
+      return http.put("/api/SparePartUsage/update-status", {
         RequestTakeSparePartUsageId: requestId,
-        Status: 'Confirmed',
+        Status: "Confirmed",
         ConfirmedById: confirmedById,
-        Notes: notes
+        Notes: notes,
       });
     },
-    
+
     // Update insufficient status (mark parts as unavailable)
     updateInsufficientStatus: async (
-      requestId: string, 
-      sparePartIds: string[], 
+      requestId: string,
+      sparePartIds: string[],
       expectedAvailabilityDate: string,
       notes: string
     ): Promise<any> => {
-      console.log(`Marking spare parts as unavailable for request: ${requestId}`);
-      return http.put('/api/SparePartUsage/update-insufficient-status', {
+      console.log(
+        `Marking spare parts as unavailable for request: ${requestId}`
+      );
+      return http.put("/api/SparePartUsage/update-insufficient-status", {
         RequestTakeSparePartUsageId: requestId,
         SparePartIds: sparePartIds,
         ExpectedAvailabilityDate: expectedAvailabilityDate,
-        Notes: notes
+        Notes: notes,
       });
     },
-    
+
     // Mark spare parts as taken from stock (delivered)
     updateTakenFromStock: async (sparePartUsageIds: string[]): Promise<any> => {
-      console.log(`Marking spare parts as delivered: ${sparePartUsageIds.join(', ')}`);
-      return http.put('/api/SparePartUsage/update-taken-from-stock', {
+      console.log(
+        `Marking spare parts as delivered: ${sparePartUsageIds.join(", ")}`
+      );
+      return http.put("/api/SparePartUsage/update-taken-from-stock", {
         SparePartUsageIds: sparePartUsageIds,
-        IsTakenFromStock: true
+        IsTakenFromStock: true,
       });
     },
-  }
+  };
   dashboard = {
     getTechnicalHeadStats: (): Promise<any> => {
       return http.get("/api/Dashboard/technical-head-stats");
     },
     getTaskStatistics: (): Promise<DASHBOARD_RESPONSE<TASK_STATISTICS>> => {
       console.log("Fetching task statistics from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>("/api/Dashboard/get-task-statistics");
+      return http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>(
+        "/api/Dashboard/get-task-statistics"
+      );
     },
-    
+
     getDeviceStatistics: (): Promise<DASHBOARD_RESPONSE<DEVICE_STATISTICS>> => {
       console.log("Fetching device statistics from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>("/api/Dashboard/get-device-statistics");
+      return http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>(
+        "/api/Dashboard/get-device-statistics"
+      );
     },
-    
-    getTaskRequestReportTotal: (): Promise<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>> => {
+
+    getTaskRequestReportTotal: (): Promise<
+      DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>
+    > => {
       console.log("Fetching task/request/report totals from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>("/api/Dashboard/get-total-task-request-report");
+      return http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>(
+        "/api/Dashboard/get-total-task-request-report"
+      );
     },
-    
+
     getUserCountByRole: (): Promise<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>> => {
       console.log("Fetching user counts by role from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>("/api/Dashboard/get-total-user-by-role");
+      return http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>(
+        "/api/Dashboard/get-total-user-by-role"
+      );
     },
-    
-    getTaskCompletionCount: (): Promise<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>> => {
+
+    getTaskCompletionCount: (): Promise<
+      DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>
+    > => {
       console.log("Fetching task completion counts from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>("/api/Dashboard/get-task-completion-count-by-week-and-month");
+      return http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>(
+        "/api/Dashboard/get-task-completion-count-by-week-and-month"
+      );
     },
-    
+
     // Method that fetches all dashboard data in parallel for improved performance
     getAllDashboardData: async (): Promise<{
       taskStats: TASK_STATISTICS;
@@ -382,38 +448,52 @@ class APIClient {
       completionCounts: TASK_COMPLETION_COUNT;
     }> => {
       console.log("Fetching all dashboard data in parallel");
-      
+
       try {
         const [
           taskStatsResponse,
           deviceStatsResponse,
           totalsResponse,
           userCountsResponse,
-          completionCountsResponse
+          completionCountsResponse,
         ] = await Promise.all([
-          http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>("/api/Dashboard/get-task-statistics"),
-          http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>("/api/Dashboard/get-device-statistics"),
-          http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>("/api/Dashboard/get-total-task-request-report"),
-          http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>("/api/Dashboard/get-total-user-by-role"),
-          http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>("/api/Dashboard/get-task-completion-count-by-week-and-month")
+          http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>(
+            "/api/Dashboard/get-task-statistics"
+          ),
+          http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>(
+            "/api/Dashboard/get-device-statistics"
+          ),
+          http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>(
+            "/api/Dashboard/get-total-task-request-report"
+          ),
+          http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>(
+            "/api/Dashboard/get-total-user-by-role"
+          ),
+          http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>(
+            "/api/Dashboard/get-task-completion-count-by-week-and-month"
+          ),
         ]);
-        
+
         return {
           taskStats: taskStatsResponse.data,
           deviceStats: deviceStatsResponse.data,
           totals: totalsResponse.data,
           userCounts: userCountsResponse.data,
-          completionCounts: completionCountsResponse.data
+          completionCounts: completionCountsResponse.data,
         };
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         throw error;
       }
     },
-    
-    getRequestsWithReport: (): Promise<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>> => {
+
+    getRequestsWithReport: (): Promise<
+      DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>
+    > => {
       console.log("Fetching requests with reports from dashboard API");
-      return http.get<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>>("/api/Dashboard/get-requests-contain-report");
+      return http.get<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>>(
+        "/api/Dashboard/get-requests-contain-report"
+      );
     },
   };
 }
