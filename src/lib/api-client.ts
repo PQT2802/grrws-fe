@@ -25,6 +25,14 @@ import {
   WARRANTY_LIST,
   WarrantyInfo,
 } from "@/types/warranty.type";
+import {
+  DASHBOARD_RESPONSE,
+  TASK_STATISTICS,
+  DEVICE_STATISTICS,
+  TASK_REQUEST_REPORT_TOTAL,
+  USER_COUNT_BY_ROLE,
+  TASK_COMPLETION_COUNT,
+} from "@/types/dashboard.type";
 import { create } from "domain";
 
 class APIClient {
@@ -335,6 +343,70 @@ class APIClient {
       });
     },
   }
+  dashboard = {
+    getTaskStatistics: (): Promise<DASHBOARD_RESPONSE<TASK_STATISTICS>> => {
+      console.log("Fetching task statistics from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>("/api/Dashboard/get-task-statistics");
+    },
+    
+    getDeviceStatistics: (): Promise<DASHBOARD_RESPONSE<DEVICE_STATISTICS>> => {
+      console.log("Fetching device statistics from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>("/api/Dashboard/get-device-statistics");
+    },
+    
+    getTaskRequestReportTotal: (): Promise<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>> => {
+      console.log("Fetching task/request/report totals from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>("/api/Dashboard/get-total-task-request-report");
+    },
+    
+    getUserCountByRole: (): Promise<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>> => {
+      console.log("Fetching user counts by role from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>("/api/Dashboard/get-total-user-by-role");
+    },
+    
+    getTaskCompletionCount: (): Promise<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>> => {
+      console.log("Fetching task completion counts from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>("/api/Dashboard/get-task-completion-count-by-week-and-month");
+    },
+    
+    // Method that fetches all dashboard data in parallel for improved performance
+    getAllDashboardData: async (): Promise<{
+      taskStats: TASK_STATISTICS;
+      deviceStats: DEVICE_STATISTICS;
+      totals: TASK_REQUEST_REPORT_TOTAL;
+      userCounts: USER_COUNT_BY_ROLE;
+      completionCounts: TASK_COMPLETION_COUNT;
+    }> => {
+      console.log("Fetching all dashboard data in parallel");
+      
+      try {
+        const [
+          taskStatsResponse,
+          deviceStatsResponse,
+          totalsResponse,
+          userCountsResponse,
+          completionCountsResponse
+        ] = await Promise.all([
+          http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>("/api/Dashboard/get-task-statistics"),
+          http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>("/api/Dashboard/get-device-statistics"),
+          http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>("/api/Dashboard/get-total-task-request-report"),
+          http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>("/api/Dashboard/get-total-user-by-role"),
+          http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>("/api/Dashboard/get-task-completion-count-by-week-and-month")
+        ]);
+        
+        return {
+          taskStats: taskStatsResponse.data,
+          deviceStats: deviceStatsResponse.data,
+          totals: totalsResponse.data,
+          userCounts: userCountsResponse.data,
+          completionCounts: completionCountsResponse.data
+        };
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        throw error;
+      }
+    }
+  };
 }
 
 export const apiClient = new APIClient();
