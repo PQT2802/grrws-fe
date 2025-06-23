@@ -3,6 +3,7 @@ import { clsx, type ClassValue } from "clsx";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
+import { Timestamp } from "firebase/firestore";
 import { twMerge } from "tailwind-merge";
 
 dayjs.extend(relativeTime);
@@ -261,3 +262,25 @@ export const formatTimeStampDate = (
       return date.format("DD/MM/YYYY");
   }
 };
+
+/**
+ * Converts a date string to a Firestore Timestamp.
+ * @param dateString - Any valid date string.
+ * @returns Firestore Timestamp object.
+ */
+export function convertDateStrToTimestamp(dateString: string): Timestamp {
+  const date = new Date(dateString);
+  return Timestamp.fromDate(date);
+}
+
+/**
+ * Converts a Firestore Timestamp to a string in ISO format for FullCalendar.
+ * @param timestamp - Firestore Timestamp object.
+ * @returns ISO string (e.g. "2025-01-16T12:00:00.000Z")
+ */
+export function convertTimestampToFullCalendar(timestamp: Timestamp | null | undefined): string {
+  if (!timestamp) return "";
+  return timestamp.toDate().toISOString();
+}
+
+
