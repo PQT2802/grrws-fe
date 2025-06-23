@@ -17,6 +17,8 @@ export interface DEVICE_STATISTICS {
   totalInRepairDevices: number;
   totalInWarrantyDevices: number;
   totalDecommissionedDevices: number;
+  totalDevicesWarrantyValid: number;
+  totalDevicesWarrantyExpired: number;
 }
 
 export interface TASK_REQUEST_REPORT_TOTAL {
