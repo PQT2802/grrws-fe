@@ -26,14 +26,25 @@ export interface USER_LIST_RESPONSE {
 }
 
 export interface CREATE_USER_REQUEST {
-  FullName?: string;           
-  UserName: string;           
-  Email: string;               
-  Password: string;            
-  PhoneNumber?: string;       
-  DateOfBirth?: string;        
-  Role: number;                
-  ProfilePictureUrl?: string;  
+  FullName?: string;
+  UserName: string;
+  Email: string;
+  Password: string;
+  PhoneNumber?: string;
+  DateOfBirth?: string;
+  Role: number;
+  ProfilePictureUrl?: string;
+}
+
+export interface UPDATE_USER_REQUEST {
+  Id: string;
+  FullName?: string;
+  UserName: string;
+  Email: string;
+  PhoneNumber?: string;
+  ProfilePictureUrl?: string;
+  DateOfBirth?: string;
+  Role: number;
 }
 
 export const ROLE_MAPPING: Record<string, number> = {

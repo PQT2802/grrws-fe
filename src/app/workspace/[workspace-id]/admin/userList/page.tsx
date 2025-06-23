@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { UserListCpn } from "@/components/UserListCpn/UserListCpn"
 import { CreateUserModal } from "@/components/UserModalCpn/CreateUserModal"
+import { UpdateUserModal } from "@/components/UserModalCpn/UpdateUserModal"
 
 type DialogMode = "view" | "edit" | "create"
 
@@ -76,6 +77,8 @@ export default function UserList() {
   const [dialogMode, setDialogMode] = useState<DialogMode>("view")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [showCreateUserModal, setShowCreateUserModal] = useState(false)
+  const [showUpdateUserModal, setShowUpdateUserModal] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
 
   // Chart data state
   const [chartKey, setChartKey] = useState<string>(Date.now().toString())
@@ -275,8 +278,9 @@ export default function UserList() {
   }, [openDialog])
 
   const handleEditUser = useCallback((user: USER_LIST_ITEM) => {
-    openDialog("edit", user)
-  }, [openDialog])
+    setSelectedUserId(user.id);
+    setShowUpdateUserModal(true);
+  }, [])
 
   const handleCreateUser = useCallback(() => {
     setShowCreateUserModal(true);
@@ -345,6 +349,13 @@ export default function UserList() {
         open={showCreateUserModal}
         onOpenChange={setShowCreateUserModal}
         onSuccess={fetchUsers}
+      />
+
+      <UpdateUserModal
+        open={showUpdateUserModal}
+        onOpenChange={setShowUpdateUserModal}
+        onSuccess={fetchUsers}
+        userId={selectedUserId}
       />
 
       {/* User detail modal */}

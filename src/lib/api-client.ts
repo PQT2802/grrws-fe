@@ -65,12 +65,21 @@ class APIClient {
       // Ensure proper data format and structure
       const payload = {
         ...data,
-        Role: Number(data.Role), // Ensure Role is numeric
+        Role: Number(data.Role), 
       };
       
       console.log("Creating user with final payload:", JSON.stringify(payload));
       return http.post("/api/User", payload);
-    }
+    },
+
+    getUserById: (userId: string): Promise<any> => {
+      return http.get(`/api/User?requestId=${userId}`);
+    },
+
+    updateUser: (data: any): Promise<any> => {
+      console.log("Updating user with payload:", JSON.stringify(data));
+      return http.put("/api/User", data);
+    },
   };
   // Workspace methods (when you add them) - these require authentication
   // workspace = {
