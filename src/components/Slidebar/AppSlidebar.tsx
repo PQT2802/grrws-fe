@@ -66,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [],
     },
     {
-      title: "Projects",
+      title: "Calendar",
       url: `/workspace/${workspaceId ?? "#"}/projects`, // ✅ Use workspaceId from URL
       icon: Map,
       items: PROJECT_ITEMS,

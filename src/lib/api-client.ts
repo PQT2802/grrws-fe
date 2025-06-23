@@ -192,6 +192,11 @@ class APIClient {
       ); // ✅ Auto token
     },
   };
+  dashboard = {
+    getTechnicalHeadStats: (): Promise<any> => {
+      return http.get("/api/Dashboard/technical-head-stats");
+    },
+  };
 }
 
 export const apiClient = new APIClient();
