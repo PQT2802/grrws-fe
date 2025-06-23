@@ -32,6 +32,7 @@ import {
   TASK_REQUEST_REPORT_TOTAL,
   USER_COUNT_BY_ROLE,
   TASK_COMPLETION_COUNT,
+  REQUEST_WITH_REPORT,
 } from "@/types/dashboard.type";
 import { create } from "domain";
 
@@ -408,7 +409,12 @@ class APIClient {
         console.error("Error fetching dashboard data:", error);
         throw error;
       }
-    }
+    },
+    
+    getRequestsWithReport: (): Promise<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>> => {
+      console.log("Fetching requests with reports from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>>("/api/Dashboard/get-requests-contain-report");
+    },
   };
 }
 

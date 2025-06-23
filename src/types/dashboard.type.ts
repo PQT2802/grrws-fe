@@ -44,3 +44,30 @@ export interface TASK_COMPLETION_COUNT {
 export interface DASHBOARD_RESPONSE<T> {
   data: T;
 }
+
+export interface REQUEST_WITH_REPORT {
+  id: string;
+  reportId: string;
+  deviceId: string;
+  deviceName: string;
+  deviceCode: string;
+  positionIndex: number;
+  zoneName: string;
+  areaName: string;
+  requestDate: string;
+  requestTitle: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdDate: string;
+  createdBy: string;
+  issues: {
+    id: string;
+    displayName: string;
+    imageUrls: string[];
+  }[];
+}
+
+export interface REQUESTS_WITH_REPORT_RESPONSE {
+  data: REQUEST_WITH_REPORT[];
+}

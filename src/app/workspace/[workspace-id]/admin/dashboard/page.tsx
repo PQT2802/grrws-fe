@@ -13,7 +13,7 @@ import ErrorTrendLineChart from "@/components/ChartCpn/ErrorTrendLineChart";
 import OperationStatsCpn from "@/components/ChartCpn/OperationStatsCpn";
 import ActivitiesPercentageChart from "@/components/ChartCpn/ActivitiesPercentageChart";
 import AdminQuickActions from "@/components/ChartCpn/AdminQuickActions";
-import ActiveInstances from "@/components/ChartCpn/ActiveInstances";
+import ActiveInstances from "@/components/ChartCpn/RequestChartCpn/ActiveInstances";
 import IssuesErrorsTrendChart from "@/components/ChartGroupCpn/IssuesErrorsTrendChart";
 import TopErrorDevicesChart from "@/components/ChartGroupCpn/TopErrorDevicesChart";
 import TopMechanicsChart from "@/components/ChartGroupCpn/TopMechanicsChart";
