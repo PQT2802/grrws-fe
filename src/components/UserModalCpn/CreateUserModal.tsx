@@ -20,6 +20,7 @@ import {
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
 import { CREATE_USER_REQUEST, ROLE_MAPPING } from "@/types/user.type";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface CreateUserModalProps {
   open: boolean;
@@ -37,36 +38,65 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     userName: "",
     email: "",
     password: "",
-    dateOfBirth: "",
+    dateOfBirth: null as Date | null,
     phoneNumber: "",
     role: "",
   });
 
   // Form validation state
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [isFormValid, setIsFormValid] = useState(false);
+
+  // Phone number regex for Vietnamese format
+  const phoneNumberRegex = /^\d{10,11}$/;
 
   // Password regex patterns
   const startsWithCapital = /^[A-Z]/;
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/;
   const minLength = /.{3,}/;
 
+  // Calculate age from date of birth
+  const calculateAge = (birthDate: Date): number => {
+    if (!birthDate) return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   // Validate form fields
-  const validateField = (name: string, value: string): string => {
+  const validateField = (name: string, value: string | Date | null): string => {
     switch(name) {
+      case 'fullName':
+        return !value || !(value as string).trim() ? "Full name is required" : "";
+      
       case 'userName':
-        return !value.trim() ? "Username is required" : "";
+        return !value || !(value as string).trim() ? "Username is required" : "";
       
       case 'email':
-        if (!value.trim()) return "Email is required";
-        if (!/\S+@\S+\.\S+/.test(value)) return "Email format is invalid";
+        if (!value || !(value as string).trim()) return "Email is required";
+        if (!/\S+@\S+\.\S+/.test(value as string)) return "Email format is invalid";
         return "";
       
       case 'password':
-        if (!value.trim()) return "Password is required";
-        if (!startsWithCapital.test(value)) return "Password must start with a capital letter";
-        if (!hasSpecialChar.test(value)) return "Password must include at least one special character";
-        if (!minLength.test(value)) return "Password must be at least 3 characters";
+        if (!value || !(value as string).trim()) return "Password is required";
+        if (!startsWithCapital.test(value as string)) return "Password must start with a capital letter";
+        if (!hasSpecialChar.test(value as string)) return "Password must include at least one special character";
+        if (!minLength.test(value as string)) return "Password must be at least 3 characters";
+        return "";
+      
+      case 'phoneNumber':
+        if (!value || !(value as string).trim()) return "Phone number is required";
+        if (!phoneNumberRegex.test(value as string)) return "Phone number must contain 10–11 digits";
+        return "";
+      
+      case 'dateOfBirth':
+        if (!value) return "Date of birth is required";
+        const age = calculateAge(value as Date);
+        if (age < 18) return "User must be at least 18 years old";
         return "";
       
       case 'role':
@@ -77,42 +107,34 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
-  // Validate all form fields and update form validity
-  const validateForm = () => {
-    const fieldErrors: Record<string, string> = {};
-    let valid = true;
-
-    // Validate each required field
-    Object.entries({
-      userName: formData.userName,
-      email: formData.email,
-      password: formData.password,
-      role: formData.role
-    }).forEach(([field, value]) => {
-      const error = validateField(field, value as string);
-      if (error) {
-        fieldErrors[field] = error;
-        valid = false;
-      }
+  // Reset form when modal opens/closes
+  const resetForm = () => {
+    setFormData({
+      fullName: "",
+      userName: "",
+      email: "",
+      password: "",
+      dateOfBirth: null,
+      phoneNumber: "",
+      role: "",
     });
-
-    setErrors({...errors, ...fieldErrors});
-    setIsFormValid(valid);
-    return valid;
+    setErrors({});
+    setTouched({});
   };
 
-  // Validate on input change
+  // Reset form when modal closes
   useEffect(() => {
-    if (Object.keys(touched).length > 0) {
-      validateForm();
+    if (!open) {
+      resetForm();
     }
-  }, [formData]);
+  }, [open]);
 
   const handleBlur = (field: string) => {
     setTouched({...touched, [field]: true});
     
     // Validate the field on blur
-    const error = validateField(field, formData[field as keyof typeof formData] as string);
+    const value = field === 'dateOfBirth' ? formData.dateOfBirth : formData[field as keyof typeof formData];
+    const error = validateField(field, value);
     setErrors({...errors, [field]: error});
   };
 
@@ -124,7 +146,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       [name]: value
     });
     
-    // Clear backend error when user types
+    // Clear error when user types
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -150,18 +172,46 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
-  const resetForm = () => {
+  const handleDateChange = (date: Date | undefined) => {
     setFormData({
-      fullName: "",
-      userName: "",
-      email: "",
-      password: "",
-      dateOfBirth: "",
-      phoneNumber: "",
-      role: "",
+      ...formData,
+      dateOfBirth: date || null
     });
-    setErrors({});
-    setTouched({});
+    
+    setTouched({...touched, dateOfBirth: true});
+    
+    // Clear error when user selects a date
+    if (errors.dateOfBirth) {
+      setErrors({
+        ...errors,
+        dateOfBirth: ""
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const fieldErrors: Record<string, string> = {};
+    let valid = true;
+
+    // Validate all required fields
+    Object.entries({
+      fullName: formData.fullName,
+      userName: formData.userName,
+      email: formData.email,
+      password: formData.password,
+      phoneNumber: formData.phoneNumber,
+      dateOfBirth: formData.dateOfBirth,
+      role: formData.role
+    }).forEach(([field, value]) => {
+      const error = validateField(field, value);
+      if (error) {
+        fieldErrors[field] = error;
+        valid = false;
+      }
+    });
+
+    setErrors({...errors, ...fieldErrors});
+    return valid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,16 +233,13 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     setIsLoading(true);
     
     try {
-      // Double check that we're sending valid data
-      console.log("Submitting user with role:", formData.role, "mapped to:", ROLE_MAPPING[formData.role]);
-      
       const payload: CREATE_USER_REQUEST = {
-        FullName: formData.fullName || undefined,
+        FullName: formData.fullName,
         UserName: formData.userName,
         Email: formData.email,
         Password: formData.password,
-        DateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : undefined,
-        PhoneNumber: formData.phoneNumber || undefined,
+        DateOfBirth: formData.dateOfBirth ? formData.dateOfBirth.toISOString() : undefined,
+        PhoneNumber: formData.phoneNumber,
         Role: ROLE_MAPPING[formData.role] || 0,
       };
       
@@ -204,7 +251,6 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
         return;
       }
       
-      // Log the exact payload being sent for debugging
       console.log("Creating user with payload:", JSON.stringify(payload));
       
       await apiClient.user.createUser(payload);
@@ -219,11 +265,9 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       console.error("Error creating user:", error);
       
       if (error.response?.data?.errors) {
-        // Map backend validation errors to form fields
         const validationErrors: Record<string, string> = {};
         
         Object.entries(error.response.data.errors).forEach(([key, messages]: [string, any]) => {
-          // Convert key from server format (PascalCase) to client format (camelCase)
           const formKey = key.charAt(0).toLowerCase() + key.slice(1);
           validationErrors[formKey] = Array.isArray(messages) ? messages[0] : messages;
         });
@@ -241,11 +285,22 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
   };
 
   return (
-    <Dialog open={open} onOpenChange={(value) => {
-      if (!value) resetForm();
-      onOpenChange(value);
-    }}>
-      <DialogContent className="sm:max-w-[600px]">
+    <Dialog 
+      open={open} 
+      onOpenChange={(value) => {
+        onOpenChange(value);
+      }}
+    >
+      <DialogContent 
+        className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Prevent closing when clicking on date picker dropdown
+          const target = e.target as Element;
+          if (target?.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create New User</DialogTitle>
           <DialogDescription>
@@ -255,6 +310,26 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Full Name - Now Required */}
+            <div className="space-y-2">
+              <Label htmlFor="fullName">
+                Full Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                onBlur={() => handleBlur('fullName')}
+                placeholder="Enter full name"
+                className={errors.fullName && touched.fullName ? "border-red-500" : ""}
+                autoFocus={false}
+              />
+              {errors.fullName && touched.fullName && (
+                <p className="text-xs text-red-500">{errors.fullName}</p>
+              )}
+            </div>
+            
             {/* User Name */}
             <div className="space-y-2">
               <Label htmlFor="userName">
@@ -271,22 +346,6 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               />
               {errors.userName && touched.userName && (
                 <p className="text-xs text-red-500">{errors.userName}</p>
-              )}
-            </div>
-            
-            {/* Full Name */}
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Enter full name"
-                className={errors.fullName ? "border-red-500" : ""}
-              />
-              {errors.fullName && (
-                <p className="text-xs text-red-500">{errors.fullName}</p>
               )}
             </div>
             
@@ -330,35 +389,43 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               )}
             </div>
 
-            {/* Phone Number */}
+            {/* Phone Number - Now Required with Vietnamese validation */}
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Label htmlFor="phoneNumber">
+                Phone Number <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="phoneNumber"
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleChange}
-                placeholder="Enter phone number"
-                className={errors.phoneNumber ? "border-red-500" : ""}
+                onBlur={() => handleBlur('phoneNumber')}
+                placeholder="0123456789"
+                className={errors.phoneNumber && touched.phoneNumber ? "border-red-500" : ""}
               />
-              {errors.phoneNumber && (
+              {errors.phoneNumber && touched.phoneNumber && (
                 <p className="text-xs text-red-500">{errors.phoneNumber}</p>
               )}
             </div>
             
-            {/* Date of Birth */}
+            {/* Date of Birth - Now with Improved Date Picker */}
             <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Input
-                id="dateOfBirth"
-                name="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className={errors.dateOfBirth ? "border-red-500" : ""}
+              <Label htmlFor="dateOfBirth">
+                Date of Birth <span className="text-red-500">*</span>
+              </Label>
+              <DatePicker
+                value={formData.dateOfBirth || undefined}
+                onChange={handleDateChange}
+                placeholder="Select date of birth"
+                error={!!(errors.dateOfBirth && touched.dateOfBirth)}
               />
-              {errors.dateOfBirth && (
+              {errors.dateOfBirth && touched.dateOfBirth && (
                 <p className="text-xs text-red-500">{errors.dateOfBirth}</p>
+              )}
+              {formData.dateOfBirth && (
+                <p className="text-xs text-muted-foreground">
+                  Age: {calculateAge(formData.dateOfBirth)} years old
+                </p>
               )}
             </div>
             

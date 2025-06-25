@@ -21,6 +21,9 @@ import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
 import { ROLE_MAPPING } from "@/types/user.type";
 import { Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface UpdateUserModalProps {
   open: boolean;
@@ -45,6 +48,7 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
   const [isFetching, setIsFetching] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -60,21 +64,51 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
   // Form validation state
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Phone number regex for Vietnamese format
+  const phoneNumberRegex = /^\d{10,11}$/;
+
   // Get role name from role number
   const getRoleNameFromNumber = (role: number): string => {
     const roleEntry = Object.entries(ROLE_MAPPING).find(([, value]) => value === role);
     return roleEntry ? roleEntry[0] : "";
   };
 
-  // Validate form fields (similar to create but without duplicate checks)
+  // Calculate age from date of birth
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Validate form fields
   const validateField = (name: string, value: string): string => {
     switch(name) {
+      case 'fullName':
+        return !value.trim() ? "Full name is required" : "";
+      
       case 'userName':
         return !value.trim() ? "Username is required" : "";
       
       case 'email':
         if (!value.trim()) return "Email is required";
         if (!/\S+@\S+\.\S+/.test(value)) return "Email format is invalid";
+        return "";
+      
+      case 'phoneNumber':
+        if (!value.trim()) return "Phone number is required";
+        if (!phoneNumberRegex.test(value)) return "Phone number must contain 10–11 digits";
+        return "";
+      
+      case 'dateOfBirth':
+        if (!value.trim()) return "Date of birth is required";
+        const age = calculateAge(value);
+        if (age < 18) return "User must be at least 18 years old";
         return "";
       
       case 'role':
@@ -87,8 +121,8 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
 
   // Fetch user data when modal opens
   useEffect(() => {
-    let isMounted = true; // Track if component is mounted
-    const controller = new AbortController(); // For canceling fetch requests
+    let isMounted = true;
+    const controller = new AbortController();
     
     const fetchUserData = async () => {
       if (!open || !userId) return;
@@ -99,9 +133,7 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
         const response = await apiClient.user.getUserById(userId);
         console.log("📊 User data response:", response);
         
-        // Only update state if component is still mounted
         if (isMounted) {
-          // Handle the response structure based on your API
           const user = response.data || response;
           setUserData(user);
           
@@ -122,13 +154,11 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
         }
       } catch (error) {
         console.error("❌ Error fetching user data:", error);
-        // Only show error and close if still mounted
         if (isMounted) {
           toast.error("Failed to load user data");
           onOpenChange(false);
         }
       } finally {
-        // Only update loading state if still mounted
         if (isMounted) {
           setIsFetching(false);
         }
@@ -137,13 +167,12 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
 
     fetchUserData();
 
-    // Cleanup function
     return () => {
-      isMounted = false; // Prevent state updates after unmount
-      controller.abort(); // Cancel any in-progress fetch
-      document.body.style.pointerEvents = ''; // Ensure body interactions are restored
+      isMounted = false;
+      controller.abort();
+      document.body.style.pointerEvents = '';
     };
-  }, [open, userId]);  // Remove onOpenChange from dependencies
+  }, [open, userId]);
 
   const handleBlur = (field: string) => {
     setTouched({...touched, [field]: true});
@@ -187,6 +216,23 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
     }
   };
 
+  const handleDateChange = (date: Date | undefined) => {
+    setFormData({
+      ...formData,
+      dateOfBirth: date ? format(date, 'yyyy-MM-dd') : ""
+    });
+    
+    setTouched({...touched, dateOfBirth: true});
+    
+    // Clear error when user selects a date
+    if (errors.dateOfBirth) {
+      setErrors({
+        ...errors,
+        dateOfBirth: ""
+      });
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       fullName: "",
@@ -200,9 +246,9 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
     setErrors({});
     setTouched({});
     setUserData(null);
-    setIsFetching(false); // Make sure loading state is reset
+    setIsFetching(false);
+    setDatePickerOpen(false);
     
-    // Ensure document body is fully interactive
     setTimeout(() => {
       document.body.style.pointerEvents = '';
     }, 100);
@@ -214,8 +260,11 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
 
     // Validate required fields
     Object.entries({
+      fullName: formData.fullName,
       userName: formData.userName,
       email: formData.email,
+      phoneNumber: formData.phoneNumber,
+      dateOfBirth: formData.dateOfBirth,
       role: formData.role
     }).forEach(([field, value]) => {
       const error = validateField(field, value as string);
@@ -255,10 +304,10 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
     try {
       const payload = {
         Id: userData.id,
-        FullName: formData.fullName || undefined,
+        FullName: formData.fullName,
         UserName: formData.userName,
         Email: formData.email,
-        PhoneNumber: formData.phoneNumber || undefined,
+        PhoneNumber: formData.phoneNumber,
         ProfilePictureUrl: formData.profilePictureUrl || undefined,
         DateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : undefined,
         Role: ROLE_MAPPING[formData.role] || 0,
@@ -286,11 +335,9 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
       console.error("Error updating user:", error);
       
       if (error.response?.data?.errors) {
-        // Map backend validation errors to form fields
         const validationErrors: Record<string, string> = {};
         
         Object.entries(error.response.data.errors).forEach(([key, messages]: [string, any]) => {
-          // Convert key from server format (PascalCase) to client format (camelCase)
           const formKey = key.charAt(0).toLowerCase() + key.slice(1);
           validationErrors[formKey] = Array.isArray(messages) ? messages[0] : messages;
         });
@@ -307,14 +354,16 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
     }
   };
 
+  // Calculate default date (18 years ago) for better UX
+  const eighteenYearsAgo = new Date();
+  eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+
   return (
     <Dialog 
       open={open} 
       onOpenChange={(value) => {
         if (!value) {
-          // First reset form
           resetForm();
-          // Then notify parent after a small delay
           setTimeout(() => {
             onOpenChange(value);
           }, 50);
@@ -323,7 +372,7 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
         }
       }}
     >
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Update User</DialogTitle>
           <DialogDescription>
@@ -339,6 +388,26 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Full Name - Now Required */}
+              <div className="space-y-2">
+                <Label htmlFor="fullName">
+                  Full Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="fullName"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  onBlur={() => handleBlur('fullName')}
+                  placeholder="Enter full name"
+                  className={errors.fullName && touched.fullName ? "border-red-500" : ""}
+                  autoFocus={false}
+                />
+                {errors.fullName && touched.fullName && (
+                  <p className="text-xs text-red-500">{errors.fullName}</p>
+                )}
+              </div>
+              
               {/* User Name */}
               <div className="space-y-2">
                 <Label htmlFor="userName">
@@ -352,25 +421,10 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
                   onBlur={() => handleBlur('userName')}
                   placeholder="Enter username"
                   className={errors.userName && touched.userName ? "border-red-500" : ""}
+                  autoFocus={false}
                 />
                 {errors.userName && touched.userName && (
                   <p className="text-xs text-red-500">{errors.userName}</p>
-                )}
-              </div>
-              
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  placeholder="Enter full name"
-                  className={errors.fullName ? "border-red-500" : ""}
-                />
-                {errors.fullName && (
-                  <p className="text-xs text-red-500">{errors.fullName}</p>
                 )}
               </div>
               
@@ -388,41 +442,51 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
                   onBlur={() => handleBlur('email')}
                   placeholder="email@example.com"
                   className={errors.email && touched.email ? "border-red-500" : ""}
+                  autoFocus={false}
                 />
                 {errors.email && touched.email && (
                   <p className="text-xs text-red-500">{errors.email}</p>
                 )}
               </div>
               
-              {/* Phone Number */}
+              {/* Phone Number - Now Required with Vietnamese validation */}
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Label htmlFor="phoneNumber">
+                  Phone Number <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="phoneNumber"
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleChange}
-                  placeholder="Enter phone number"
-                  className={errors.phoneNumber ? "border-red-500" : ""}
+                  onBlur={() => handleBlur('phoneNumber')}
+                  placeholder="0123456789"
+                  className={errors.phoneNumber && touched.phoneNumber ? "border-red-500" : ""}
+                  autoFocus={false}
                 />
-                {errors.phoneNumber && (
+                {errors.phoneNumber && touched.phoneNumber && (
                   <p className="text-xs text-red-500">{errors.phoneNumber}</p>
                 )}
               </div>
               
-              {/* Date of Birth */}
+              {/* Date of Birth - Now with Improved Date Picker */}
               <div className="space-y-2">
-                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                <Input
-                  id="dateOfBirth"
-                  name="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  className={errors.dateOfBirth ? "border-red-500" : ""}
+                <Label htmlFor="dateOfBirth">
+                  Date of Birth <span className="text-red-500">*</span>
+                </Label>
+                <DatePicker
+                  value={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                  onChange={handleDateChange}
+                  placeholder="Select date of birth"
+                  error={!!(errors.dateOfBirth && touched.dateOfBirth)}
                 />
-                {errors.dateOfBirth && (
+                {errors.dateOfBirth && touched.dateOfBirth && (
                   <p className="text-xs text-red-500">{errors.dateOfBirth}</p>
+                )}
+                {formData.dateOfBirth && (
+                  <p className="text-xs text-muted-foreground">
+                    Age: {calculateAge(formData.dateOfBirth)} years old
+                  </p>
                 )}
               </div>
               
@@ -462,6 +526,7 @@ export const UpdateUserModal = ({ open, onOpenChange, onSuccess, userId }: Updat
                   onChange={handleChange}
                   placeholder="https://example.com/image.jpg"
                   className={errors.profilePictureUrl ? "border-red-500" : ""}
+                  autoFocus={false}
                 />
                 {errors.profilePictureUrl && (
                   <p className="text-xs text-red-500">{errors.profilePictureUrl}</p>
