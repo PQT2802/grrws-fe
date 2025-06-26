@@ -15,20 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Mail, Calendar, Phone } from "lucide-react"
 import { USER_LIST_ITEM } from "@/types/user.type"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { useRouter } from "next/navigation"
@@ -36,8 +22,7 @@ import { apiClient } from "@/lib/api-client"
 import { UserListCpn } from "@/components/UserListCpn/UserListCpn"
 import { CreateUserModal } from "@/components/UserModalCpn/CreateUserModal"
 import { UpdateUserModal } from "@/components/UserModalCpn/UpdateUserModal"
-
-type DialogMode = "view" | "edit" | "create"
+import { UserDetailModal } from "@/components/UserModalCpn/UserDetailModal"
 
 // Get role name from role ID
 const getRoleNameFromNumber = (role: number): string => {
@@ -73,12 +58,12 @@ export default function UserList() {
   
   // Modal state
   const [selectedUser, setSelectedUser] = useState<USER_LIST_ITEM | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogMode, setDialogMode] = useState<DialogMode>("view")
+  const [showUserDetailModal, setShowUserDetailModal] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [showCreateUserModal, setShowCreateUserModal] = useState(false)
   const [showUpdateUserModal, setShowUpdateUserModal] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Chart data state
   const [chartKey, setChartKey] = useState<string>(Date.now().toString())
@@ -89,7 +74,10 @@ export default function UserList() {
     { name: "Stock Keeper", value: 0, color: "#eab308" },
     { name: "Admin", value: 0, color: "#ef4444" },
   ])
-  const [selectedRole, setSelectedRole] = useState<string>("")
+
+  // Add sorting state
+  const [sortBy, setSortBy] = useState<string>("name") // Default sort by name
+  const [sortDirection, setSortDirection] = useState<string>("asc") // A → Z by default
 
   // Admin authentication check
   useEffect(() => {
@@ -108,23 +96,6 @@ export default function UserList() {
       day: "2-digit",
     })
   }
-
-  const openDialog = useCallback((mode: DialogMode, user: USER_LIST_ITEM | null = null) => {
-    setDialogMode(mode)
-    setSelectedUser(user)
-    setSelectedRole(user ? getRoleNameFromNumber(user.role) : "")
-    setDialogOpen(true)
-  }, [])
-
-  const closeDialog = useCallback(() => {
-    setDialogOpen(false)
-    setTimeout(() => {
-      setSelectedUser(null)
-      setDialogMode("view")
-      setSelectedRole("")
-      document.body.style.pointerEvents = "auto"
-    }, 300)
-  }, [])
 
   // Direct API call from API client layer without service or router
   const fetchUsers = useCallback(async () => {
@@ -171,7 +142,6 @@ export default function UserList() {
         const userList = response.extensions.data.data || [];
         const total = response.extensions.data.totalCount || 0;
         
-        // Same processing as above...
         console.log(`✅ Retrieved ${userList.length} users out of ${total} total`)
         
         setUsers(userList)
@@ -238,6 +208,38 @@ export default function UserList() {
     });
   }, [filteredUsers, filterRole]);
 
+  // Add sorting to filtered users
+  const sortedAndFilteredUsers = useMemo(() => {
+    const sortedUsers = [...filteredAndRoleFilteredUsers].sort((a, b) => {
+      let aValue: string | Date;
+      let bValue: string | Date;
+
+      if (sortBy === "name") {
+        aValue = (a.fullName || a.userName || "").toLowerCase();
+        bValue = (b.fullName || b.userName || "").toLowerCase();
+        
+        if (sortDirection === "asc") {
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        } else {
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        }
+      } else if (sortBy === "createdDate") {
+        aValue = new Date(a.createdDate || "");
+        bValue = new Date(b.createdDate || "");
+        
+        if (sortDirection === "asc") {
+          return aValue.getTime() - bValue.getTime();
+        } else {
+          return bValue.getTime() - aValue.getTime();
+        }
+      }
+      
+      return 0;
+    });
+
+    return sortedUsers;
+  }, [filteredAndRoleFilteredUsers, sortBy, sortDirection]);
+
   const openDeleteDialog = useCallback((user: USER_LIST_ITEM) => {
     setSelectedUser(user)
     setDeleteDialogOpen(true)
@@ -251,31 +253,43 @@ export default function UserList() {
     }, 300)
   }, [])
 
-  const handleSaveUser = useCallback(
-    (formData: any) => {
-      if (dialogMode === "create") {
-        toast.success("User created successfully")
-      } else if (dialogMode === "edit" && selectedUser) {
-        toast.success("User updated successfully")
-      }
-      
-      closeDialog()
-      fetchUsers()
-    },
-    [dialogMode, selectedUser, closeDialog, fetchUsers]
-  )
-
-  const confirmDeleteUser = useCallback(() => {
+  const confirmDeleteUser = useCallback(async () => {
     if (!selectedUser) return
     
-    toast.success(`${selectedUser.fullName || "User"} has been disabled successfully`)
-    closeDeleteDialog()
-    fetchUsers()
+    setIsDeleting(true)
+    try {
+      console.log(`🗑️ Disabling user: ${selectedUser.fullName || selectedUser.userName} (ID: ${selectedUser.id})`)
+      
+      await apiClient.user.deleteUser(selectedUser.id)
+      
+      toast.success(`${selectedUser.fullName || selectedUser.userName || "User"} has been disabled successfully`)
+      closeDeleteDialog()
+      
+      // Refresh the user list
+      await fetchUsers()
+      
+      console.log("✅ User disabled and list refreshed")
+    } catch (error: any) {
+      console.error("❌ Error disabling user:", error)
+      
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message)
+      } else if (error.response?.status === 404) {
+        toast.error("User not found")
+      } else if (error.response?.status === 403) {
+        toast.error("You don't have permission to disable this user")
+      } else {
+        toast.error("Failed to disable user. Please try again.")
+      }
+    } finally {
+      setIsDeleting(false)
+    }
   }, [selectedUser, closeDeleteDialog, fetchUsers])
 
   const handleViewUser = useCallback((user: USER_LIST_ITEM) => {
-    openDialog("view", user)
-  }, [openDialog])
+    setSelectedUser(user)
+    setShowUserDetailModal(true)
+  }, [])
 
   const handleEditUser = useCallback((user: USER_LIST_ITEM) => {
     setSelectedUserId(user.id);
@@ -325,7 +339,7 @@ export default function UserList() {
 
       {/* User List Component */}
       <UserListCpn
-        users={filteredAndRoleFilteredUsers}
+        users={sortedAndFilteredUsers}
         totalCount={totalCount}
         isLoading={isLoading}
         page={page}
@@ -333,10 +347,14 @@ export default function UserList() {
         searchTerm={searchTerm}
         filterRole={filterRole}
         debouncedSearchTerm={debouncedSearchTerm}
+        sortBy={sortBy}
+        sortDirection={sortDirection}
         setPage={setPage}
         setPageSize={setPageSize}
         setSearchTerm={setSearchTerm}
         setFilterRole={setFilterRole}
+        setSortBy={setSortBy}
+        setSortDirection={setSortDirection}
         onView={handleViewUser}
         onEdit={handleEditUser}
         onDelete={handleDeleteUser}
@@ -351,6 +369,7 @@ export default function UserList() {
         onSuccess={fetchUsers}
       />
 
+      {/* Update User Modal */}
       <UpdateUserModal
         open={showUpdateUserModal}
         onOpenChange={setShowUpdateUserModal}
@@ -358,146 +377,17 @@ export default function UserList() {
         userId={selectedUserId}
       />
 
-      {/* User detail modal */}
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open) closeDialog()
-          setDialogOpen(open)
-        }}
-      >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {dialogMode === "view"
-                ? "User Details"
-                : dialogMode === "edit"
-                  ? "Edit User"
-                  : "Create New User"}
-            </DialogTitle>
-            <DialogDescription>
-              {dialogMode === "view"
-                ? "View user information"
-                : dialogMode === "edit"
-                  ? "Make changes to user information"
-                  : "Add a new user to the system"}
-            </DialogDescription>
-          </DialogHeader>
+      {/* User Detail Modal */}
+      <UserDetailModal
+        open={showUserDetailModal}
+        onOpenChange={setShowUserDetailModal}
+        user={selectedUser}
+        formatDate={formatDate}
+        getRoleNameFromNumber={getRoleNameFromNumber}
+        getRoleBadgeVariant={getRoleBadgeVariant}
+      />
 
-          {dialogMode === "view" && selectedUser ? (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center gap-4 sm:flex-row">
-                <Avatar className="h-20 w-20">
-                  <AvatarFallback className="text-2xl">{selectedUser.fullName?.charAt(0) || "U"}</AvatarFallback>
-                </Avatar>
-                <div className="space-y-1 text-center sm:text-left">
-                  <h3 className="text-2xl font-semibold">{selectedUser.fullName || "Unnamed User"}</h3>
-                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                    <Badge variant="outline" className={`${getRoleBadgeVariant(selectedUser.role)} border-0`}>
-                      {getRoleNameFromNumber(selectedUser.role)}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-lg font-medium">User Details</h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Email</Label>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedUser.email || "Not provided"}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Phone</Label>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedUser.phoneNumber || "Not provided"}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground">Account Created</Label>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDate(selectedUser.createdDate)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault()
-                const formData = new FormData(e.currentTarget)
-                const data = {
-                  name: formData.get("name") as string,
-                  email: formData.get("email") as string,
-                  phone: formData.get("phone") as string,
-                  ...(dialogMode === "create" && { password: formData.get("password") as string }),
-                }
-                handleSaveUser(data)
-              }}
-            >
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" name="name" defaultValue={selectedUser?.fullName || ""} placeholder="Enter full name" required />
-                </div>
-                {dialogMode === "create" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      placeholder="Enter password"
-                    />
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" defaultValue={selectedUser?.email || ""} placeholder="Enter email" required />
-                </div>
-                {dialogMode === "create" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select value={selectedRole} onValueChange={setSelectedRole}>
-                      <SelectTrigger id="role">
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Head Department">Head Department</SelectItem>
-                        <SelectItem value="Head of Technical">Head of Technical</SelectItem>
-                        <SelectItem value="Mechanic">Mechanic</SelectItem>
-                        <SelectItem value="Stock Keeper">Stock Keeper</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {dialogMode === "edit" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" name="phone" defaultValue={selectedUser?.phoneNumber || ""} placeholder="Enter phone number" />
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={closeDialog}>
-                  Cancel
-                </Button>
-                <Button type="submit">{dialogMode === "create" ? "Create User" : "Save Changes"}</Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation dialog */}
+      {/* Disable confirmation dialog */}
       <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -507,16 +397,21 @@ export default function UserList() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Disable User</AlertDialogTitle>
             <AlertDialogDescription>
-              This will disable the user account
-              {selectedUser && ` "${selectedUser.fullName}"`}. The user will no longer be able to log in.
+              Are you sure you want to disable the user
+              {selectedUser && ` "${selectedUser.fullName || selectedUser.userName}"`}? 
+              This action will remove the user's access to the system and cannot be undone easily.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteUser} className="bg-red-600 hover:bg-red-700">
-              Disable
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteUser} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Disabling..." : "Disable User"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -12,6 +12,7 @@ import {
   Trash2,
   Shield,
   User,
+  ArrowUpDown,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { 
@@ -24,6 +25,7 @@ import {
   PaginationEllipsis
 } from "@/components/ui/pagination"
 import { USER_LIST_ITEM } from "@/types/user.type"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
 interface UserListCpnProps {
   users: USER_LIST_ITEM[]
@@ -34,10 +36,14 @@ interface UserListCpnProps {
   searchTerm: string
   filterRole: string
   debouncedSearchTerm: string
+  sortBy?: string
+  sortDirection?: string
   setPage: (page: number) => void
   setPageSize: (size: number) => void
   setSearchTerm: (term: string) => void
   setFilterRole: (role: string) => void
+  setSortBy?: (sortBy: string) => void
+  setSortDirection?: (direction: string) => void
   onView: (user: USER_LIST_ITEM) => void
   onEdit: (user: USER_LIST_ITEM) => void
   onDelete: (user: USER_LIST_ITEM) => void
@@ -54,10 +60,14 @@ export const UserListCpn = ({
   searchTerm,
   filterRole,
   debouncedSearchTerm,
+  sortBy = "name",
+  sortDirection = "asc",
   setPage,
   setPageSize,
   setSearchTerm,
   setFilterRole,
+  setSortBy,
+  setSortDirection,
   onView,
   onEdit,
   onDelete,
@@ -85,11 +95,19 @@ export const UserListCpn = ({
     }
   }
 
+  const handleSortChange = (value: string) => {
+    if (setSortBy && setSortDirection) {
+      const [field, direction] = value.split('-')
+      setSortBy(field)
+      setSortDirection(direction)
+    }
+  }
+
   return (
     <>
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex flex-1 gap-2">
-          <div className="relative w-1/3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name or email..."
@@ -104,7 +122,7 @@ export const UserListCpn = ({
 
           <Select value={filterRole} onValueChange={setFilterRole}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Role" />
+              <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
@@ -140,6 +158,41 @@ export const UserListCpn = ({
               </SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Sort Dropdown */}
+          <div className="flex items-center gap-2">
+            <Select 
+              value={`${sortBy}-${sortDirection}`} 
+              onValueChange={handleSortChange}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Name</SelectItem>
+                <SelectItem value="createdDate-desc">Date</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSortDirection && setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+                    }}
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {sortDirection === "asc" ? "Sort Descending" : "Sort Ascending"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </div>
 

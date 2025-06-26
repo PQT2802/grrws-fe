@@ -20,7 +20,6 @@ import {
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
 import { CREATE_USER_REQUEST, ROLE_MAPPING } from "@/types/user.type";
-import { DatePicker } from "@/components/ui/date-picker";
 
 interface CreateUserModalProps {
   open: boolean;
@@ -28,20 +27,23 @@ interface CreateUserModalProps {
   onSuccess?: () => void;
 }
 
+// Define initial form state as a constant to ensure consistency
+const INITIAL_FORM_STATE = {
+  fullName: "",
+  userName: "",
+  email: "",
+  password: "",
+  dateOfBirth: null as Date | null,
+  phoneNumber: "",
+  role: "",
+};
+
 export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Form state
-  const [formData, setFormData] = useState({
-    fullName: "",
-    userName: "",
-    email: "",
-    password: "",
-    dateOfBirth: null as Date | null,
-    phoneNumber: "",
-    role: "",
-  });
+  // Form state - using a function to ensure we get a fresh object each time
+  const [formData, setFormData] = useState(() => ({ ...INITIAL_FORM_STATE }));
 
   // Form validation state
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -107,24 +109,18 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
-  // Reset form when modal opens/closes
+  // Reset form function - creates completely fresh state
   const resetForm = () => {
-    setFormData({
-      fullName: "",
-      userName: "",
-      email: "",
-      password: "",
-      dateOfBirth: null,
-      phoneNumber: "",
-      role: "",
-    });
+    console.log("🔄 Resetting form to initial state");
+    setFormData({ ...INITIAL_FORM_STATE });
     setErrors({});
     setTouched({});
   };
 
-  // Reset form when modal closes
+  // Reset form when modal opens - this is the key fix
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      console.log("📂 Modal opened - resetting form");
       resetForm();
     }
   }, [open]);
@@ -141,51 +137,51 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
     
     // Clear error when user types
     if (errors[name]) {
-      setErrors({
-        ...errors,
+      setErrors(prev => ({
+        ...prev,
         [name]: ""
-      });
+      }));
     }
   };
 
   const handleRoleChange = (value: string) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       role: value
-    });
+    }));
     
-    setTouched({...touched, role: true});
+    setTouched(prev => ({...prev, role: true}));
     
     // Clear error when user selects a role
     if (errors.role) {
-      setErrors({
-        ...errors,
+      setErrors(prev => ({
+        ...prev,
         role: ""
-      });
+      }));
     }
   };
 
   const handleDateChange = (date: Date | undefined) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       dateOfBirth: date || null
-    });
+    }));
     
-    setTouched({...touched, dateOfBirth: true});
+    setTouched(prev => ({...prev, dateOfBirth: true}));
     
     // Clear error when user selects a date
     if (errors.dateOfBirth) {
-      setErrors({
-        ...errors,
+      setErrors(prev => ({
+        ...prev,
         dateOfBirth: ""
-      });
+      }));
     }
   };
 
@@ -210,7 +206,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       }
     });
 
-    setErrors({...errors, ...fieldErrors});
+    setErrors(prev => ({...prev, ...fieldErrors}));
     return valid;
   };
 
@@ -246,7 +242,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       // Extra validation for role
       if (payload.Role === 0) {
         toast.error("Please select a valid role");
-        setErrors({...errors, role: "A valid role is required"});
+        setErrors(prev => ({...prev, role: "A valid role is required"}));
         setIsLoading(false);
         return;
       }
@@ -284,12 +280,18 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
+  const handleModalClose = (value: boolean) => {
+    if (!value) {
+      // Reset form when closing
+      resetForm();
+    }
+    onOpenChange(value);
+  };
+
   return (
     <Dialog 
       open={open} 
-      onOpenChange={(value) => {
-        onOpenChange(value);
-      }}
+      onOpenChange={handleModalClose}
     >
       <DialogContent 
         className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto"
@@ -324,6 +326,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 placeholder="Enter full name"
                 className={errors.fullName && touched.fullName ? "border-red-500" : ""}
                 autoFocus={false}
+                autoComplete="off"
               />
               {errors.fullName && touched.fullName && (
                 <p className="text-xs text-red-500">{errors.fullName}</p>
@@ -343,6 +346,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 onBlur={() => handleBlur('userName')}
                 placeholder="Enter username"
                 className={errors.userName && touched.userName ? "border-red-500" : ""}
+                autoComplete="off"
               />
               {errors.userName && touched.userName && (
                 <p className="text-xs text-red-500">{errors.userName}</p>
@@ -363,6 +367,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 onBlur={() => handleBlur('email')}
                 placeholder="email@example.com"
                 className={errors.email && touched.email ? "border-red-500" : ""}
+                autoComplete="off"
               />
               {errors.email && touched.email && (
                 <p className="text-xs text-red-500">{errors.email}</p>
@@ -383,6 +388,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 onBlur={() => handleBlur('password')}
                 placeholder="Enter password"
                 className={errors.password && touched.password ? "border-red-500" : ""}
+                autoComplete="new-password"
               />
               {errors.password && touched.password && (
                 <p className="text-xs text-red-500">{errors.password}</p>
@@ -402,6 +408,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 onBlur={() => handleBlur('phoneNumber')}
                 placeholder="0123456789"
                 className={errors.phoneNumber && touched.phoneNumber ? "border-red-500" : ""}
+                autoComplete="off"
               />
               {errors.phoneNumber && touched.phoneNumber && (
                 <p className="text-xs text-red-500">{errors.phoneNumber}</p>
@@ -413,11 +420,15 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               <Label htmlFor="dateOfBirth">
                 Date of Birth <span className="text-red-500">*</span>
               </Label>
-              <DatePicker
-                value={formData.dateOfBirth || undefined}
-                onChange={handleDateChange}
-                placeholder="Select date of birth"
-                error={!!(errors.dateOfBirth && touched.dateOfBirth)}
+              <Input
+                id="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth ? formData.dateOfBirth.toISOString().split('T')[0] : ''}
+                onChange={(e) => {
+                  const newDate = e.target.value ? new Date(e.target.value) : undefined;
+                  handleDateChange(newDate);
+                }}
+                className={errors.dateOfBirth && touched.dateOfBirth ? "border-red-500" : ""}
               />
               {errors.dateOfBirth && touched.dateOfBirth && (
                 <p className="text-xs text-red-500">{errors.dateOfBirth}</p>
@@ -437,7 +448,8 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               <Select 
                 value={formData.role} 
                 onValueChange={handleRoleChange}
-                onOpenChange={() => setTouched({...touched, role: true})}
+                onOpenChange={() => setTouched(prev => ({...prev, role: true}))}
+                key={`role-select-${open}`} // Force re-render when modal opens
               >
                 <SelectTrigger id="role" className={errors.role && touched.role ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select a role" />
@@ -459,7 +471,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleModalClose(false)}
               disabled={isLoading}
             >
               Cancel

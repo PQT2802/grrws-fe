@@ -102,6 +102,12 @@ export function DatePicker({
     setIsOpen(false);
   };
 
+  // Add this new handler for popover content clicks
+  const handlePopoverClick = (e: React.MouseEvent) => {
+    // This prevents event bubbling which is causing the issues
+    e.stopPropagation();
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -114,13 +120,21 @@ export function DatePicker({
             className
           )}
           disabled={disabled}
+          onClick={(e) => {
+            // Stop propagation to prevent modal closing
+            e.stopPropagation();
+          }}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {tempDate ? format(tempDate, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="p-4 space-y-4">
+      <PopoverContent 
+        className="w-auto p-0" 
+        align="start"
+        onClick={handlePopoverClick}
+      >
+        <div className="p-4 space-y-4" onClick={handlePopoverClick}>
           {/* Header */}
           <div className="text-sm font-medium text-center">Select Date</div>
           

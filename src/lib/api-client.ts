@@ -97,6 +97,11 @@ class APIClient {
       console.log("Updating user with payload:", JSON.stringify(data));
       return http.put("/api/User", data);
     },
+
+    deleteUser: (userId: string): Promise<any> => {
+      console.log("Disabling user with ID:", userId); 
+      return http.delete(`/api/User?requestId=${userId}`);
+    },
   };
   // Workspace methods (when you add them) - these require authentication
   // workspace = {
