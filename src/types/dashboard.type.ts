@@ -41,6 +41,23 @@ export interface TASK_COMPLETION_COUNT {
   totalTasksThisMonth: number;
 }
 
+export interface TOP_ERROR_DEVICE {
+  deviceId: string;
+  deviceName: string;
+  errorCount: number;
+}
+
+export interface TOP_MECHANIC {
+  mechanicId: string;
+  mechanicName: string;
+  completedTaskCount: number;
+}
+
+export interface MONTHLY_REQUEST_COUNT {
+  monthYear: string;
+  requestCount: number;
+}
+
 export interface DASHBOARD_RESPONSE<T> {
   data: T;
 }

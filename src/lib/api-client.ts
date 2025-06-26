@@ -36,6 +36,9 @@ import {
   USER_COUNT_BY_ROLE,
   TASK_COMPLETION_COUNT,
   REQUEST_WITH_REPORT,
+  TOP_ERROR_DEVICE,
+  TOP_MECHANIC,
+  MONTHLY_REQUEST_COUNT,
 } from "@/types/dashboard.type";
 import { create } from "domain";
 
@@ -99,7 +102,7 @@ class APIClient {
     },
 
     deleteUser: (userId: string): Promise<any> => {
-      console.log("Disabling user with ID:", userId); 
+      console.log("Disabling user with ID:", userId);
       return http.delete(`/api/User?requestId=${userId}`);
     },
   };
@@ -405,6 +408,7 @@ class APIClient {
     getTechnicalHeadStats: (): Promise<any> => {
       return http.get("/api/Dashboard/technical-head-stats");
     },
+
     getTaskStatistics: (): Promise<DASHBOARD_RESPONSE<TASK_STATISTICS>> => {
       console.log("Fetching task statistics from dashboard API");
       return http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>(
@@ -444,52 +448,26 @@ class APIClient {
       );
     },
 
-    // Method that fetches all dashboard data in parallel for improved performance
-    getAllDashboardData: async (): Promise<{
-      taskStats: TASK_STATISTICS;
-      deviceStats: DEVICE_STATISTICS;
-      totals: TASK_REQUEST_REPORT_TOTAL;
-      userCounts: USER_COUNT_BY_ROLE;
-      completionCounts: TASK_COMPLETION_COUNT;
-    }> => {
-      console.log("Fetching all dashboard data in parallel");
+    // New API methods for the 3 charts
+    getTopErrorDevices: (): Promise<DASHBOARD_RESPONSE<TOP_ERROR_DEVICE[]>> => {
+      console.log("Fetching top 5 most error-prone devices from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<TOP_ERROR_DEVICE[]>>(
+        "/api/Dashboard/get-top-5-most-error-devices"
+      );
+    },
 
-      try {
-        const [
-          taskStatsResponse,
-          deviceStatsResponse,
-          totalsResponse,
-          userCountsResponse,
-          completionCountsResponse,
-        ] = await Promise.all([
-          http.get<DASHBOARD_RESPONSE<TASK_STATISTICS>>(
-            "/api/Dashboard/get-task-statistics"
-          ),
-          http.get<DASHBOARD_RESPONSE<DEVICE_STATISTICS>>(
-            "/api/Dashboard/get-device-statistics"
-          ),
-          http.get<DASHBOARD_RESPONSE<TASK_REQUEST_REPORT_TOTAL>>(
-            "/api/Dashboard/get-total-task-request-report"
-          ),
-          http.get<DASHBOARD_RESPONSE<USER_COUNT_BY_ROLE>>(
-            "/api/Dashboard/get-total-user-by-role"
-          ),
-          http.get<DASHBOARD_RESPONSE<TASK_COMPLETION_COUNT>>(
-            "/api/Dashboard/get-task-completion-count-by-week-and-month"
-          ),
-        ]);
+    getTopMechanics: (): Promise<DASHBOARD_RESPONSE<TOP_MECHANIC[]>> => {
+      console.log("Fetching top 3 best mechanics from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<TOP_MECHANIC[]>>(
+        "/api/Dashboard/get-top-3-mechanics"
+      );
+    },
 
-        return {
-          taskStats: taskStatsResponse.data,
-          deviceStats: deviceStatsResponse.data,
-          totals: totalsResponse.data,
-          userCounts: userCountsResponse.data,
-          completionCounts: completionCountsResponse.data,
-        };
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        throw error;
-      }
+    getMonthlyRequestCount: (): Promise<DASHBOARD_RESPONSE<MONTHLY_REQUEST_COUNT[]>> => {
+      console.log("Fetching monthly request count for last 6 months from dashboard API");
+      return http.get<DASHBOARD_RESPONSE<MONTHLY_REQUEST_COUNT[]>>(
+        "/api/Dashboard/get-monthly-request-count-for-last-6-months"
+      );
     },
 
     getRequestsWithReport: (): Promise<

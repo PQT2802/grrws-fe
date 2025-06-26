@@ -14,7 +14,7 @@ import OperationStatsCpn from "@/components/ChartCpn/OperationStatsCpn";
 import ActivitiesPercentageChart from "@/components/ChartCpn/ActivitiesPercentageChart";
 import AdminQuickActions from "@/components/ChartCpn/AdminQuickActions";
 import ActiveInstances from "@/components/ChartCpn/RequestChartCpn/ActiveInstances";
-import IssuesErrorsTrendChart from "@/components/ChartGroupCpn/IssuesErrorsTrendChart";
+import RequestTrendChart from "@/components/ChartGroupCpn/RequestTrendChart";
 import TopErrorDevicesChart from "@/components/ChartGroupCpn/TopErrorDevicesChart";
 import TopMechanicsChart from "@/components/ChartGroupCpn/TopMechanicsChart";
 import AdminQuickSummary from "@/components/ChartCpn/AdminQuickSummary";
@@ -66,7 +66,7 @@ const AdminDashboardPage = () => {
           <div className="w-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
             <TopErrorDevicesChart />
             <TopMechanicsChart />
-            <IssuesErrorsTrendChart />
+            <RequestTrendChart />
           </div>
           
           {/* Active Instances Table */}
