@@ -18,6 +18,8 @@ import RequestTrendChart from "@/components/ChartGroupCpn/RequestTrendChart";
 import TopErrorDevicesChart from "@/components/ChartGroupCpn/TopErrorDevicesChart";
 import TopMechanicsChart from "@/components/ChartGroupCpn/TopMechanicsChart";
 import AdminQuickSummary from "@/components/ChartCpn/AdminQuickSummary";
+import UserRolesChart from "@/components/ChartCpn/UserRolesChart";
+import WorkshopDevicesChart from "@/components/ChartCpn/WorkshopDevicesChart";
 
 const AdminDashboardPage = () => {
   const { user, canAccessWorkspace } = useAuth();
@@ -70,9 +72,9 @@ const AdminDashboardPage = () => {
           </div>
           
           {/* Active Instances Table */}
-          <div className="w-full mb-4 mt-4">
+          {/* <div className="w-full mb-4 mt-4">
             <ActiveInstances />
-          </div>
+          </div> */}
 
           {/* Machine Status Chart - Half Width */}
           <div className="mt-3 w-full h-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
@@ -88,12 +90,14 @@ const AdminDashboardPage = () => {
 
           {/* Operation Statistics with API data */}
           <div className="mt-3 w-full">
-            <OperationStatsCpn />
+            {/* <OperationStatsCpn /> */}
+            <WorkshopDevicesChart />
           </div>
 
           {/* Error Trend Chart */}
           <div className="my-4 w-full">
-            <ErrorTrendLineChart />
+            {/* <ErrorTrendLineChart /> */}
+            <UserRolesChart />
           </div>
         </>
       )}

@@ -36,6 +36,8 @@ import {
   USER_COUNT_BY_ROLE,
   TASK_COMPLETION_COUNT,
   REQUEST_WITH_REPORT,
+  REQUEST_ITEM,
+  ALL_REQUESTS_RESPONSE,
   TOP_ERROR_DEVICE,
   TOP_MECHANIC,
   MONTHLY_REQUEST_COUNT,
@@ -470,6 +472,18 @@ class APIClient {
       );
     },
 
+    // Updated method to get all requests with pagination
+    getAllRequests: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<ALL_REQUESTS_RESPONSE> => {
+      console.log(`Fetching all requests from API (page ${pageNumber}, size ${pageSize})`);
+      return http.get<ALL_REQUESTS_RESPONSE>(
+        `/api/Request?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
+    },
+
+    // Keep the old method for backward compatibility
     getRequestsWithReport: (): Promise<
       DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>
     > => {

@@ -62,9 +62,9 @@ export interface DASHBOARD_RESPONSE<T> {
   data: T;
 }
 
-export interface REQUEST_WITH_REPORT {
+export interface REQUEST_ITEM {
   id: string;
-  reportId: string;
+  reportId: string | null; 
   deviceId: string;
   deviceName: string;
   deviceCode: string;
@@ -83,6 +83,24 @@ export interface REQUEST_WITH_REPORT {
     displayName: string;
     imageUrls: string[];
   }[];
+}
+
+export interface REQUEST_WITH_REPORT extends REQUEST_ITEM {
+  reportId: string; 
+}
+
+export interface REQUEST_WITHOUT_REPORT extends Omit<REQUEST_ITEM, 'reportId'> {
+  reportId: null;
+}
+
+// Paginated response for all requests
+export interface ALL_REQUESTS_RESPONSE {
+  data: {
+    data: REQUEST_ITEM[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+  };
 }
 
 export interface REQUESTS_WITH_REPORT_RESPONSE {
