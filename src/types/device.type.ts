@@ -9,7 +9,7 @@ export interface DEVICE_WEB {
   installationDate: string; // ISO Date string
   description: string;
   photoUrl: string;
-  status: "Active" | "InRepair" | "Retired"; // known statuses
+  status: "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"; // Updated statuses
   positionIndex: number | null;
   zoneName: string | null;
   areaName: string | null;
