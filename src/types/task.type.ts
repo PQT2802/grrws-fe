@@ -124,6 +124,7 @@ export interface INSTALL_TASK_DETAIL {
   expectedTime: string;
   endTime: string | null;
   assigneeName: string | null;
+  newDeviceId: string; // ID of the new device to be installed
 }
 
 export interface WARRANTY_TASK_DETAIL {
@@ -152,4 +153,21 @@ export interface WARRANTY_TASK_DETAIL {
   expectedTime: string;
   endTime: string | null;
   assigneeName: string | null;
+  warrantyClaimId: string;
+  isUninstallDevice: boolean; // Indicates if the task involves uninstalling a device
+  documents: DOCUMENT[]; // List of documents related to the warranty claim
+}
+
+export interface DOCUMENT {
+  docymentType: string; // Type of document (e.g., "Warranty Claim", "Repair Report")
+  documentName: string; // Name of the document
+  documentUrl: string; // URL to access the document
+}
+
+export interface CreateWarrantyReturn {
+  WarrantyClaimId: string;
+  AssigneeId: string;
+  ActualReturnDate: string; // ISO date string
+  IsEarlyReturn: boolean;
+  WarrantyNotes: string;
 }

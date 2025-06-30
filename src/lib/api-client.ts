@@ -16,6 +16,7 @@ import {
   CREATE_REPAIR_TASK,
   CREATE_UNINSTALL_TASK,
   CREATE_WARRANTY_TASK,
+  CreateWarrantyReturn,
   INSTALL_TASK_DETAIL,
   SPAREPART_WEB,
   TASK_GROUP_RESPONSE,
@@ -65,8 +66,8 @@ class APIClient {
     updateProfile: (data: any) => http.put("/api/User/update-profile", data), // ✅ Auto token
     changePassword: (data: any) => http.put("/api/User/change-password", data), // ✅ Auto token
 
-    getMechanic: (): Promise<GET_MECHANIC_USER> => {
-      return http.get<GET_MECHANIC_USER>("/api/User/role?role=3"); // ✅ Auto token
+    getMechanic: (): Promise<GET_MECHANIC_USER[]> => {
+      return http.get<GET_MECHANIC_USER[]>("/api/User/role?role=3"); // ✅ Auto token
     },
     getUsersByRole: (role: number): Promise<GET_MECHANIC_USER> => {
       return http.get<GET_MECHANIC_USER>(`/api/User/role?role=${role}`);
@@ -155,6 +156,10 @@ class APIClient {
     createInstallTask: (data: CREATE_INSTALL_TASK): Promise<any> => {
       return http.post("/api/Task/install", data);
     },
+
+    createWarrantyReturnTask: (data: CreateWarrantyReturn): Promise<any> => {
+      return http.post("/api/Task/warranty-task/return", data);
+    },
     getTaskGroups: (
       requestId: string,
       pageNumber: number = 1,
@@ -225,6 +230,53 @@ class APIClient {
       return http.get<WARRANTY_TASK_DETAIL>(
         `/api/Task/warranty-task-submit/${taskId}`
       );
+    },
+    getWarrantyReturnTaskDetail: (
+      taskId: string
+    ): Promise<WARRANTY_TASK_DETAIL> => {
+      return http.get<WARRANTY_TASK_DETAIL>(
+        `/api/Task/warranty-task-return/${taskId}`
+      );
+    },
+
+    getSuggestedMechanics: (
+      pageSize: number = 5,
+      pageIndex: number = 0
+    ): Promise<{
+      statusCode: number;
+      title: string;
+      type: string;
+      extensions: {
+        message: string;
+        data: {
+          mechanicId: string;
+          fullName: string;
+          averageCompletionTime: string;
+          expectedTime: string;
+          message: string;
+        }[];
+      };
+    }> => {
+      return http.get(
+        `/api/Task/mechanicshift/suggest?pageSize=${pageSize}&pageIndex=${pageIndex}`
+      );
+    },
+
+    updateWarrantyClaim: (formData: FormData): Promise<any> => {
+      return http.put("/api/Task/warranty-claim/update", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    },
+
+    returnWarrantyTask: (data: {
+      WarrantyClaimId: string;
+      AssigneeId: string;
+      ActualReturnDate: string;
+      WarrantyNotes?: string;
+    }): Promise<any> => {
+      return http.post("/api/Task/warranty-task/return", data);
     },
   };
   error = {
@@ -463,8 +515,12 @@ class APIClient {
       );
     },
 
-    getMonthlyRequestCount: (): Promise<DASHBOARD_RESPONSE<MONTHLY_REQUEST_COUNT[]>> => {
-      console.log("Fetching monthly request count for last 6 months from dashboard API");
+    getMonthlyRequestCount: (): Promise<
+      DASHBOARD_RESPONSE<MONTHLY_REQUEST_COUNT[]>
+    > => {
+      console.log(
+        "Fetching monthly request count for last 6 months from dashboard API"
+      );
       return http.get<DASHBOARD_RESPONSE<MONTHLY_REQUEST_COUNT[]>>(
         "/api/Dashboard/get-monthly-request-count-for-last-6-months"
       );

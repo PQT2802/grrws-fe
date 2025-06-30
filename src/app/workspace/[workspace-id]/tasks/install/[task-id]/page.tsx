@@ -50,7 +50,7 @@ const InstallTaskDetailPage = () => {
         if (taskData.deviceId) {
           try {
             const deviceData = await apiClient.device.getDeviceById(
-              taskData.deviceId
+              taskData.newDeviceId
             );
             setDeviceDetail(deviceData);
           } catch (deviceError) {

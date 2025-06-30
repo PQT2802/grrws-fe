@@ -99,6 +99,7 @@ const TaskGroupModal = ({
       case "installation":
         return "install";
       case "warrantysubmission":
+      case "warrantyreturn":
       case "warranty":
         return "warranty";
       case "repair":
@@ -348,7 +349,7 @@ const TaskGroupModal = ({
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-sm text-gray-600 max-w-xs truncate">
+                              <div className="text-sm text-gray-600 max-w-xs ">
                                 {task.taskDescription}
                               </div>
                             </div>
