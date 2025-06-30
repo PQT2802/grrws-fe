@@ -6,21 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Eye, User, Loader2, CheckCircle, AlertTriangle, XCircle, FileText } from "lucide-react"
-import { REQUEST_WITHOUT_REPORT, REQUEST_ITEM } from "@/types/dashboard.type"
+import { REQUEST_WITH_REPORT, REQUEST_ITEM } from "@/types/dashboard.type"
 
-interface RequestWithoutReportListProps {
-  requests: REQUEST_WITHOUT_REPORT[]
+interface RequestWithReportListProps {
+  requests: REQUEST_WITH_REPORT[]
   userCache: { [userId: string]: string }
   isLoading: boolean
-  onViewRequest: (request: REQUEST_ITEM) => void // Updated to accept REQUEST_ITEM
+  onViewRequest: (request: REQUEST_ITEM) => void // Updated to match interface
 }
 
-export default function RequestWithoutReportList({
+export default function RequestWithReportList({
   requests,
   userCache,
   isLoading,
   onViewRequest
-}: RequestWithoutReportListProps) {
+}: RequestWithReportListProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000))
@@ -76,22 +76,12 @@ export default function RequestWithoutReportList({
     }
   }
 
-  // Updated to allow viewing requests without reports
-  const handleViewRequest = (request: REQUEST_WITHOUT_REPORT) => {
-    // Convert to REQUEST_ITEM format for the handler
-    const requestItem: REQUEST_ITEM = {
-      ...request,
-      reportId: null // Explicitly set to null for requests without reports
-    }
-    onViewRequest(requestItem)
-  }
-
   if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading requests without reports...</span>
+          <span className="ml-2">Loading requests with reports...</span>
         </CardContent>
       </Card>
     )
@@ -104,9 +94,8 @@ export default function RequestWithoutReportList({
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">Người tạo</th>
                 <th className="px-4 py-3 text-left">Tiêu đề yêu cầu</th>
-                {/* <th className="px-4 py-3 text-left">Thiết bị</th> */}
+                <th className="px-4 py-3 text-left">Người tạo</th>
                 <th className="px-4 py-3 text-left">Độ ưu tiên</th>
                 <th className="px-4 py-3 text-left">Trạng thái</th>
                 <th className="px-4 py-3 text-left">Ngày tạo</th>
@@ -117,12 +106,20 @@ export default function RequestWithoutReportList({
               {requests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    Không có yêu cầu chưa có báo cáo nào được tìm thấy
+                    Không có yêu cầu với báo cáo nào được tìm thấy
                   </td>
                 </tr>
               ) : (
                 requests.map((request) => (
                   <tr key={request.id} className="border-b hover:bg-muted/50">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm">
+                        {request.requestTitle}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {request.zoneName} - {request.areaName}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -140,20 +137,6 @@ export default function RequestWithoutReportList({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm">
-                        {request.requestTitle}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {request.zoneName} - {request.areaName}
-                      </div>
-                    </td>
-                    {/* <td className="px-4 py-3">
-                      <div className="text-sm">{request.deviceName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {request.deviceCode}
-                      </div>
-                    </td> */}
                     <td className="px-4 py-3">
                       <Badge 
                         variant="secondary" 
@@ -180,8 +163,7 @@ export default function RequestWithoutReportList({
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleViewRequest(request)}
-                        // Removed disabled attribute - now all requests can be viewed
+                        onClick={() => onViewRequest(request)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

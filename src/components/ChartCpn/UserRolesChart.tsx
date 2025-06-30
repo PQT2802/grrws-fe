@@ -51,11 +51,11 @@ export default function UserRolesChart() {
 
         // Map API data to chart format
         const chartData: UserRoleData[] = [
-          { name: "Admin", value: userStats.totalAdmins || 0, color: "#ef4444" },
-          { name: "Head Department", value: userStats.totalHeadsOfDepartment || 0, color: "#f59e0b" },
-          { name: "Head of Technical", value: userStats.totalHeadsOfTechnical || 0, color: "#22c55e" },
-          { name: "Mechanic", value: userStats.totalMechanics || 0, color: "#3b82f6" },
-          { name: "Stock Keeper", value: userStats.totalStockKeepers || 0, color: "#8b5cf6" },
+          { name: "Quản trị viên", value: userStats.totalAdmins || 0, color: "#ef4444" },
+          { name: "Trưởng phòng may", value: userStats.totalHeadsOfDepartment || 0, color: "#f59e0b" },
+          { name: "Trưởng phòng kĩ thuật", value: userStats.totalHeadsOfTechnical || 0, color: "#22c55e" },
+          { name: "Thợ máy", value: userStats.totalMechanics || 0, color: "#3b82f6" },
+          { name: "Thủ kho", value: userStats.totalStockKeepers || 0, color: "#8b5cf6" },
         ]
 
         setUserRolesData(chartData)

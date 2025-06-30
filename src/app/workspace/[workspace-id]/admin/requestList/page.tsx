@@ -18,10 +18,10 @@ import {
 import { useDebounce } from "@/hooks/useDebounce"
 import { apiClient } from "@/lib/api-client"
 import { REQUEST_ITEM, REQUEST_WITH_REPORT, REQUEST_WITHOUT_REPORT } from "@/types/dashboard.type"
-import RequestDetailModal from "@/components/ChartCpn/RequestChartCpn/RequestDetailModal"
-import UnifiedRequestList from "@/components/ChartCpn/RequestChartCpn/UnifiedRequestList"
-import RequestWithReportList from "@/components/ChartCpn/RequestChartCpn/RequestWithReportList"
-import RequestWithoutReportList from "@/components/ChartCpn/RequestChartCpn/RequestWithoutReportList"
+import RequestDetailModal from "@/components/RequestCpn/RequestDetailModal"
+import UnifiedRequestList from "@/components/RequestCpn/UnifiedRequestList"
+import RequestWithReportList from "@/components/RequestCpn/RequestWithReportList"
+import RequestWithoutReportList from "@/components/RequestCpn/RequestWithoutReportList"
 import {
     Pagination,
     PaginationContent,
