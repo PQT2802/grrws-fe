@@ -108,8 +108,8 @@ export default function UnifiedRequestList({
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">Người tạo</th>
                 <th className="px-4 py-3 text-left">Tiêu đề yêu cầu</th>
+                <th className="px-4 py-3 text-left">Người tạo</th>
                 {/* <th className="px-4 py-3 text-left">Thiết bị</th> */}
                 <th className="px-4 py-3 text-left">Độ ưu tiên</th>
                 <th className="px-4 py-3 text-left">Trạng thái</th>
@@ -128,6 +128,15 @@ export default function UnifiedRequestList({
               ) : (
                 requests.map((request) => (
                   <tr key={request.id} className="border-b hover:bg-muted/50">
+                    
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-sm">
+                        {request.requestTitle}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {request.zoneName} - {request.areaName}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -143,14 +152,6 @@ export default function UnifiedRequestList({
                             {request.issues.length} vấn đề
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm">
-                        {request.requestTitle}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {request.zoneName} - {request.areaName}
                       </div>
                     </td>
                     {/* <td className="px-4 py-3">

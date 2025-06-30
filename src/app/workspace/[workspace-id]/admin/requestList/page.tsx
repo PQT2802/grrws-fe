@@ -38,6 +38,12 @@ interface UserCache {
     [userId: string]: string
 }
 
+interface TabCounts {
+    all: number
+    withReport: number
+    withoutReport: number
+}
+
 export default function RequestListPage() {
     // State management
     const [allRequests, setAllRequests] = useState<REQUEST_ITEM[]>([])
@@ -53,7 +59,14 @@ export default function RequestListPage() {
     const [filterPriority, setFilterPriority] = useState<RequestPriority>("all")
     const [currentPage, setCurrentPage] = useState(1)
     const [totalCount, setTotalCount] = useState(0)
-    const [pageSize, setPageSize] = useState(10) 
+    const [pageSize, setPageSize] = useState(10)
+
+    // Tab counts - separate state to track total counts for each tab
+    const [tabCounts, setTabCounts] = useState<TabCounts>({
+        all: 0,
+        withReport: 0,
+        withoutReport: 0
+    })
 
     // Modal states
     const [selectedRequest, setSelectedRequest] = useState<REQUEST_ITEM | null>(null)
@@ -62,6 +75,71 @@ export default function RequestListPage() {
     // Active tab
     const [activeTab, setActiveTab] = useState("all")
     const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
+    // Fetch total counts for tabs (separate API call to get accurate totals)
+    const fetchTabCounts = useCallback(async () => {
+        try {
+            console.log("🔢 Fetching tab counts...")
+            
+            // Fetch a large page size to get all requests for counting
+            // In a real scenario, you might want a separate API endpoint for counts
+            const response = await apiClient.dashboard.getAllRequests(1, 1000) // Large page size to get most requests
+            
+            let allRequestsData: REQUEST_ITEM[] = []
+            
+            if (response && typeof response === 'object') {
+                if (response.data && response.data.data && Array.isArray(response.data.data)) {
+                    allRequestsData = response.data.data
+                } else if (response.data && Array.isArray(response.data)) {
+                    allRequestsData = response.data
+                }
+            }
+
+            // Apply filters to get accurate counts
+            let filteredRequests = [...allRequestsData]
+
+            if (debouncedSearchTerm) {
+                filteredRequests = filteredRequests.filter(request =>
+                    request.requestTitle?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                    request.deviceName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                    request.deviceCode?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+                )
+            }
+
+            if (filterStatus !== "all") {
+                filteredRequests = filteredRequests.filter(request => request.status?.toLowerCase() === filterStatus)
+            }
+
+            if (filterPriority !== "all") {
+                filteredRequests = filteredRequests.filter(request => request.priority?.toLowerCase() === filterPriority)
+            }
+
+            // Count requests with and without reports
+            const withReportCount = filteredRequests.filter(request => 
+                request.reportId !== null && request.reportId !== undefined && request.reportId !== ''
+            ).length
+
+            const withoutReportCount = filteredRequests.filter(request => 
+                request.reportId === null || request.reportId === undefined || request.reportId === ''
+            ).length
+
+            setTabCounts({
+                all: filteredRequests.length,
+                withReport: withReportCount,
+                withoutReport: withoutReportCount
+            })
+
+            console.log("✅ Tab counts updated:", {
+                all: filteredRequests.length,
+                withReport: withReportCount,
+                withoutReport: withoutReportCount
+            })
+
+        } catch (error) {
+            console.error("❌ Error fetching tab counts:", error)
+            // Keep existing counts if fetch fails
+        }
+    }, [debouncedSearchTerm, filterStatus, filterPriority])
 
     // Fetch requests data
     const fetchRequests = useCallback(async (page: number = 1) => {
@@ -200,6 +278,11 @@ export default function RequestListPage() {
         fetchRequests(1)
     }, [])
 
+    // Fetch tab counts when filters change
+    useEffect(() => {
+        fetchTabCounts()
+    }, [fetchTabCounts])
+
     // Handle page size change
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize)
@@ -245,15 +328,6 @@ export default function RequestListPage() {
         setSelectedRequest(null)
     }
 
-    const getTabCounts = () => {
-        return {
-            all: totalCount,
-            withReport: requestsWithReport.length,
-            withoutReport: requestsWithoutReport.length
-        }
-    }
-
-    const tabCounts = getTabCounts()
     const totalPages = Math.ceil(totalCount / pageSize)
 
     if (isLoading && allRequests.length === 0) {

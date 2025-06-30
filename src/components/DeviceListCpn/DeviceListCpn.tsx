@@ -22,6 +22,7 @@ import { toast } from "react-toastify"
 import { Card, CardContent } from "@/components/ui/card"
 import { apiClient } from "@/lib/api-client"
 import { DEVICE_WEB } from "@/types/device.type"
+import OperationStatsCpn from "../ChartCpn/OperationStatsCpn"
 
 // Updated device status mapping based on backend enum
 type DeviceStatus = "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"
@@ -252,9 +253,11 @@ export default function DeviceListCpn({
                 <h1 className="text-2xl font-semibold">Device Management</h1>
                 <Button onClick={handleCreateDevice} className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="mr-2 h-4 w-4" />
-                    Add New Device
+                    Import Device
                 </Button>
             </div>
+
+            <OperationStatsCpn/>
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">

@@ -138,8 +138,8 @@ export default function DeviceDetailModal({
                     <Tabs defaultValue="details">
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="details">Device Details</TabsTrigger>
-                            <TabsTrigger value="about">About</TabsTrigger>
-                            <TabsTrigger value="activity">Activity</TabsTrigger>
+                            <TabsTrigger value="about">Device Warranty</TabsTrigger>
+                            <TabsTrigger value="activity">Warranty History</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="details" className="space-y-3">

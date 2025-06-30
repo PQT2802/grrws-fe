@@ -27,6 +27,12 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
     if (isOpen && hasReport && request?.id) {
       fetchErrorsAndTechnicalIssues(request.id);
     }
+    
+    // Clear data when modal closes or request changes
+    if (!isOpen || !hasReport) {
+      setErrors([]);
+      setTechnicalIssues([]);
+    }
   }, [isOpen, hasReport, request?.id]);
 
   if (!request) return null;
@@ -114,6 +120,11 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
   };
+
+  // Helper functions to determine what to show
+  const hasErrors = !isLoadingErrors && errors.length > 0;
+  const hasTechnicalIssues = !isLoadingTechnicalIssues && technicalIssues.length > 0;
+  const isLoadingAnyReportData = isLoadingErrors || isLoadingTechnicalIssues;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -232,8 +243,8 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
             </div>
           </div>
 
-          {/* Errors Section - Only show for requests with reports */}
-          {hasReport && (
+          {/* Errors Section - Only show if there are errors OR still loading */}
+          {hasReport && (isLoadingErrors || hasErrors) && (
             <div>
               <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <Bug className="h-4 w-4" />
@@ -246,7 +257,7 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span className="ml-2 text-slate-500">Đang tải lỗi...</span>
                   </div>
-                ) : errors.length > 0 ? (
+                ) : hasErrors ? (
                   errors.map((error, index) => (
                     <div key={error.errorId} className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
@@ -276,17 +287,13 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
                       </div>
                     </div>
                   ))
-                ) : (
-                  <div className="text-center py-4 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    Không có lỗi được xác định
-                  </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
 
-          {/* Technical Issues Section - Only show for requests with reports */}
-          {hasReport && (
+          {/* Technical Issues Section - Only show if there are technical issues OR still loading */}
+          {hasReport && (isLoadingTechnicalIssues || hasTechnicalIssues) && (
             <div>
               <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <Wrench className="h-4 w-4" />
@@ -299,7 +306,7 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span className="ml-2 text-slate-500">Đang tải triệu chứng kỹ thuật...</span>
                   </div>
-                ) : technicalIssues.length > 0 ? (
+                ) : hasTechnicalIssues ? (
                   technicalIssues.map((issue, index) => (
                     <div key={issue.technicalIssueId} className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <div className="flex items-start justify-between mb-2">
@@ -334,11 +341,7 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
                       </div>
                     </div>
                   ))
-                ) : (
-                  <div className="text-center py-4 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    Không có triệu chứng kỹ thuật được xác định
-                  </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -353,6 +356,19 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
                 <p>• Yêu cầu này đang chờ được xử lý và tạo báo cáo chi tiết</p>
                 <p>• Khi có báo cáo, bạn sẽ có thể xem thêm thông tin về các lỗi và triệu chứng kỹ thuật</p>
               </div>
+            </div>
+          )}
+
+          {/* Show message when report exists but no errors or technical issues found (and not loading) */}
+          {hasReport && !isLoadingAnyReportData && !hasErrors && !hasTechnicalIssues && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
+                <FileText className="h-5 w-5" />
+                <span className="font-medium">Báo cáo đã hoàn thành</span>
+              </div>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                Báo cáo cho yêu cầu này đã được tạo nhưng chưa có thông tin chi tiết về lỗi hoặc triệu chứng kỹ thuật.
+              </p>
             </div>
           )}
         </div>
