@@ -85,7 +85,7 @@ export default function TopErrorDevicesChart() {
     return (
         <Card className="flex-1">
             <CardHeader>
-                <CardTitle>Top 5 thiết bị lỗi nhiều nhất</CardTitle>
+                <CardTitle>Thống kê các thiết bị gặp lỗi nhiều</CardTitle>
                 <CardDescription className="flex items-center justify-between">
                     <span>Thống kê lỗi máy</span>
                     {useFallback && (

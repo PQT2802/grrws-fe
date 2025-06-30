@@ -101,7 +101,7 @@ export default function TopMechanicsChart() {
                     }
 
                     return {
-                        id: mechanic.mechanicId || `mechanic-${index}`,
+                        id: typeof mechanic.mechanicId === 'number' ? mechanic.mechanicId : index + 1,
                         name: mechanic.mechanicName || "Unknown Mechanic",
                         tasksCompleted: mechanic.completedTaskCount || 0,
                         rank: index + 1,
@@ -129,9 +129,9 @@ export default function TopMechanicsChart() {
     return (
         <Card className="flex-1">
             <CardHeader>
-                <CardTitle>Top 3 thợ máy xuất sắc</CardTitle>
+                <CardTitle>Các thợ máy xuất sắc</CardTitle>
                 <CardDescription className="flex items-center justify-between">
-                    <span>Số task đã hoàn thành</span>
+                    <span>Số công việc đã hoàn thành</span>
                     {useFallback && (
                         <span className="text-xs text-amber-500">(using sample data)</span>
                     )}
@@ -188,7 +188,7 @@ export default function TopMechanicsChart() {
                       <div className="text-xl font-bold text-blue-600">
                         {mechanic.tasksCompleted}
                       </div>
-                      <div className="text-xs text-muted-foreground">tasks</div>
+                      <div className="text-xs text-muted-foreground">Công việc</div>
                     </div>
                   </div>
                 )

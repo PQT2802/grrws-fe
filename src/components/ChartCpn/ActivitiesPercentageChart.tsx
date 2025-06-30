@@ -62,6 +62,16 @@ export default function ActivitiesPercentageChart() {
     fetchTaskStatistics();
   }, []);
 
+  // Calculate in-progress tasks using temporary logic
+  const getInProgressTasks = (): number => {
+    if (!taskStats) return 0;
+    
+    const inProgressTasks = taskStats.totalTasks - taskStats.totalPendingTasks - taskStats.totalCompletedTasks;
+    
+    // Ensure the result is not negative
+    return Math.max(0, inProgressTasks);
+  };
+
   // Sort percentages in descending order for circle sizing
   const getSortedPercentages = (): TaskPercentage[] => {
     if (!taskStats) return [];
@@ -76,6 +86,7 @@ export default function ActivitiesPercentageChart() {
   };
 
   const sortedPercentages = getSortedPercentages();
+  const inProgressTasks = getInProgressTasks();
 
   if (isLoading) {
     return (
@@ -209,38 +220,20 @@ export default function ActivitiesPercentageChart() {
           <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-              <span className="font-medium">Total Tasks</span>
+              <span className="font-medium">Toàn bộ công việc</span>
             </div>
             <div className="text-right">
               <span className="text-lg font-bold text-blue-600">
                 {taskStats?.totalTasks || 0}
               </span>
-              <div className="text-xs text-muted-foreground">Total</div>
+              <div className="text-xs text-muted-foreground">Tổng</div>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="font-medium">Completed Tasks</span>
-            </div>
-            <div className="text-right">
-              <span className="text-lg font-bold text-green-600">
-                {taskStats?.totalCompletedTasks || 0}
-              </span>
-              <div className="text-xs text-muted-foreground">
-                {taskStats?.totalTasks ? 
-                  `${((taskStats.totalCompletedTasks / taskStats.totalTasks) * 100).toFixed(1)}% of total` : 
-                  '0% of total'
-                }
-              </div>
-            </div>
-          </div>
-          
+
           <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span className="font-medium">Pending Tasks</span>
+              <span className="font-medium">Công việc đang chờ</span>
             </div>
             <div className="text-right">
               <span className="text-lg font-bold text-yellow-600">
@@ -248,8 +241,45 @@ export default function ActivitiesPercentageChart() {
               </span>
               <div className="text-xs text-muted-foreground">
                 {taskStats?.totalTasks ? 
-                  `${((taskStats.totalPendingTasks / taskStats.totalTasks) * 100).toFixed(1)}% of total` : 
-                  '0% of total'
+                  `${((taskStats.totalPendingTasks / taskStats.totalTasks) * 100).toFixed(1)}% trên tổng` : 
+                  '0% trên tổng'
+                }
+              </div>
+            </div>
+          </div>
+          
+          {/* NEW: In-Progress Tasks Section */}
+          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+              <span className="font-medium">Công việc đang thực hiện</span>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-bold text-orange-600">
+                {inProgressTasks}
+              </span>
+              <div className="text-xs text-muted-foreground">
+                {taskStats?.totalTasks ? 
+                  `${((inProgressTasks / taskStats.totalTasks) * 100).toFixed(1)}% trên tổng` : 
+                  '0% trên tổng'
+                }
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="font-medium">Công việc đã hoàn thành</span>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-bold text-green-600">
+                {taskStats?.totalCompletedTasks || 0}
+              </span>
+              <div className="text-xs text-muted-foreground">
+                {taskStats?.totalTasks ? 
+                  `${((taskStats.totalCompletedTasks / taskStats.totalTasks) * 100).toFixed(1)}% trên tổng` : 
+                  '0% trên tổng'
                 }
               </div>
             </div>

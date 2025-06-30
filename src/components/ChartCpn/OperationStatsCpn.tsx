@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Wrench, CheckCircle, AlertTriangle, Clock, TrendingUp, Shield } from "lucide-react";
+import { Wrench, CheckCircle, AlertTriangle, Clock, TrendingUp, Shield, BoxIcon } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { DEVICE_STATISTICS } from "@/types/dashboard.type";
 import { Loader2 } from "lucide-react";
@@ -114,7 +114,7 @@ const OperationStatsCpn = () => {
         <CardTitle>Thống kê vận hành máy may trong xưởng</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
           {/* Máy hoạt động */}
           <div className="space-y-2 text-center">
             <div className="flex items-center justify-center gap-2">
@@ -184,6 +184,16 @@ const OperationStatsCpn = () => {
             </div>
             <div className="text-xl font-bold">{calculatedStats?.machinesAwayForService || 0}</div>
             <div className="text-xs text-muted-foreground">Máy</div>
+          </div>
+
+          {/* Máy trong kho */}
+          <div className="space-y-2 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <BoxIcon className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm font-medium">Trong kho</span>
+            </div>
+            <div className="text-xl font-bold">{deviceStats?.totalActiveDevices || 0}</div>
+            <div className="text-xs text-yellow-500">Máy</div>
           </div>
         </div>
       </CardContent>

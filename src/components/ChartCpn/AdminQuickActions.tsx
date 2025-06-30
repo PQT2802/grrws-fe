@@ -38,7 +38,7 @@ export default function AdminQuickActions() {
   return (
     <div className=" p-6 mt-3 rounded-lg shadow-sm border">
       <h2 className="font-semibold text-lg mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3.5">
         {actions.map((action) => {
           const IconComponent = action.icon;
           return (
@@ -47,8 +47,8 @@ export default function AdminQuickActions() {
               onClick={action.action}
               className={`p-4 rounded-lg border transition-colors ${action.color}`}
             >
-              <div className="flex flex-col items-center gap-2">
-                <IconComponent className="w-6 h-6" />
+              <div className="flex flex-col items-center gap-2.5">
+                <IconComponent className="w-7 h-7" />
                 <span className="text-sm font-medium">{action.label}</span>
               </div>
             </button>
