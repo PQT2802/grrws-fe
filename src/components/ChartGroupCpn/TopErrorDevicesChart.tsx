@@ -37,31 +37,24 @@ export default function TopErrorDevicesChart() {
                 let deviceData: TOP_ERROR_DEVICE[] = []
 
                 if (response?.data && Array.isArray(response.data)) {
-                    // Case 1: { data: [...] }
                     deviceData = response.data
                 } else if (Array.isArray(response)) {
-                    // Case 2: Direct array response
                     deviceData = response
                 } else {
-                    // Case 3: Unexpected response format
                     console.warn("⚠️ Unexpected response format:", response)
                     setUseFallback(true)
                     return
                 }
 
-                // Check if we actually have data
                 if (deviceData.length === 0) {
                     console.warn("⚠️ Empty data array received")
                     setUseFallback(true)
                     return
                 }
 
-                // Transform API data to match chart format with simplified labels
                 const transformedData = deviceData.map((item, index) => ({
-                    // Use simplified naming "Máy 1" to "Máy 5" for bars
                     device: `Máy ${index + 1}`,
                     deviceId: item.deviceId,
-                    // Keep original name for tooltip
                     fullName: item.deviceName || "Unknown Device",
                     errors: item.errorCount || 0,
                 }))
@@ -81,6 +74,40 @@ export default function TopErrorDevicesChart() {
 
         fetchData()
     }, [])
+
+    const getYAxisDomain = () => {
+        if (!chartData || chartData.length === 0) return [0, 10]
+        
+        const maxValue = Math.max(...chartData.map(item => item.errors))
+        const maxDomain = Math.max(maxValue, 3)
+        const roundedMax = Math.ceil(maxDomain)
+        
+        return [0, roundedMax]
+    }
+
+    const getYAxisTicks = () => {
+        const [min, max] = getYAxisDomain()
+        const ticks = []
+        
+        let step = 1
+        if (max > 20) step = 5
+        else if (max > 10) step = 2
+        else if (max > 5) step = 1
+        else step = 1
+        
+        for (let i = min; i <= max; i += step) {
+            ticks.push(i)
+        }
+        
+        if (!ticks.includes(max)) {
+            ticks.push(max)
+        }
+        
+        return ticks
+    }
+
+    const yAxisDomain = getYAxisDomain()
+    const yAxisTicks = getYAxisTicks()
 
     return (
         <Card className="flex-1">
@@ -125,7 +152,13 @@ export default function TopErrorDevicesChart() {
                                     tick={{ fontSize: 12 }}
                                     interval={0} // Force display all ticks
                                 />
-                                <YAxis />
+                                <YAxis 
+                                    domain={yAxisDomain}
+                                    ticks={yAxisTicks}
+                                    tick={{ fontSize: 12 }}
+                                    allowDecimals={false}
+                                    type="number"
+                                />
                                 <ChartTooltip
                                     content={<ChartTooltipContent />}
                                     labelFormatter={(label, payload) => {

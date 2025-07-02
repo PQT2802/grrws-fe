@@ -105,6 +105,8 @@ export default function DeviceStatusPieChart() {
     )
   }
 
+  const isOddNumber = deviceData.length % 2 !== 0
+
   return (
     <Card>
       <CardHeader>
@@ -153,21 +155,42 @@ export default function DeviceStatusPieChart() {
           </div>
         )}
 
-        <div className="mt-4 grid grid-cols-1 gap-2">
-          {deviceData.map((item, index) => (
-            <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
-                <span className="font-medium text-sm">{item.name}</span>
+        {/* Updated Legend - 2 Column Grid with Centered Last Row for Odd Numbers */}
+        <div className="mt-4">
+          <div className="grid grid-cols-2 gap-2">
+            {deviceData.slice(0, -1).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
+                  <span className="font-medium text-sm">{item.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold">{item.value}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {totalDevices > 0 ? ((item.value / totalDevices) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-lg font-bold">{item.value}</span>
-                <div className="text-xs text-muted-foreground">
-                  {totalDevices > 0 ? ((item.value / totalDevices) * 100).toFixed(1) : 0}%
+            ))}
+          </div>
+          
+          {/* Last item - centered if odd number of total items */}
+          {deviceData.length > 0 && (
+            <div className={`mt-2 ${isOddNumber ? 'flex justify-center' : 'grid grid-cols-2 gap-2'}`}>
+              <div className={`flex items-center justify-between p-2 rounded-lg border bg-muted/20 ${isOddNumber ? 'w-1/2' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: deviceData[deviceData.length - 1].color }} />
+                  <span className="font-medium text-sm">{deviceData[deviceData.length - 1].name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold">{deviceData[deviceData.length - 1].value}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {totalDevices > 0 ? ((deviceData[deviceData.length - 1].value / totalDevices) * 100).toFixed(1) : 0}%
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>

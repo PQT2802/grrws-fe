@@ -95,6 +95,9 @@ export default function UserRolesChart() {
     )
   }
 
+  // Check if we have an odd number of items to center the last row
+  const isOddNumber = userRolesData.length % 2 !== 0
+
   return (
     <Card>
       <CardHeader>
@@ -141,21 +144,42 @@ export default function UserRolesChart() {
           </div>
         )}
         
-        <div className="mt-4 grid grid-cols-1 gap-2">
-          {userRolesData.map((item, index) => (
-            <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
-                <span className="font-medium text-sm">{item.name}</span>
+        {/* Updated Legend - 2 Column Grid with Centered Last Row for Odd Numbers */}
+        <div className="mt-4">
+          <div className="grid grid-cols-2 gap-2">
+            {userRolesData.slice(0, -1).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
+                  <span className="font-medium text-sm">{item.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold">{item.value}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {totalUsers > 0 ? ((item.value / totalUsers) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-lg font-bold">{item.value}</span>
-                <div className="text-xs text-muted-foreground">
-                  {totalUsers > 0 ? ((item.value / totalUsers) * 100).toFixed(1) : 0}%
+            ))}
+          </div>
+          
+          {/* Last item - centered if odd number of total items */}
+          {userRolesData.length > 0 && (
+            <div className={`mt-2 ${isOddNumber ? 'flex justify-center' : 'grid grid-cols-2 gap-2'}`}>
+              <div className={`flex items-center justify-between p-2 rounded-lg border bg-muted/20 ${isOddNumber ? 'w-1/2' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: userRolesData[userRolesData.length - 1].color }} />
+                  <span className="font-medium text-sm">{userRolesData[userRolesData.length - 1].name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-bold">{userRolesData[userRolesData.length - 1].value}</span>
+                  <div className="text-xs text-muted-foreground">
+                    {totalUsers > 0 ? ((userRolesData[userRolesData.length - 1].value / totalUsers) * 100).toFixed(1) : 0}%
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>

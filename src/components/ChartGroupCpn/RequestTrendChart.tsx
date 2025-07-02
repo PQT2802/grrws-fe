@@ -94,19 +94,18 @@ export default function RequestTrendChart() {
 		fetchData()
 	}, [])
 
-	// Helper function to parse date strings like "Jun 2025" into Date objects for sorting
 	const parseDateString = (dateStr: string): Date | null => {
 		try {
 			// Handle different possible formats
 			if (dateStr.match(/^[A-Za-z]{3}\s\d{4}$/)) {
-				// Format: "Jun 2025"
+				
 				const [month, year] = dateStr.split(" ")
 				const monthIndex = getMonthIndex(month)
 				return new Date(parseInt(year), monthIndex, 1)
 			} else if (dateStr.match(/^T\d{1,2}\s\d{4}$/)) {
 				// Format: "T7 2023" (Vietnamese format)
 				const [monthPart, year] = dateStr.split(" ")
-				const monthNum = parseInt(monthPart.substring(1)) - 1 // Convert T7 to 6 (0-based month index)
+				const monthNum = parseInt(monthPart.substring(1)) - 1 
 				return new Date(parseInt(year), monthNum, 1)
 			}
 			console.warn("⚠️ Unknown date format:", dateStr)
@@ -117,7 +116,6 @@ export default function RequestTrendChart() {
 		}
 	}
 
-	// Helper to convert month abbreviation to month index (0-11)
 	const getMonthIndex = (monthAbbr: string): number => {
 		const months = [
 			"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -126,8 +124,49 @@ export default function RequestTrendChart() {
 		const index = months.findIndex((m) =>
 			m.toLowerCase() === monthAbbr.toLowerCase()
 		)
-		return index !== -1 ? index : 0 // Default to January if not found
+		return index !== -1 ? index : 0 
 	}
+
+	const getYAxisDomain = () => {
+		if (!chartData || chartData.length === 0) return [0, 10]
+
+		const maxValue = Math.max(...chartData.map(item => item.requestCount))
+		const minValue = Math.min(...chartData.map(item => item.requestCount))
+
+		const maxDomain = Math.max(maxValue, 3)
+		const minDomain = Math.max(0, Math.floor(minValue * 0.9)) 
+
+		const roundedMax = Math.ceil(maxDomain)
+
+		return [minDomain, roundedMax]
+	}
+
+	const getYAxisTicks = () => {
+		const [min, max] = getYAxisDomain()
+		const ticks = []
+
+		const range = max - min
+		let step = 1
+
+		if (range > 100) step = 20
+		else if (range > 50) step = 10
+		else if (range > 20) step = 5
+		else if (range > 10) step = 2
+		else step = 1
+
+		for (let i = min; i <= max; i += step) {
+			ticks.push(i)
+		}
+
+		if (!ticks.includes(max)) {
+			ticks.push(max)
+		}
+
+		return ticks
+	}
+
+	const yAxisDomain = getYAxisDomain()
+	const yAxisTicks = getYAxisTicks()
 
 	return (
 		<Card className="flex-1">
@@ -168,7 +207,13 @@ export default function RequestTrendChart() {
 							<LineChart data={chartData}>
 								<CartesianGrid strokeDasharray="3 3" />
 								<XAxis dataKey="month" />
-								<YAxis />
+								<YAxis
+									domain={yAxisDomain}
+									ticks={yAxisTicks}
+									tick={{ fontSize: 12 }}
+									allowDecimals={false}
+									type="number"
+								/>
 								<ChartTooltip
 									content={<ChartTooltipContent />}
 									labelFormatter={(label, payload) => {
