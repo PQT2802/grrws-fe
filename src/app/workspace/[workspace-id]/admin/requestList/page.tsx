@@ -78,12 +78,7 @@ export default function RequestListPage() {
 
     // Fetch total counts for tabs (separate API call to get accurate totals)
     const fetchTabCounts = useCallback(async () => {
-        try {
-            console.log("🔢 Fetching tab counts...")
-            
-            // Fetch a large page size to get all requests for counting
-            // In a real scenario, you might want a separate API endpoint for counts
-            const response = await apiClient.dashboard.getAllRequests(1, 1000) // Large page size to get most requests
+        try {const response = await apiClient.dashboard.getAllRequests(1, 1000) // Large page size to get most requests
             
             let allRequestsData: REQUEST_ITEM[] = []
             
