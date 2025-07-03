@@ -44,7 +44,7 @@ export default function ActivitiesPercentageChart() {
         console.log("📊 Task statistics extracted:", stats);
         
         // Validate that we have the required fields
-        if (typeof stats.warrantyTasksPercentage === 'undefined') {
+        if (typeof stats.warrantySubmissionTasksPercentage === 'undefined') {
           console.error("❌ Missing required fields in task statistics:", stats);
           throw new Error("Invalid task statistics format");
         }
@@ -62,31 +62,44 @@ export default function ActivitiesPercentageChart() {
     fetchTaskStatistics();
   }, []);
 
-  // Calculate in-progress tasks using temporary logic
-  const getInProgressTasks = (): number => {
-    if (!taskStats) return 0;
-    
-    const inProgressTasks = taskStats.totalTasks - taskStats.totalPendingTasks - taskStats.totalCompletedTasks;
-    
-    // Ensure the result is not negative
-    return Math.max(0, inProgressTasks);
-  };
-
   // Sort percentages in descending order for circle sizing
   const getSortedPercentages = (): TaskPercentage[] => {
     if (!taskStats) return [];
     
+    // Calculate combined warranty percentage
+    const warrantyPercentage = (taskStats.warrantySubmissionTasksPercentage || 0) + (taskStats.warrantyReturnTasksPercentage || 0);
+    
     const percentages = [
-      { type: "warranty", percentage: taskStats.warrantyTasksPercentage || 0, color: "#8b5cf6", label: "Bảo hành" },
-      { type: "repair", percentage: taskStats.repairTasksPercentage || 0, color: "#f97316", label: "Sửa chữa" },
-      { type: "replace", percentage: taskStats.replaceTasksPercentage || 0, color: "#10b981", label: "Thay thế" }
+      { 
+        type: "warranty", 
+        percentage: warrantyPercentage, 
+        color: "#8b5cf6", 
+        label: "Bảo hành" 
+      },
+      { 
+        type: "repair", 
+        percentage: taskStats.repairTasksPercentage || 0, 
+        color: "#f97316", 
+        label: "Sửa chữa" 
+      },
+      { 
+        type: "replace", 
+        percentage: taskStats.replaceTasksPercentage || 0, 
+        color: "#10b981", 
+        label: "Thay thế" 
+      }
     ];
     
     return percentages.sort((a, b) => b.percentage - a.percentage);
   };
 
   const sortedPercentages = getSortedPercentages();
-  const inProgressTasks = getInProgressTasks();
+
+  // Calculate combined warranty totals for display
+  const getCombinedWarrantyTotals = () => {
+    if (!taskStats) return 0;
+    return (taskStats.totalWarrantySubmissionTasks || 0) + (taskStats.totalWarrantyReturnTasks || 0);
+  };
 
   if (isLoading) {
     return (
@@ -179,7 +192,7 @@ export default function ActivitiesPercentageChart() {
           )}
         </div>
 
-        {/* Statistics Grid */}
+        {/* Statistics Grid - Updated to show combined warranty */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="text-center p-3 rounded-lg bg-muted/20 border">
             <div className="flex items-center justify-center gap-1 mb-1">
@@ -187,9 +200,13 @@ export default function ActivitiesPercentageChart() {
               <TrendingUp className="h-3 w-3 text-green-500" />
             </div>
             <div className="text-2xl font-bold">
-              {taskStats?.totalWarrantyTasks || 0}
+              {getCombinedWarrantyTotals()}
             </div>
             <div className="text-sm text-muted-foreground">Bảo hành</div>
+            {/* <div className="text-xs text-gray-500 mt-1">
+              Gửi: {taskStats?.totalWarrantySubmissionTasks || 0} | 
+              Nhận: {taskStats?.totalWarrantyReturnTasks || 0}
+            </div> */}
           </div>
           
           <div className="text-center p-3 rounded-lg bg-muted/20 border">
@@ -248,7 +265,6 @@ export default function ActivitiesPercentageChart() {
             </div>
           </div>
           
-          {/* NEW: In-Progress Tasks Section */}
           <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/10">
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-orange-500"></div>
@@ -256,11 +272,11 @@ export default function ActivitiesPercentageChart() {
             </div>
             <div className="text-right">
               <span className="text-lg font-bold text-orange-600">
-                {inProgressTasks}
+                {taskStats?.totalInProgressTasks || 0}
               </span>
               <div className="text-xs text-muted-foreground">
                 {taskStats?.totalTasks ? 
-                  `${((inProgressTasks / taskStats.totalTasks) * 100).toFixed(1)}% trên tổng` : 
+                  `${((taskStats?.totalInProgressTasks / taskStats.totalTasks) * 100).toFixed(1)}% trên tổng` : 
                   '0% trên tổng'
                 }
               </div>

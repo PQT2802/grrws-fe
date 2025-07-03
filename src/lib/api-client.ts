@@ -4,7 +4,7 @@ import {
   SUGGEST_OBJECT_REQUEST,
   SUGGEST_OBJECT_RESPONSE,
 } from "@/types/comon.type";
-import { DEVICE_WEB } from "@/types/device.type";
+import { DEVICE_WEB, MACHINE_WEB } from "@/types/device.type";
 import { CREATE_ERROR_DETAIL, ErrorGuideline } from "@/types/error.type";
 import {
   REQUEST_SUMMARY,
@@ -325,6 +325,17 @@ class APIClient {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
   };
+
+  machine = {
+    getMachines: (
+      pageNumber: number,
+      pageSize: number
+    ): Promise<MACHINE_WEB[]> => {
+      return http.get(
+        `/api/Machine/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      ); 
+    },
+  }
 
   sparePart = {
     getRequests: (): Promise<any> => {

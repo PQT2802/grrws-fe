@@ -51,11 +51,11 @@ export default function DeviceStatusPieChart() {
 
         // Map API data to chart format
         const chartData: DeviceData[] = [
-          { name: "Trong kho", value: deviceStats.totalActiveDevices || 0, color: "#6b7280" },
           { name: "Hoạt động", value: deviceStats.totalInUseDevices || 0, color: "#22c55e" },
           { name: "Ngừng hoạt động", value: deviceStats.totalDecommissionedDevices || 0, color: "#ef4444" },
-          { name: "Sửa chữa", value: deviceStats.totalInRepairDevices || 0, color: "#f59e0b" },
           { name: "Bảo hành", value: deviceStats.totalInWarrantyDevices || 0, color: "#8b5cf6" },
+          { name: "Sửa chữa", value: deviceStats.totalInRepairDevices || 0, color: "#f59e0b" },
+          { name: "Trong kho", value: deviceStats.totalActiveDevices || 0, color: "#6b7280" },
         ]
 
         // Calculate total devices from all categories
@@ -135,7 +135,7 @@ export default function DeviceStatusPieChart() {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  outerRadius={90}
                   fill="#8884d8"
                   dataKey="value"
                   animationBegin={0}

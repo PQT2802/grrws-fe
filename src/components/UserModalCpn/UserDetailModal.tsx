@@ -29,11 +29,26 @@ export const UserDetailModal = ({
   getRoleNameFromNumber,
   getRoleBadgeVariant
 }: UserDetailModalProps) => {
+  // Handle modal close with proper cleanup
+  const handleOpenChange = (newOpen: boolean) => {
+    // Immediately call the parent's onOpenChange
+    onOpenChange(newOpen);
+    
+    // If closing, ensure pointer events are restored
+    if (!newOpen) {
+      // Use setTimeout to ensure this runs after the modal animation
+      setTimeout(() => {
+        document.body.style.pointerEvents = "auto";
+        document.body.style.overflow = "auto";
+      }, 100);
+    }
+  };
+
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[600px]" onEscapeKeyDown={() => handleOpenChange(false)}>
         <DialogHeader>
           <DialogTitle>User Details</DialogTitle>
           <DialogDescription>
@@ -61,43 +76,43 @@ export const UserDetailModal = ({
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-lg font-medium">User Details</h4>
+            <h4 className="text-lg font-medium">Detailed Information</h4>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Full Name</Label>
                 <div className="flex items-center gap-2">
-                  <span>{user.fullName || "Not provided"}</span>
+                  <span>{user.fullName || "Chưa cung cấp"}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Username</Label>
+                <Label className="text-muted-foreground">User Name</Label>
                 <div className="flex items-center gap-2">
-                  <span>{user.userName || "Not provided"}</span>
+                  <span>{user.userName || "Chưa cung cấp"}</span>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Email</Label>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{user.email || "Not provided"}</span>
+                  <span>{user.email || "Chưa cung cấp"}</span>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Phone</Label>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{user.phoneNumber || "Not provided"}</span>
+                  <span>{user.phoneNumber || "Chưa cung cấp"}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Date of Birth</Label>
+                <Label className="text-muted-foreground">Date Of Birth</Label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>{formatDate(user.dateOfBirth)}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Account Created</Label>
+                <Label className="text-muted-foreground">Created Date</Label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>{formatDate(user.createdDate)}</span>

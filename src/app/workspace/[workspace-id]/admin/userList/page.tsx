@@ -287,8 +287,14 @@ export default function UserList() {
   }, [selectedUser, closeDeleteDialog, fetchUsers])
 
   const handleViewUser = useCallback((user: USER_LIST_ITEM) => {
-    setSelectedUser(user)
-    setShowUserDetailModal(true)
+    // Ensure any previous modal state is cleared
+    setSelectedUser(null);
+    
+    // Small delay to ensure clean state
+    setTimeout(() => {
+      setSelectedUser(user);
+      setShowUserDetailModal(true);
+    }, 50);
   }, [])
 
   const handleEditUser = useCallback((user: USER_LIST_ITEM) => {
@@ -380,7 +386,15 @@ export default function UserList() {
       {/* User Detail Modal */}
       <UserDetailModal
         open={showUserDetailModal}
-        onOpenChange={setShowUserDetailModal}
+        onOpenChange={(open) => {
+          setShowUserDetailModal(open);
+          if (!open) {
+            // Clear selected user after modal closes
+            setTimeout(() => {
+              setSelectedUser(null);
+            }, 150);
+          }
+        }}
         user={selectedUser}
         formatDate={formatDate}
         getRoleNameFromNumber={getRoleNameFromNumber}

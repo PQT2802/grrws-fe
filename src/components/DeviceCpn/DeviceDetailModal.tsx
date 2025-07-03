@@ -34,7 +34,8 @@ import {
     Send,
     Download,
     User,
-    StickyNote
+    StickyNote,
+    Truck
 } from "lucide-react"
 import { DEVICE_WEB } from "@/types/device.type"
 import { WarrantyInfo, WARRANTY_HISTORY_LIST } from "@/types/warranty.type"
@@ -46,10 +47,10 @@ interface DeviceDetailModalProps {
     device: DEVICE_WEB | null
 }
 
-export default function DeviceDetailModal({ 
-    open, 
-    onOpenChange, 
-    device 
+export default function DeviceDetailModal({
+    open,
+    onOpenChange,
+    device
 }: DeviceDetailModalProps) {
     const [warranties, setWarranties] = useState<WarrantyInfo[]>([])
     const [warrantyHistory, setWarrantyHistory] = useState<WARRANTY_HISTORY_LIST[]>([])
@@ -76,7 +77,7 @@ export default function DeviceDetailModal({
                 document.body.style.pointerEvents = 'auto'
                 document.body.style.overflow = 'auto'
             }, 100)
-            
+
             return () => clearTimeout(timeoutId)
         }
     }, [open])
@@ -113,7 +114,7 @@ export default function DeviceDetailModal({
             console.log(`🔄 Fetching warranty history for device: ${deviceId}`)
             const response = await apiClient.warranty.getWarrantyHistory(deviceId)
             console.log("📋 Warranty history response:", response)
-            
+
             // Sort by sendDate descending (latest first)
             const sortedHistory = (response || []).sort((a, b) => {
                 if (!a.sendDate && !b.sendDate) return 0
@@ -121,7 +122,7 @@ export default function DeviceDetailModal({
                 if (!b.sendDate) return -1
                 return new Date(b.sendDate).getTime() - new Date(a.sendDate).getTime()
             })
-            
+
             setWarrantyHistory(sortedHistory)
         } catch (error) {
             console.error("❌ Error fetching warranty history:", error)
@@ -155,10 +156,10 @@ export default function DeviceDetailModal({
 
     const formatCurrency = (amount: number | null | undefined) => {
         if (!amount && amount !== 0) return "N/A"
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
-            currency: 'USD'
-        }).format(amount)
+            currency: 'VND'
+        }).format(amount).replace(/\s/g, '') 
     }
 
     const getStatusBadgeVariant = (status: string) => {
@@ -231,7 +232,7 @@ export default function DeviceDetailModal({
 
     const handleOpenChange = (newOpen: boolean) => {
         onOpenChange(newOpen)
-        
+
         // Immediate cleanup if closing
         if (!newOpen && typeof document !== 'undefined') {
             document.body.style.pointerEvents = 'auto'
@@ -246,12 +247,12 @@ export default function DeviceDetailModal({
     const otherWarranties = warranties.filter(w => w.warrantyType?.toLowerCase() !== "manufacturer")
 
     return (
-        <Dialog 
-            open={open} 
+        <Dialog
+            open={open}
             onOpenChange={handleOpenChange}
             modal={true}
         >
-            <DialogContent 
+            <DialogContent
                 className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto"
                 onEscapeKeyDown={() => handleOpenChange(false)}
                 onPointerDownOutside={() => handleOpenChange(false)}
@@ -281,11 +282,9 @@ export default function DeviceDetailModal({
                             <TabsTrigger value="details">Device Details</TabsTrigger>
                             <TabsTrigger value="warranty">Device Warranty</TabsTrigger>
                             <TabsTrigger value="history">Warranty History</TabsTrigger>
-                            {/* <TabsTrigger value="dates">Date History</TabsTrigger> */}
                         </TabsList>
-                        
+
                         <TabsContent value="details" className="space-y-4">
-                            {/* Basic Device Information */}
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Device Code</Label>
@@ -329,12 +328,12 @@ export default function DeviceDetailModal({
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Supplier</Label>
                                     <div className="flex items-center gap-2">
-                                        <Factory className="h-4 w-4 text-muted-foreground" />
+                                        <Truck className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.supplier || "N/A"}</span>
                                     </div>
                                 </div>
-                                
-                                <div className="space-y-1">
+
+                                {/* <div className="space-y-1">
                                     <Label className="text-muted-foreground">Area</Label>
                                     <div className="text-sm">
                                         {device.areaName || "N/A"}
@@ -344,6 +343,20 @@ export default function DeviceDetailModal({
                                     <Label className="text-muted-foreground">Zone</Label>
                                     <div className="text-sm">
                                         {device.zoneName || "N/A"}
+                                    </div>
+                                </div> */}
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Manufacture Date</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                        <span>{formatDate(device.manufactureDate)}</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Installation Date</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                        <span>{formatDate(device.installationDate)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -382,7 +395,7 @@ export default function DeviceDetailModal({
                                 </div>
                             )}
                         </TabsContent>
-                        
+
                         <TabsContent value="warranty" className="space-y-4">
                             {isLoadingWarranties ? (
                                 <Card>
@@ -434,8 +447,8 @@ export default function DeviceDetailModal({
                                                                 {warranty.daysRemaining >= 0 && (
                                                                     <Badge className={getDaysRemainingVariant(warranty.daysRemaining, warranty.lowDayWarning)}>
                                                                         {warranty.daysRemaining === 0 ? "Expires today" :
-                                                                         warranty.daysRemaining === 1 ? "1 day left" :
-                                                                         `${warranty.daysRemaining} days left`}
+                                                                            warranty.daysRemaining === 1 ? "1 day left" :
+                                                                                `${warranty.daysRemaining} days left`}
                                                                     </Badge>
                                                                 )}
                                                                 {warranty.lowDayWarning && (
@@ -538,8 +551,8 @@ export default function DeviceDetailModal({
                                                                     {warranty.daysRemaining >= 0 && (
                                                                         <Badge className={getDaysRemainingVariant(warranty.daysRemaining, warranty.lowDayWarning)}>
                                                                             {warranty.daysRemaining === 0 ? "Expires today" :
-                                                                             warranty.daysRemaining === 1 ? "1 day left" :
-                                                                             `${warranty.daysRemaining} days left`}
+                                                                                warranty.daysRemaining === 1 ? "1 day left" :
+                                                                                    `${warranty.daysRemaining} days left`}
                                                                         </Badge>
                                                                     )}
                                                                 </div>
@@ -630,7 +643,7 @@ export default function DeviceDetailModal({
                                             {warrantyHistory.length} record{warrantyHistory.length !== 1 ? 's' : ''}
                                         </Badge>
                                     </div>
-                                    
+
                                     {warrantyHistory.map((historyItem, index) => (
                                         <Card key={index} className="border-l-4 border-l-blue-500">
                                             <CardHeader className="pb-3">
@@ -696,7 +709,7 @@ export default function DeviceDetailModal({
                                                         )}
                                                     </div>
                                                 </div>
-                                                
+
                                                 {/* Duration calculation if both dates are available */}
                                                 {historyItem.sendDate && historyItem.receiveDate && (
                                                     <div className="mt-3 pt-3 border-t">
@@ -718,39 +731,6 @@ export default function DeviceDetailModal({
                                     ))}
                                 </div>
                             )}
-                        </TabsContent>
-                        
-                        <TabsContent value="dates" className="space-y-3">
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Manufacture Date</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span>{formatDate(device.manufactureDate)}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Installation Date</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span>{formatDate(device.installationDate)}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Created Date</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span>{formatDate(device.createdDate)}</span>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Modified Date</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
-                                        <span>{formatDate(device.modifiedDate)}</span>
-                                    </div>
-                                </div>
-                            </div>
                         </TabsContent>
                     </Tabs>
                 </div>

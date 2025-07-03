@@ -2,12 +2,23 @@ export interface TASK_STATISTICS {
   warrantyTasksPercentage: number;
   repairTasksPercentage: number;
   replaceTasksPercentage: number;
+  warrantySubmissionTasksPercentage: number;
+  warrantyReturnTasksPercentage: number;
+  uninstallationTasksPercentage: number;
+  installationTasksPercentage: number;
+  storageReturnTasksPercentage: number;
   totalWarrantyTasks: number;
   totalRepairTasks: number;
   totalReplaceTasks: number;
+  totalWarrantySubmissionTasks: number;
+  totalWarrantyReturnTasks: number;
+  totalUninstallationTasks: number;
+  totalInstallationTasks: number;
+  totalStorageReturnTasks: number;
   totalTasks: number;
   totalCompletedTasks: number;
   totalPendingTasks: number;
+  totalInProgressTasks: number;
 }
 
 export interface DEVICE_STATISTICS {
@@ -22,7 +33,7 @@ export interface DEVICE_STATISTICS {
 }
 
 export interface TASK_REQUEST_REPORT_TOTAL {
-  totalTasks: number;
+  totalMachines: number;
   totalRequests: number;
   totalReports: number;
 }

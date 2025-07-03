@@ -16,31 +16,30 @@ import {
     ChevronRight,
     Plus,
     Loader2,
+    Settings,
+    Factory,
+    Calendar,
 } from "lucide-react"
 import { useDebounce } from "@/hooks/useDebounce"
 import { toast } from "react-toastify"
 import { Card, CardContent } from "@/components/ui/card"
 import { apiClient } from "@/lib/api-client"
-import { DEVICE_WEB } from "@/types/device.type"
-import OperationStatsCpn from "../ChartCpn/OperationStatsCpn"
+import { MACHINE_WEB } from "@/types/device.type"
 
-// Updated device status mapping based on backend enum
-type DeviceStatus = "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"
-
-interface DeviceListCpnProps {
-    onCreateDevice?: () => void
-    onEditDevice?: (device: DEVICE_WEB) => void
-    onDeleteDevice?: (device: DEVICE_WEB) => void
-    onViewDevice?: (device: DEVICE_WEB) => void
+interface MachineListCpnProps {
+    onCreateMachine?: () => void
+    onEditMachine?: (machine: MACHINE_WEB) => void
+    onDeleteMachine?: (machine: MACHINE_WEB) => void
+    onViewMachine?: (machine: MACHINE_WEB) => void
 }
 
-export default function DeviceListCpn({ 
-    onCreateDevice, 
-    onEditDevice, 
-    onDeleteDevice,
-    onViewDevice
-}: DeviceListCpnProps) {
-    const [devices, setDevices] = useState<DEVICE_WEB[]>([])
+export default function MachineListCpn({ 
+    onCreateMachine, 
+    onEditMachine, 
+    onDeleteMachine,
+    onViewMachine
+}: MachineListCpnProps) {
+    const [machines, setMachines] = useState<MACHINE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -61,58 +60,57 @@ export default function DeviceListCpn({
         })
     }
 
-    // Updated status badge colors based on new device status enum
+    // Status badge colors for machine status
     const getStatusBadgeVariant = (status: string) => {
         switch (status?.toLowerCase()) {
             case "active":
                 return "bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400"
-            case "inactive":
+            case "discontinued":
                 return "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-400"
-            case "inuse":
-                return "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
-            case "inrepair":
-                return "bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-400"
-            case "inwarranty":
-                return "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-400"
-            case "decommissioned":
-                return "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400"
             default:
                 return "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400"
         }
     }
 
-    const getWarrantyBadgeVariant = (isUnderWarranty: boolean) => {
-        return isUnderWarranty
-            ? "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
-            : "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400"
+    // Get device count badge variant
+    const getDeviceCountBadgeVariant = (deviceCount: number) => {
+        if (deviceCount === 0) {
+            return "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400"
+        } else if (deviceCount <= 5) {
+            return "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
+        } else if (deviceCount <= 10) {
+            return "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-400"
+        } else {
+            return "bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400"
+        }
     }
 
-    // Fetch devices from API
-    const fetchDevices = useCallback(async () => {
+    // Fetch machines from API
+    const fetchMachines = useCallback(async () => {
         try {
             setIsLoading(true)
             setError(null)
-            console.log(`🔄 Fetching devices (page ${page}, size ${pageSize})...`)
+            console.log(`🔄 Fetching machines (page ${page}, size ${pageSize})...`)
 
-            const response = await apiClient.device.getDevices(page, pageSize)
-            console.log("📦 Devices API response:", response)
+            const response = await apiClient.machine.getMachines(page, pageSize)
+            console.log("📦 Machines API response:", response)
 
             // Handle different response structures
-            let devicesData: DEVICE_WEB[] = []
+            let machinesData: MACHINE_WEB[] = []
             let total = 0
 
             if (response && typeof response === 'object') {
                 // Case 1: Direct array response
                 if (Array.isArray(response)) {
-                    devicesData = response
+                    machinesData = response
                     total = response.length
                 }
                 else if ((response as any).data && Array.isArray((response as any).data)) {
-                    devicesData = (response as any).data
+                    machinesData = (response as any).data
                     total = (response as any).totalCount || (response as any).data.length
                 }
                 else if ((response as any).data && (response as any).data.data && Array.isArray((response as any).data.data)) {
-                    devicesData = (response as any).data.data
+                    machinesData = (response as any).data.data
                     total = (response as any).data.totalCount || (response as any).data.data.length
                 }
                 else {
@@ -123,35 +121,36 @@ export default function DeviceListCpn({
                 throw new Error("Invalid API response")
             }
 
-            console.log(`📊 Extracted: ${devicesData.length} devices, total: ${total}`)
+            console.log(`📊 Extracted: ${machinesData.length} machines, total: ${total}`)
 
             // Apply client-side filtering if needed
-            let filteredDevices = devicesData
+            let filteredMachines = machinesData
 
             // Apply search filter
             if (debouncedSearchTerm) {
-                filteredDevices = filteredDevices.filter(
-                    (device) =>
-                        device.deviceName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                        device.deviceCode?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                        device.serialNumber?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+                filteredMachines = filteredMachines.filter(
+                    (machine) =>
+                        machine.machineName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        machine.machineCode?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        machine.model?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        machine.manufacturer?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
                 )
             }
 
             // Apply status filter
             if (filterStatus !== "all") {
-                filteredDevices = filteredDevices.filter((device) => 
-                    device.status?.toLowerCase() === filterStatus.toLowerCase()
+                filteredMachines = filteredMachines.filter((machine) => 
+                    machine.status?.toLowerCase() === filterStatus.toLowerCase()
                 )
             }
 
-            setDevices(filteredDevices)
+            setMachines(filteredMachines)
             setTotalCount(total)
-            console.log("✅ Devices processed successfully")
+            console.log("✅ Machines processed successfully")
         } catch (error: any) {
-            console.error("❌ Error fetching devices:", error)
-            setError(`Failed to load devices: ${error.message || 'Unknown error'}`)
-            setDevices([])
+            console.error("❌ Error fetching machines:", error)
+            setError(`Failed to load machines: ${error.message || 'Unknown error'}`)
+            setMachines([])
             setTotalCount(0)
         } finally {
             setIsLoading(false)
@@ -159,8 +158,8 @@ export default function DeviceListCpn({
     }, [page, pageSize, debouncedSearchTerm, filterStatus])
 
     useEffect(() => {
-        fetchDevices()
-    }, [fetchDevices])
+        fetchMachines()
+    }, [fetchMachines])
 
     // Reset to page 1 when search/filter/pageSize changes
     useEffect(() => {
@@ -174,37 +173,37 @@ export default function DeviceListCpn({
         setPage(1)
     }, [pageSize])
 
-    const handleViewDevice = useCallback((device: DEVICE_WEB) => {
-        if (onViewDevice) {
-            onViewDevice(device)
+    const handleViewMachine = useCallback((machine: MACHINE_WEB) => {
+        if (onViewMachine) {
+            onViewMachine(machine)
         } else {
             toast.info("View functionality will be implemented when needed.")
         }
-    }, [onViewDevice])
+    }, [onViewMachine])
 
-    const handleEditDevice = useCallback((device: DEVICE_WEB) => {
-        if (onEditDevice) {
-            onEditDevice(device)
+    const handleEditMachine = useCallback((machine: MACHINE_WEB) => {
+        if (onEditMachine) {
+            onEditMachine(machine)
         } else {
             toast.info("Edit functionality will be implemented when the API is available.")
         }
-    }, [onEditDevice])
+    }, [onEditMachine])
 
-    const handleCreateDevice = useCallback(() => {
-        if (onCreateDevice) {
-            onCreateDevice()
+    const handleCreateMachine = useCallback(() => {
+        if (onCreateMachine) {
+            onCreateMachine()
         } else {
             toast.info("Create functionality will be implemented when the API is available.")
         }
-    }, [onCreateDevice])
+    }, [onCreateMachine])
 
-    const handleDeleteDevice = useCallback((device: DEVICE_WEB) => {
-        if (onDeleteDevice) {
-            onDeleteDevice(device)
+    const handleDeleteMachine = useCallback((machine: MACHINE_WEB) => {
+        if (onDeleteMachine) {
+            onDeleteMachine(machine)
         } else {
             toast.info("Delete functionality will be implemented when the API is available.")
         }
-    }, [onDeleteDevice])
+    }, [onDeleteMachine])
 
     const handlePageSizeChange = useCallback((newPageSize: string) => {
         setPageSize(Number(newPageSize))
@@ -213,12 +212,12 @@ export default function DeviceListCpn({
     const totalPages = Math.ceil(totalCount / pageSize)
 
     // Loading state
-    if (isLoading && devices.length === 0) {
+    if (isLoading && machines.length === 0) {
         return (
             <Card>
                 <CardContent className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <span className="ml-2">Loading devices...</span>
+                    <span className="ml-2">Loading machines...</span>
                 </CardContent>
             </Card>
         )
@@ -235,7 +234,7 @@ export default function DeviceListCpn({
                             Check the browser console for detailed error information.
                         </p>
                         <button 
-                            onClick={() => fetchDevices()} 
+                            onClick={() => fetchMachines()} 
                             className="text-blue-500 underline text-sm"
                         >
                             Retry
@@ -250,14 +249,12 @@ export default function DeviceListCpn({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold">Device Management</h1>
-                <Button onClick={handleCreateDevice} className="bg-blue-600 hover:bg-blue-700">
+                <h1 className="text-2xl font-semibold">Machine Management</h1>
+                <Button onClick={handleCreateMachine} className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="mr-2 h-4 w-4" />
-                    Import Device
+                    Add New Machine
                 </Button>
             </div>
-
-            <OperationStatsCpn/>
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
@@ -265,7 +262,7 @@ export default function DeviceListCpn({
                     <div className="relative w-1/3">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search by name, code, or serial..."
+                            placeholder="Search by name, code, model, or manufacturer..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9"
@@ -282,28 +279,23 @@ export default function DeviceListCpn({
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="inuse">In Use</SelectItem>
-                            <SelectItem value="inrepair">In Repair</SelectItem>
-                            <SelectItem value="inwarranty">In Warranty</SelectItem>
-                            <SelectItem value="decommissioned">Decommissioned</SelectItem>
+                            <SelectItem value="discontinued">Discontinued</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
-            {/* Device Table */}
+            {/* Machine Table */}
             <div className="rounded-md border bg-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b bg-muted/50">
-                                <th className="px-4 py-3 text-left">Serial Number</th>
-                                <th className="px-4 py-3 text-left">Device Name</th>
-                                <th className="px-4 py-3 text-left">Model</th>
+                                <th className="px-4 py-3 text-left">Machine Name</th>
+                                <th className="px-4 py-3 text-left">Model & Manufacturer</th>
+                                <th className="px-4 py-3 text-left">Associated Devices</th>
                                 <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Warranty</th>
-                                <th className="px-4 py-3 text-left">Installed</th>
+                                <th className="px-4 py-3 text-left">Release Date</th>
                                 <th className="w-[80px] px-4 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -334,44 +326,53 @@ export default function DeviceListCpn({
                                         </td>
                                     </tr>
                                 ))
-                            ) : devices.length === 0 ? (
+                            ) : machines.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                        No devices found
+                                        No machines found
                                     </td>
                                 </tr>
                             ) : (
-                                devices.map((device) => (
-                                    <tr key={device.id} className="border-b hover:bg-muted/50">
-                                        <td className="px-4 py-3 text-muted-foreground">
-                                            {device.serialNumber || "N/A"}
-                                        </td>
+                                machines.map((machine) => (
+                                    <tr key={machine.id} className="border-b hover:bg-muted/50">
                                         <td className="px-4 py-3">
-                                            <div className="font-medium">{device.deviceName}</div>
+                                            <div className="font-medium">{machine.machineName}</div>
                                             <div className="text-sm text-muted-foreground">
-                                                {device.deviceCode}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
-                                            <div className="text-sm">
-                                                {device.model || "N/A"}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {device.manufacturer || "Unknown"}
+                                                {machine.machineCode || "N/A"}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <Badge variant="outline" className={`${getStatusBadgeVariant(device.status)} border-0`}>
-                                                {device.status}
+                                            <div className="flex items-center gap-2">
+                                                <Settings className="h-4 w-4" />
+                                                <div>
+                                                    <div className="text-sm font-medium">
+                                                        {machine.model || "N/A"}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <Factory className="h-3 w-3" />
+                                                        {machine.manufacturer || "Unknown"}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <Badge 
+                                                variant="outline" 
+                                                className={`${getDeviceCountBadgeVariant(machine.deviceIds?.length || 0)} border-0`}
+                                            >
+                                                {machine.deviceIds?.length || 0} devices
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <Badge variant="outline" className={`${getWarrantyBadgeVariant(device.isUnderWarranty)} border-0`}>
-                                                {device.isUnderWarranty ? "Yes" : "No"}
+                                            <Badge variant="outline" className={`${getStatusBadgeVariant(machine.status)} border-0`}>
+                                                {machine.status}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
-                                            {formatDate(device.installationDate)}
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="h-4 w-4" />
+                                                {formatDate(machine.releaseDate)}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <DropdownMenu>
@@ -381,17 +382,17 @@ export default function DeviceListCpn({
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => handleViewDevice(device)}>
+                                                    <DropdownMenuItem onClick={() => handleViewMachine(machine)}>
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         View Details
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleEditDevice(device)}>
+                                                    <DropdownMenuItem onClick={() => handleEditMachine(machine)}>
                                                         <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Device
+                                                        Edit Machine
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-red-600">
+                                                    <DropdownMenuItem onClick={() => handleDeleteMachine(machine)} className="text-red-600">
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Device
+                                                        Delete Machine
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -423,10 +424,10 @@ export default function DeviceListCpn({
                         <div className="text-sm text-gray-500">
                             {totalCount > 0 ? (
                                 <>
-                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount} devices
+                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount} machines
                                 </>
                             ) : (
-                                "No devices"
+                                "No machines"
                             )}
                         </div>
                     </div>
