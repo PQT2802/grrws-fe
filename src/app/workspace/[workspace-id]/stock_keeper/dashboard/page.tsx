@@ -33,7 +33,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-lg p-6 border">
+      <div className="rounded-lg p-6 border">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Welcome back, {user?.fullName || 'Stock Keeper'}!
         </h1>
@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
         {/* Right Column - Quick Actions & Chart */}
         <div className="space-y-6">
-          <QuickActions />
+          {/* <QuickActions /> */}
           <StockOverviewChart />
         </div>
       </div>

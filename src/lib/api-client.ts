@@ -348,20 +348,6 @@ class APIClient {
       return http.get(`/api/SparePartUsage/requests/${requestId}`);
     },
 
-    // getInventory: async (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
-    //   console.log(`Getting spare parts inventory from external API (page ${pageNumber}, size ${pageSize})`);
-    //   try {
-    //     const response = await http.get(`/api/Sparepart?pageNumber=${pageNumber}&pageSize=${pageSize}`);
-    //     console.log("External API response status:", (response as any)?.status || "unknown");
-    //     console.log("Response data sample:",
-    //       JSON.stringify(response).substring(0, 100) + "...");
-    //     return response;
-    //   } catch (error) {
-    //     console.error("Error in external API call:", error);
-    //     throw error;
-    //   }
-    // },
-
     getInventory: (
       pageNumber: number = 1,
       pageSize: number = 10

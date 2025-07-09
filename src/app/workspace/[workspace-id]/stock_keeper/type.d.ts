@@ -35,12 +35,13 @@ export interface FilterBarProps {
   machineTypes: string[];
   categories: string[];
 }
-//model for part detail modal
+
 export interface PartDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  part: PartType;
+  part: PartType | null; 
   onUpdate?: () => void; 
+  partId?: string | undefined; 
 }
 
 //request  

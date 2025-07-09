@@ -6,41 +6,118 @@ import {
   Package, 
   Edit, 
   CheckCircle,
-  Settings,      // For Machine Type
-  Tag,           // For Category
-  Truck,         // For Supplier
-  DollarSign,    // For Unit Price
-  FileText,      // For Description
-  Wrench         // For Specification
+  Settings,
+  Tag,
+  Truck,
+  DollarSign,
+  FileText,
+  Wrench
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PartDetailModalProps, PartType } from "../../type";
 import UpdateQuantityModal from "./UpdateQuantityModal";
 import UpdateSparePartModal from "./UpdateSparePartModal";
 import { toast } from "react-toastify";
-import { sparePartService } from "@/app/service/sparePart.service";
+import { apiClient } from "@/lib/api-client";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 
-// Add onUpdate prop to the interface
-interface ExtendedPartDetailModalProps extends PartDetailModalProps {
-  onUpdate?: () => void; // Callback for when a part is updated
-}
-
-export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: ExtendedPartDetailModalProps) {
-  const isLowStock = part.quantity < part.minThreshold;
+export default function PartDetailModal({ 
+  isOpen, 
+  onClose, 
+  part, 
+  onUpdate, 
+  partId 
+}: PartDetailModalProps) {
+  const [currentPart, setCurrentPart] = useState<PartType | null>(part || null);
+  const [isLowStock, setIsLowStock] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showUpdateSpModal, setShowUpdateSpModal] = useState(false);
   const [originalData, setOriginalData] = useState<SPAREPART_INVENTORY_ITEM | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPart, setCurrentPart] = useState<PartType>(part);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load part data when partId is provided (for direct access)
+  useEffect(() => {
+    if (isOpen && partId && !part) {
+      console.log('PartDetailModal: Loading part by ID from direct access:', partId);
+      fetchPartById(partId);
+    }
+  }, [isOpen, partId, part]);
 
   // Update current part when prop changes
   useEffect(() => {
     if (part) {
       setCurrentPart(part);
+      setIsLowStock(part.quantity < part.minThreshold);
       console.log("PartDetailModal: Part updated:", part);
     }
   }, [part]);
+
+  // Update low stock status when currentPart changes
+  useEffect(() => {
+    if (currentPart) {
+      setIsLowStock(currentPart.quantity < currentPart.minThreshold);
+    }
+  }, [currentPart]);
+
+  // Fetch part data by ID directly from API
+  const fetchPartById = async (id: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log(`Fetching part data for ID: ${id}`);
+
+      const response = await apiClient.sparePart.getPartById(id);
+      console.log("API response for part by ID:", response);
+      
+      // Handle different response structures
+      let partData;
+      if (response?.data?.data) {
+        partData = response.data.data;
+      } else if (response?.data) {
+        partData = response.data;
+      } else if (response) {
+        partData = response;
+      } else {
+        throw new Error("No data returned from API");
+      }
+
+      if (partData && partData.id) {
+        // Convert API response to PartType format
+        const convertedPart: PartType = {
+          id: partData.id,
+          name: partData.sparepartName,
+          machineType: partData.machineNames?.length > 0 ? partData.machineNames[0] : "Khác",
+          category: partData.category || "Others",
+          quantity: partData.stockQuantity,
+          minThreshold: 10,
+          description: partData.description || "",
+          image: partData.imgUrl || "/placeholder-part.png",
+          importedDate: new Date().toISOString().split("T")[0],
+          unit: partData.unit || "Cái",
+          specification: partData.specification || "",
+          supplier: partData.supplierName || "",
+          supplierId: partData.supplierId || "",
+          unitPrice: partData.unitPrice || 0,
+          expectedAvailabilityDate: partData.expectedAvailabilityDate 
+            ? new Date(partData.expectedAvailabilityDate).toISOString().split('T')[0]
+            : ""
+        };
+
+        setCurrentPart(convertedPart);
+        setOriginalData(partData);
+        console.log("Part data loaded successfully:", convertedPart);
+      } else {
+        throw new Error("Invalid part data structure");
+      }
+    } catch (error: any) {
+      console.error("Error fetching part data:", error);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
+      setError(error?.message || "Failed to load part data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Fetch original data for the update modal if needed
   useEffect(() => {
@@ -55,8 +132,12 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
       setOriginalData(undefined);
       setShowUpdateModal(false);
       setShowUpdateSpModal(false);
+      setError(null);
+      if (partId && !part) {
+        setCurrentPart(null); // Reset when closing direct access modal
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, partId, part]);
 
   const fetchOriginalData = async () => {
     if (!currentPart?.id) {
@@ -68,8 +149,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
       setIsLoading(true);
       console.log(`Fetching original data for part ID: ${currentPart.id}`);
 
-      // Actually fetch the data from the API
-      const response = await sparePartService.getSparePartById(currentPart.id);
+      const response = await apiClient.sparePart.getPartById(currentPart.id);
 
       if (response?.data) {
         setOriginalData(response.data);
@@ -79,9 +159,8 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
       }
     } catch (error: any) {
       console.error("Error fetching part details:", error);
-      // Only show error if it's not a 404 (which might be expected for some parts)
       if (error?.status !== 404) {
-        // Optionally show a toast error here
+        // Only show error if it's not a 404
       }
     } finally {
       setIsLoading(false);
@@ -124,15 +203,15 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
         ...data
       });
       
-      // Call the actual API to update quantity
-      const response = await sparePartService.updateSparePartQuantity(
+      // Call the API directly to update quantity
+      const response = await apiClient.sparePart.updateStockQuantity(
         currentPart.id, 
-        data.qty, 
-        data.method as any, 
-        data.date
+        data.method === 'Adjustment' ? data.qty : (
+          data.method === 'Export' ? Math.max(0, currentPart.quantity - data.qty) : currentPart.quantity + data.qty
+        )
       );
       
-      // Update the current part state with new quantity based on the method
+      // Update the current part state with new quantity
       let newQuantity = currentPart.quantity;
       if (data.method === 'Export') {
         newQuantity = Math.max(0, currentPart.quantity - data.qty);
@@ -148,7 +227,6 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
       };
       setCurrentPart(updatedPart);
       
-      // toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units (${data.method})`);
       toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units`);
       
       // Reload the original data to ensure we're showing the latest data
@@ -163,34 +241,66 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
     }
   };
 
-  // Handle success for Spare Part update - modified to call onUpdate and refresh modal data
+  // Handle success for Spare Part update
   const handleUpdateSuccess = () => {
     console.log("Part updated successfully");
-    // Close the update modal
     setShowUpdateSpModal(false);
-    // Clear original data to force refresh
     setOriginalData(undefined);
-    // Explicitly fetch the updated data immediately
     fetchOriginalData();
-    // Call the onUpdate callback from parent to refresh data
     onUpdate?.();
-    // Note: The parent will pass the updated part data, which will trigger useEffect above
   };
 
-  if (!isOpen || !currentPart) return null;
+  if (!isOpen) return null;
 
-  // Use currentPart instead of part throughout the component
-  const displayPart = currentPart;
-  const isCurrentLowStock = displayPart.quantity < displayPart.minThreshold;
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <span className="ml-4 text-lg">Loading part details...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && !currentPart) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-red-600">Error</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentPart) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-      {/* Modal content using displayPart instead of part */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {displayPart.name}
+            {currentPart.name}
           </h2>
           <button
             onClick={onClose}
@@ -207,8 +317,8 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
             <div className="flex-shrink-0">
               <div className="w-48 h-48 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
                 <img
-                  src={displayPart.image || "/file.svg"}
-                  alt={displayPart.name}
+                  src={currentPart.image || "/file.svg"}
+                  alt={currentPart.name}
                   className="max-h-40 max-w-full object-contain"
                   onError={(e) => {
                     if (!e.currentTarget.src.includes("file.svg")) {
@@ -222,11 +332,11 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
             <div className="flex-1 space-y-4">
               {/* Stock Status */}
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                isCurrentLowStock 
+                isLowStock 
                   ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" 
                   : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
               }`}>
-                {isCurrentLowStock ? (
+                {isLowStock ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1" />
                     Low Stock
@@ -246,7 +356,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Current Stock
                   </label>
                   <p className="text-lg font-semibold">
-                    {displayPart.quantity} {displayPart.unit}
+                    {currentPart.quantity} {currentPart.unit}
                   </p>
                 </div>
                 <div>
@@ -254,7 +364,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Min Threshold
                   </label>
                   <p className="text-lg font-semibold">
-                    {displayPart.minThreshold} {displayPart.unit}
+                    {currentPart.minThreshold} {currentPart.unit}
                   </p>
                 </div>
               </div>
@@ -275,16 +385,11 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                   <Edit className="w-4 h-4" />
                   Edit Details
                 </button>
-                {/* {isLowStock && (
-                  <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    Order More
-                  </button>
-                )} */}
               </div>
             </div>
           </div>
 
-          {/* Detailed Information - Redesigned Layout */}
+          {/* Detailed Information */}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
               Part Details
@@ -299,7 +404,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Machine Type
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.machineType || "N/A"}
+                    {currentPart.machineType || "N/A"}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -308,7 +413,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Category
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.category || "N/A"}
+                    {currentPart.category || "N/A"}
                   </p>
                 </div>
               </div>
@@ -321,7 +426,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Supplier
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.supplier || "N/A"}
+                    {currentPart.supplier || "N/A"}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -330,7 +435,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Unit Price
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.unitPrice ? `đ${displayPart.unitPrice.toFixed(2)}` : "N/A"}
+                    {currentPart.unitPrice ? `đ${currentPart.unitPrice.toFixed(2)}` : "N/A"}
                   </p>
                 </div>
               </div>
@@ -343,7 +448,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Description
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.description || "No description available"}
+                    {currentPart.description || "No description available"}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -352,7 +457,7 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
                     Specification
                   </label>
                   <p className="text-sm text-gray-900 dark:text-white">
-                    {displayPart.specification || "No specification available"}
+                    {currentPart.specification || "No specification available"}
                   </p>
                 </div>
               </div>
@@ -367,16 +472,16 @@ export default function PartDetailModal({ isOpen, onClose, part, onUpdate }: Ext
         onClose={() => setShowUpdateModal(false)}
         onSubmit={handleUpdateQuantitySubmit}
         defaultMethod="Adjustment"
-        currentQuantity={displayPart.quantity}
+        currentQuantity={currentPart.quantity}
       />
 
       {/* Update Spare Part Modal */}
-      {displayPart && (
+      {currentPart && (
         <UpdateSparePartModal
           isOpen={showUpdateSpModal}
           onClose={() => setShowUpdateSpModal(false)}
           onSuccess={handleUpdateSuccess}
-          part={displayPart}
+          part={currentPart}
           originalData={originalData}
         />
       )}

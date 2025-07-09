@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { sortAndFilterParts } from "./utils/sortAndFilter";
 import PartCard from "./components/PartCard";
 import FilterBar from "./components/FilterBar";
 import { PartType } from "../type";
 import PartDetailModal from "./components/PartDetailModal";
 import ImportSparePartModal from "./components/ImportSparePartModal";
-import { sparePartService } from "@/app/service/sparePart.service";
+import { apiClient } from "@/lib/api-client";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import { toast } from "react-toastify";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -38,7 +37,7 @@ export default function InventoryPage() {
   // State for UI filters (client-side)
   const [search, setSearch] = useState<string>("");
   const [machineFilter, setMachineFilter] = useState<string>("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All"); // Default to "All"
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<string>("asc");
   
@@ -50,20 +49,26 @@ export default function InventoryPage() {
   // State for data
   const [inventory, setInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Pagination state (server-side)
-  const [pageIndex, setPageIndex] = useState<number>(0); // 0-based for UI consistency
+  const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
+
+  // State for handling direct part access from notifications
+  const [directPartId, setDirectPartId] = useState<string | undefined>(undefined);
 
   // Initialize pagination from URL params
   useEffect(() => {
     const page = searchParams.get('page');
     const size = searchParams.get('pageSize');
     const category = searchParams.get('category');
+    const filter = searchParams.get('filter');
     
     if (page) {
-      setPageIndex(parseInt(page) - 1); // Convert to 0-based
+      setPageIndex(parseInt(page) - 1);
     }
     if (size) {
       setPageSize(parseInt(size));
@@ -71,15 +76,44 @@ export default function InventoryPage() {
     if (category) {
       setCategoryFilter(category);
     }
+    if (filter === 'lowstock') {
+      setCategoryFilter("All");
+    }
   }, [searchParams]);
+
+  // Check for pending modal opening from sessionStorage
+  useEffect(() => {
+    if (initialDataLoaded) {
+      const modalData = sessionStorage.getItem('openPartModal');
+      if (modalData) {
+        try {
+          const { partId, timestamp } = JSON.parse(modalData);
+          // Only open if the data is recent (within 30 seconds)
+          if (Date.now() - timestamp < 30000) {
+            console.log('Opening modal for part from sessionStorage:', partId);
+            setDirectPartId(partId);
+            setIsModalOpen(true);
+            
+            // Clean up sessionStorage immediately after use
+            sessionStorage.removeItem('openPartModal');
+          } else {
+            // Clean up expired data
+            sessionStorage.removeItem('openPartModal');
+          }
+        } catch (error) {
+          console.error('Error parsing modal data from sessionStorage:', error);
+          sessionStorage.removeItem('openPartModal');
+        }
+      }
+    }
+  }, [initialDataLoaded]);
 
   // Update URL when pagination or category changes
   const updateURL = (newPageIndex: number, newPageSize: number, newCategory?: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set('page', (newPageIndex + 1).toString()); // Convert to 1-based for URL
+    params.set('page', (newPageIndex + 1).toString());
     params.set('pageSize', newPageSize.toString());
     
-    // Handle category filter in URL
     if (newCategory !== undefined) {
       if (newCategory === "All") {
         params.delete('category');
@@ -91,39 +125,53 @@ export default function InventoryPage() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // Fetch inventory data
+  // Fetch inventory data directly using API client
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const apiPageNumber = pageIndex + 1; // Convert to 1-based for API
+      setError(null);
+      const apiPageNumber = pageIndex + 1;
       
       console.log(`🔍 Fetching inventory: page ${apiPageNumber}, size ${pageSize}`);
       
-      const response = await sparePartService.getSparePartInventory(apiPageNumber, pageSize);
+      // Use the API client directly instead of service layer
+      const response = await apiClient.sparePart.getInventory(apiPageNumber, pageSize);
 
-      console.log("🔍 Service Response:", response);
+      console.log("🔍 API Client Response:", response);
 
-      // Handle multiple possible response structures
-      let inventoryData: string | any[] | ((prevState: SPAREPART_INVENTORY_ITEM[]) => SPAREPART_INVENTORY_ITEM[]) = [];
+      let inventoryData: SPAREPART_INVENTORY_ITEM[] = [];
       let totalCount = 0;
 
-      if (response?.data?.data && Array.isArray(response.data.data)) {
-        inventoryData = response.data.data;
-        totalCount = response.data.totalCount || 0;
-      } else if (response?.data && Array.isArray(response.data)) {
-        inventoryData = response.data;
-        totalCount = response.data.length;
-      } else if (Array.isArray(response)) {
-        inventoryData = response;
-        totalCount = response.length;
+      // Handle different response structures from the API
+      if (response && typeof response === 'object') {
+        // Check if it's a paginated response
+        if ((response as any).data?.data && Array.isArray((response as any).data.data)) {
+          inventoryData = (response as any).data.data;
+          totalCount = (response as any).data.totalCount || 0;
+        }
+        // Check if it's a direct data array with pagination info
+        else if ((response as any).data && Array.isArray((response as any).data)) {
+          inventoryData = (response as any).data;
+          totalCount = (response as any).totalCount || inventoryData.length;
+        }
+        // Check if response itself is an array
+        else if (Array.isArray(response)) {
+          inventoryData = response;
+          totalCount = inventoryData.length;
+        }
+        // Check if response has items directly
+        else if ((response as any).items && Array.isArray((response as any).items)) {
+          inventoryData = (response as any).items;
+          totalCount = (response as any).totalCount || inventoryData.length;
+        }
       }
 
       console.log(`✅ Processed inventory: ${inventoryData.length} items, total: ${totalCount}`);
       
       setInventory(inventoryData);
       setTotalCount(totalCount);
+      setInitialDataLoaded(true);
 
-      // Handle empty pages gracefully
       if (inventoryData.length === 0 && pageIndex > 0) {
         console.log("📄 Empty page detected, returning to page 1");
         setPageIndex(0);
@@ -133,9 +181,11 @@ export default function InventoryPage() {
 
     } catch (error) {
       console.error("❌ Error fetching inventory:", error);
+      setError(`Failed to load parts inventory: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast.error(`Failed to load parts inventory: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setInventory([]);
       setTotalCount(0);
+      setInitialDataLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -148,11 +198,11 @@ export default function InventoryPage() {
 
   // Calculate pagination values
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const currentPage = pageIndex + 1; // Convert to 1-based for display
+  const currentPage = pageIndex + 1;
 
   // Handle page changes
   const handlePageChange = (page: number) => {
-    const newPageIndex = page - 1; // Convert to 0-based
+    const newPageIndex = page - 1;
     setPageIndex(newPageIndex);
     updateURL(newPageIndex, pageSize);
   };
@@ -160,7 +210,7 @@ export default function InventoryPage() {
   // Handle page size changes
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    setPageIndex(0); // Reset to first page
+    setPageIndex(0);
     updateURL(0, size);
   };
 
@@ -170,26 +220,24 @@ export default function InventoryPage() {
     updateURL(pageIndex, pageSize, category);
   };
 
-  // Get filter options from current inventory (for machine types only)
+  // Get filter options from current inventory
   const machineTypes = useMemo(() => {
     if (!inventory) return [];
     const allMachineNames = inventory.flatMap((item) => item.machineNames);
     return [...new Set(allMachineNames)].filter(Boolean);
   }, [inventory]);
 
-  // Categories are now fixed, so we don't need to derive them from data
-  const categories: string[] = []; // Empty array since we're using fixed categories
+  const categories: string[] = [];
 
   // Process inventory for display (client-side filtering)
   const processedInventory = useMemo(() => {
     if (!inventory || inventory.length === 0) return [];
 
-    // Convert API data to format needed by components
     const convertedParts = inventory.map((item) => ({
       id: item.id,
       name: item.sparepartName,
       machineType: item.machineNames.length > 0 ? item.machineNames[0] : "Khác",
-      category: item.category || "Others", // Use "Others" as default instead of "Chung"
+      category: item.category || "Others",
       quantity: item.stockQuantity,
       minThreshold: 10,
       description: item.description || "",
@@ -205,7 +253,6 @@ export default function InventoryPage() {
         : ""
     }));
 
-    // Apply client-side filtering with updated category logic
     let filteredParts = convertedParts;
 
     // Apply search filter
@@ -223,9 +270,14 @@ export default function InventoryPage() {
       filteredParts = filteredParts.filter(part => part.machineType === machineFilter);
     }
 
-    // Apply category filter - Updated logic for English values
+    // Apply category filter
     if (categoryFilter && categoryFilter !== "All") {
       filteredParts = filteredParts.filter(part => part.category === categoryFilter);
+    }
+
+    // Apply low stock filter if coming from notification
+    if (searchParams.get('filter') === 'lowstock') {
+      filteredParts = filteredParts.filter(part => part.quantity > 0 && part.quantity < 10);
     }
 
     // Apply sorting
@@ -248,7 +300,7 @@ export default function InventoryPage() {
     });
 
     return filteredParts;
-  }, [inventory, search, machineFilter, categoryFilter, sortBy, sortDirection]);
+  }, [inventory, search, machineFilter, categoryFilter, sortBy, sortDirection, searchParams]);
 
   // Calculate summary statistics
   const totalParts = inventory?.length || 0;
@@ -265,6 +317,7 @@ export default function InventoryPage() {
   const handlePartClick = (part: PartType) => {
     console.log("Part clicked:", part);
     setSelectedPart(part);
+    setDirectPartId(undefined); // Clear direct part ID when selecting from list
     setIsModalOpen(true);
   };
 
@@ -272,18 +325,14 @@ export default function InventoryPage() {
     if (selectedPart?.id) {
       try {
         console.log(`Refreshing selected part: ${selectedPart.id}`);
-        
-        // Refresh the entire inventory to get latest data
         await fetchInventory();
         
-        // Find the updated part in the new inventory data
         const updatedPart = processedInventory.find(p => p.id === selectedPart.id);
         if (updatedPart) {
           console.log("Updated part found:", updatedPart);
           setSelectedPart(updatedPart);
         } else {
           console.warn("Updated part not found in inventory");
-          // Close modal if part no longer exists
           setIsModalOpen(false);
           setSelectedPart(null);
         }
@@ -293,9 +342,15 @@ export default function InventoryPage() {
     }
   };
 
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedPart(null);
+    setDirectPartId(undefined);
+  };
+
   const PaginationSection = () => (
     <div className="flex flex-col sm:flex-row items-center sm:justify-end gap-4 mt-6">
-      {/* Page size selector */}
       <div className="flex items-center gap-3 w-full sm:w-auto order-2 sm:order-1 justify-center sm:justify-start">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Items per page
@@ -320,7 +375,6 @@ export default function InventoryPage() {
         </span>
       </div>
 
-      {/* Pagination controls - moved to the right */}
       <div className="w-full sm:w-auto order-1 sm:order-2 flex justify-center sm:justify-end ml-auto">
         <Pagination>
           <PaginationContent>
@@ -377,6 +431,28 @@ export default function InventoryPage() {
     </div>
   );
 
+  // Show error state
+  if (error && !loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center py-8">
+              <Package className="mx-auto h-12 w-12 text-red-400 mb-4" />
+              <p className="text-red-500 mb-4">{error}</p>
+              <Button
+                onClick={fetchInventory}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Retry Loading Inventory
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with stats */}
@@ -393,7 +469,6 @@ export default function InventoryPage() {
             </Button>
           </div>
           
-          {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-blue-50 dark:bg-slate-700 p-4 rounded-lg">
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -432,7 +507,7 @@ export default function InventoryPage() {
         sortDirection={sortDirection}
         setSortDirection={setSortDirection}
         machineTypes={machineTypes}
-        categories={categories} // Pass empty array since we're using fixed categories
+        categories={categories}
       />
 
       {/* Content */}
@@ -485,17 +560,13 @@ export default function InventoryPage() {
       </Card>
 
       {/* Modals */}
-      {selectedPart && (
-        <PartDetailModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedPart(null);
-          }}
-          part={selectedPart}
-          onUpdate={refreshSelectedPart}
-        />
-      )}
+      <PartDetailModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        part={selectedPart}
+        partId={directPartId}
+        onUpdate={refreshSelectedPart}
+      />
       
       <ImportSparePartModal
         isOpen={showImportModal}

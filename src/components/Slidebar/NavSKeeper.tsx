@@ -22,7 +22,7 @@ export function NavSKeeper() {
       icon: Home
     },
     {
-      title: "Spare Part Requests",
+      title: "Request",
       url: `/workspace/${workspaceId}/stock_keeper/requests`,
       icon: ClipboardList
     },
