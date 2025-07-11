@@ -105,7 +105,7 @@ export default function UpdateQuantityModal({
             )}
           </div>
           
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium mb-1">Method</label>
             <select
               className="w-full border rounded-md px-3 py-2 dark:bg-slate-700 dark:border-gray-600"
@@ -124,7 +124,7 @@ export default function UpdateQuantityModal({
                method === "Export" ? "Removes quantity from current stock" :
                "Sets stock to the exact quantity"}
             </p>
-          </div>
+          </div> */}
           
           <div className="mt-4 flex justify-end gap-3">
             <button

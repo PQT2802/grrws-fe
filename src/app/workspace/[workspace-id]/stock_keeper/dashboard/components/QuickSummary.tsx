@@ -7,7 +7,7 @@ import { sparePartService } from '@/app/service/sparePart.service';
 interface SummaryData {
   totalRequests: number;
   outOfStockItems: number;
-  unconfirmedRequests: number; // Changed from pendingDeliveries
+  unconfirmedRequests: number; 
   lowStockItems: number;
 }
 
@@ -15,7 +15,7 @@ export default function QuickSummary() {
   const [summaryData, setSummaryData] = useState<SummaryData>({
     totalRequests: 0,
     outOfStockItems: 0,
-    unconfirmedRequests: 0, // Changed from pendingDeliveries
+    unconfirmedRequests: 0, 
     lowStockItems: 0
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -125,8 +125,8 @@ export default function QuickSummary() {
       iconColor: "text-red-500",
     },
     {
-      label: "Unconfirmed Requests", // Updated label
-      value: summaryData.unconfirmedRequests, // Updated value
+      label: "Unconfirmed Requests", 
+      value: summaryData.unconfirmedRequests, 
       icon: Clock,
       color: "bg-yellow-50 text-yellow-700 border-yellow-200",
       iconColor: "text-yellow-500",
@@ -134,7 +134,7 @@ export default function QuickSummary() {
     {
       label: "Low Stock Items",
       value: summaryData.lowStockItems,
-      icon: AlertCircle, // Changed from TrendingUp to AlertCircle (exclamation mark)
+      icon: AlertCircle,
       color: "bg-orange-50 text-orange-700 border-orange-200",
       iconColor: "text-orange-500",
     },

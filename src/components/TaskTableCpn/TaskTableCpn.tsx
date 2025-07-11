@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TASK_GROUP_WEB, TASK_GROUP_RESPONSE } from "@/types/task.type";
-import { formatTimeStampDate } from "@/lib/utils";
+import { formatAPIDateToHoChiMinh, formatTimeStampDate } from "@/lib/utils";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import {
   ArrowDown,
@@ -111,6 +111,11 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
   const handleViewTaskGroup = (taskGroup: TASK_GROUP_WEB) => {
     setSelectedTaskGroup(taskGroup);
     setShowTaskGroupModal(true);
+  };
+
+  const handleTaskGroupUpdated = () => {
+    // Refresh the task groups when a task group is updated
+    fetchTaskGroups();
   };
 
   const getGroupTypeIcon = (groupType: string) => {
@@ -264,7 +269,7 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
         try {
           return (
             <span className="text-gray-600 dark:text-gray-400">
-              {formatTimeStampDate(value, "datetime")}
+              {formatAPIDateToHoChiMinh(value, "datetime")}
             </span>
           );
         } catch (error) {
@@ -456,6 +461,7 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
         open={showTaskGroupModal}
         onOpenChange={setShowTaskGroupModal}
         taskGroup={selectedTaskGroup}
+        onTaskGroupUpdated={handleTaskGroupUpdated} // ✅ Add this callback
       />
     </div>
   );

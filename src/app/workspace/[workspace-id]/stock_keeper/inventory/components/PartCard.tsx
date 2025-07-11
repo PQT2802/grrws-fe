@@ -26,24 +26,25 @@ export default function PartCard({ part, onClick }: PartCardProps) {
         </div>
         <div className="flex-1">
           <h3 className="font-medium text-sm">{part.name}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{part.machineType}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{part.category}</p>
         </div>
       </div>
       <div className="flex justify-between items-center text-sm">
-        <div>
+        <div className="flex items-center gap-2">
           <span className="font-semibold">Stock: </span>
           <span className={isLowStock ? "text-red-500 font-bold" : "text-green-500"}>
             {part.quantity} {part.unit}
           </span>
+          
+          {isLowStock && (
+            <div className="flex items-center gap-1 text-red-500 text-xs ml-1">
+              <AlertTriangle size={12} />
+              <span>Low stock</span>
+            </div>
+          )}
         </div>
         <div className="text-xs text-gray-500">Min: {part.minThreshold}</div>
       </div>
-      {isLowStock && (
-        <div className="mt-2 flex items-center gap-1 text-red-500 text-xs">
-          <AlertTriangle size={12} />
-          <span>Low stock</span>
-        </div>
-      )}
     </div>
   );
 }

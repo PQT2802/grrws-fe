@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { REQUEST_SUMMARY } from "@/types/request.type";
-import { formatTimeStampDate } from "@/lib/utils";
+import { formatAPIDateToHoChiMinh, formatTimeStampDate } from "@/lib/utils";
 import {
   ArrowDown,
   ArrowUp,
@@ -201,7 +201,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         try {
           return (
             <span className="text-gray-600 dark:text-gray-400">
-              {formatTimeStampDate(String(value), "datetime")}
+              {formatAPIDateToHoChiMinh(String(value), "datetime")}
             </span>
           );
         } catch (error) {

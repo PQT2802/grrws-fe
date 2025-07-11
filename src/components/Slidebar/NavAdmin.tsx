@@ -22,22 +22,22 @@ export function NavAdmin() {
       icon: LayoutDashboard
     },
     {
-      title: "User Management",
+      title: "User",
       url: `/workspace/${workspaceId}/admin/userList`,
       icon: UsersRound
     },
     {
-      title: "Machine Management",
+      title: "Machine",
       url: `/workspace/${workspaceId}/admin/machineList`,
       icon: WashingMachine
     },
     {
-      title: "Device Management",
+      title: "Device",
       url: `/workspace/${workspaceId}/admin/deviceList`,
       icon: Smartphone
     },
     {
-      title: "Request Management",
+      title: "Request",
       url: `/workspace/${workspaceId}/admin/requestList`,
       icon: ClipboardList
     },

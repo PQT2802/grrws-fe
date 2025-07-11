@@ -32,8 +32,8 @@ export const sparePartService = {
 
   // Get spare part inventory with pagination
   getSparePartInventory: async (
-    pageNumber: number = 1, 
-    pageSize: number = 10
+  pageNumber: number = 1, 
+  pageSize: number = 10
   ): Promise<SPAREPART_INVENTORY_RESPONSE> => {
     return http.get<SPAREPART_INVENTORY_RESPONSE>(
       `/api/sparePart/inventory?pageNumber=${pageNumber}&pageSize=${pageSize}`, 

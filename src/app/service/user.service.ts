@@ -1,5 +1,5 @@
 import http from "@/lib/http";
-import { GET_MECHANIC_USER } from "@/types/user.type";
+import { GET_MECHANIC_USER, USER_LIST_RESPONSE } from "@/types/user.type";
 
 export const userService = {
   // ✅ Get users by role number
@@ -8,6 +8,15 @@ export const userService = {
       useInternalRoute: true,
     });
   },
+
+  // getUsersList: async (
+  //   pageNumber: number = 1,
+  //   pageSize: number = 10
+  // ): Promise<USER_LIST_RESPONSE> => {
+  //   return http.get<USER_LIST_RESPONSE>(`/api/users/list?pageNumber=${pageNumber}&pageSize=${pageSize}`, {
+  //     useInternalRoute: true
+  //   });
+  // },
 };
 
 export default userService;

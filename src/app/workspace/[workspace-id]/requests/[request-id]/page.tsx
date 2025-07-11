@@ -18,7 +18,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import PageTitle from "@/components/PageTitle/PageTitle";
 import ButtonCpn from "@/components/ButtonCpn/ButtonCpn";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
-import { formatTimeStampDate, getFirstLetterUppercase } from "@/lib/utils";
+import {
+  formatAPIDateToHoChiMinh,
+  formatTimeStampDate,
+  getFirstLetterUppercase,
+} from "@/lib/utils";
 import {
   REQUEST_DETAIL_WEB,
   ISSUE_FOR_REQUEST_DETAIL_WEB,
@@ -138,11 +142,17 @@ const RequestDetailPage = () => {
     setShowCreateTaskFromTechnicalIssues(true);
   };
 
-  // ✅ Callback functions for when tasks are created
+  // ✅ Add a function to refresh all data
+  const refreshAllData = () => {
+    setRefreshTrigger((prev) => prev + 1);
+    fetchTasks();
+  };
+
+  // ✅ Update the callback functions
   const handleTaskCreated = () => {
     setSelectedErrors([]);
     setSelectedTechnicalIssues([]);
-    setRefreshTrigger((prev) => prev + 1);
+    refreshAllData(); // Use the new refresh function
   };
 
   // ✅ Helper function to get tab value for technical issues
@@ -254,7 +264,7 @@ const RequestDetailPage = () => {
                     </h1>
                     <span className="text-gray-600 dark:text-gray-400">
                       {requestDetail?.requestDate &&
-                        formatTimeStampDate(
+                        formatAPIDateToHoChiMinh(
                           requestDetail.requestDate,
                           "datetime"
                         )}

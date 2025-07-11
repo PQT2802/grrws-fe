@@ -90,3 +90,84 @@ export interface SINGLE_TASK_RESPONSE {
   pageNumber: number;
   pageSize: number;
 }
+export interface UNINSTALL_TASK_DETAIL {
+  deviceName: string;
+  deviceCode: string;
+  location: string;
+  taskGroupName: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+}
+
+export interface INSTALL_TASK_DETAIL {
+  deviceName: string;
+  deviceCode: string;
+  location: string;
+  taskGroupName: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+  newDeviceId: string; // ID of the new device to be installed
+}
+
+export interface WARRANTY_TASK_DETAIL {
+  claimNumber: string;
+  warrantyProvider: string;
+  warrantyCode: string;
+  contractNumber: string | null;
+  claimStatus: string;
+  startDate: string;
+  expectedReturnDate: string | null;
+  actualReturnDate: string | null;
+  location: string;
+  resolution: string | null;
+  issueDescription: string;
+  warrantyNotes: string | null;
+  claimAmount: number | null;
+  hotNumber: string;
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string | null;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string | null;
+  warrantyClaimId: string;
+  isUninstallDevice: boolean; // Indicates if the task involves uninstalling a device
+  documents: DOCUMENT[]; // List of documents related to the warranty claim
+}
+
+export interface DOCUMENT {
+  docymentType: string; // Type of document (e.g., "Warranty Claim", "Repair Report")
+  documentName: string; // Name of the document
+  documentUrl: string; // URL to access the document
+}
+
+export interface CreateWarrantyReturn {
+  WarrantyClaimId: string;
+  AssigneeId: string;
+  ActualReturnDate: string; // ISO date string
+  IsEarlyReturn: boolean;
+  WarrantyNotes: string;
+}
