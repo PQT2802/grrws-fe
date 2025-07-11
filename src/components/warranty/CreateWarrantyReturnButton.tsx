@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -23,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
@@ -33,19 +32,17 @@ import {
   Calendar,
   Clock,
   Loader2,
-  RotateCcw,
   Shield,
   UserCheck,
   Zap,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { format, isBefore, set } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { GET_MECHANIC_USER } from "@/types/user.type";
 
 // Form schema
@@ -64,16 +61,21 @@ const formSchema = z.object({
   warrantyNotes: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface CreateWarrantyReturnButtonProps {
   taskDetail: WARRANTY_TASK_DETAIL;
   onSuccess?: () => void;
+  open: boolean; // Added to control dialog state
+  onOpenChange: (open: boolean) => void; // Added to handle dialog state changes
 }
 
 const CreateWarrantyReturnButton = ({
   taskDetail,
   onSuccess,
+  open,
+  onOpenChange,
 }: CreateWarrantyReturnButtonProps) => {
-  const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mechanics, setMechanics] = useState<GET_MECHANIC_USER[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -98,7 +100,7 @@ const CreateWarrantyReturnButton = ({
   };
 
   // Initialize the form
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       mode: "manual",
@@ -146,7 +148,7 @@ const CreateWarrantyReturnButton = ({
       );
       form.setValue("actualReturnTime", format(expectedDate, "HH:mm"));
     }
-  }, [useExpectedDate, taskDetail.expectedReturnDate, form, getFormattedDate]);
+  }, [useExpectedDate, taskDetail.expectedReturnDate, form]);
 
   // Combine date and time
   const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
@@ -161,7 +163,7 @@ const CreateWarrantyReturnButton = ({
     return set(parsedDate, { hours, minutes, seconds: 0, milliseconds: 0 });
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     setIsSubmitting(true);
     try {
       const combinedDateTime = combineDateAndTime(
@@ -192,7 +194,7 @@ const CreateWarrantyReturnButton = ({
         description: `Return date: ${format(combinedDateTime, "PPp")}`,
       });
 
-      setOpen(false);
+      onOpenChange(false);
       if (onSuccess) {
         onSuccess();
       }
@@ -207,28 +209,13 @@ const CreateWarrantyReturnButton = ({
     }
   };
 
-  // Helper function for Avatar initials
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("")
-      .substring(0, 2);
-  };
-
   // Only show button for WarrantySubmission tasks
   if (taskDetail.taskType !== "WarrantySubmission") {
     return null;
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="default" className="bg-green-600 hover:bg-green-700">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Create Return Task
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-green-700">
@@ -332,8 +319,12 @@ const CreateWarrantyReturnButton = ({
                             </FormLabel>
                             <FormDescription className="text-xs">
                               Use the expected return date (
-                              {getFormattedDate(taskDetail.expectedReturnDate)})
-                              from the warranty claim
+                              {taskDetail.expectedReturnDate &&
+                                format(
+                                  new Date(taskDetail.expectedReturnDate),
+                                  "PP"
+                                )}
+                              ) from the warranty claim
                             </FormDescription>
                           </div>
                         </FormItem>
@@ -504,7 +495,7 @@ const CreateWarrantyReturnButton = ({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
                 Cancel
