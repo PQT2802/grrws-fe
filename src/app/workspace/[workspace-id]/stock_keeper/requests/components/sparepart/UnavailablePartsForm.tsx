@@ -22,7 +22,7 @@ export default function UnavailablePartsForm({
   if (selectedPartIds.length === 0) {
     return (
       <p className="text-sm text-gray-500 mb-4">
-        Please select at least one part to mark as unavailable.
+        Vui lòng chọn ít nhất một linh kiện để đánh dấu là không có sẵn.
       </p>
     );
   }
@@ -32,7 +32,7 @@ export default function UnavailablePartsForm({
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">
-            Reason for Unavailability
+            Lý do không có sẵn
           </label>
           <textarea
             value={reason}
@@ -40,14 +40,14 @@ export default function UnavailablePartsForm({
             className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 
               focus:ring-primary focus:border-primary dark:bg-slate-700"
             rows={3}
-            placeholder="Explain why these parts are unavailable..."
+            placeholder="Giải thích tại sao những linh kiện này không có sẵn..."
             required
           />
         </div>
         
         <div>
           <label className="block text-sm font-medium mb-1">
-            Expected Restock Date
+            Ngày dự kiến nhập kho
           </label>
           <div className="flex items-center">
             <Calendar className="h-4 w-4 mr-2 text-gray-400" />
@@ -68,13 +68,13 @@ export default function UnavailablePartsForm({
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm"
           >
-            Cancel
+            Hủy
           </button>
           <button
             type="submit"
             className="px-4 py-2 bg-primary text-white rounded text-sm"
           >
-            Submit
+            Gửi
           </button>
         </div>
       </div>

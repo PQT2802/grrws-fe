@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { RequestPart, UnavailablePart } from "../../type";
+import { RequestPart, UnavailablePart } from "../../../type";
 
 interface UnavailablePartsDisplayProps {
   unavailableParts: UnavailablePart[];
@@ -16,13 +16,13 @@ export default function UnavailablePartsDisplay({
 
   return (
     <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-      <h3 className="font-medium mb-2">Unavailable Parts Report</h3>
+      <h3 className="font-medium mb-2">Báo cáo linh kiện không có sẵn</h3>
       
       {submittedUnavailable && (
         <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-md text-sm">
           <div className="flex items-center gap-1.5">
             <Check className="h-4 w-4" />
-            <span>Notification sent to Head of Technical</span>
+            <span>Đã gửi thông báo cho Trưởng phòng Kỹ thuật</span>
           </div>
         </div>
       )}
@@ -41,8 +41,8 @@ export default function UnavailablePartsDisplay({
                 </h4>
               </div>
               <div className="text-sm">
-                <p className="mb-1"><span className="text-gray-500">Reason:</span> {part.reason}</p>
-                <p><span className="text-gray-500">Expected Restock:</span> {part.restockDate}</p>
+                <p className="mb-1"><span className="text-gray-500">Lý do:</span> {part.reason}</p>
+                <p><span className="text-gray-500">Dự kiến nhập kho:</span> {part.restockDate}</p>
               </div>
             </div>
           );

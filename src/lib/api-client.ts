@@ -338,9 +338,12 @@ class APIClient {
   }
 
   sparePart = {
-    getRequests: (): Promise<any> => {
+    getRequests: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
       console.log("Getting all spare part requests");
-      return http.get("/api/SparePartUsage/requests");
+      return http.get(`/api/SparePartUsage/requests?pageNumber=${pageNumber}&pageSize=${pageSize}`);
     },
 
     getRequestById: (requestId: string): Promise<any> => {
@@ -534,7 +537,7 @@ class APIClient {
       return http.get<ALL_REQUESTS_RESPONSE>(
         `/api/Request?pageNumber=${pageNumber}&pageSize=${pageSize}`
       );
-    },
+    }, 
 
     // Keep the old method for backward compatibility
     getRequestsWithReport: (): Promise<

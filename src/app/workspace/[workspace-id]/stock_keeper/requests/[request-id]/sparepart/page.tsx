@@ -4,14 +4,14 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import StatusBadge from '../components/StatusBadge';
-import PartsTable from '../components/PartsTable';
-import UnavailablePartsForm from '../components/UnavailablePartsForm';
-import UnavailablePartsDisplay from '../components/UnavailablePartsDisplay';
-import ConfirmRequestModal from '../components/ConfirmRequestModal';
-import DeliveryConfirmationModal from '../components/DeliveryConfirmationModal';
-import { RequestPart, UnavailablePart } from "../../type";
-import { sparePartService } from '@/app/service/sparePart.service';
+import StatusBadge from '../../components/StatusBadge';
+import PartsTable from '../../components/sparepart/PartsTable';
+import UnavailablePartsForm from '../../components/sparepart/UnavailablePartsForm';
+import UnavailablePartsDisplay from '../../components/sparepart/UnavailablePartsDisplay';
+import ConfirmRequestModal from '../../components/sparepart/ConfirmRequestModal';
+import DeliveryConfirmationModal from '../../components/sparepart/DeliveryConfirmationModal';
+import { RequestPart, UnavailablePart } from "../../../type";
+import { apiClient } from '@/lib/api-client';
 import { SPAREPART_REQUEST_DETAIL } from "@/types/sparePart.type";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -38,7 +38,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   const [reason, setReason] = useState("");
   const [restockDate, setRestockDate] = useState("");
   
-  // New state for action modals
+  // State for action modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   
@@ -47,7 +47,8 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     const fetchRequestDetail = async () => {
       try {
         setIsLoading(true);
-        const response = await sparePartService.getSparePartRequestDetail(requestId);
+        // Use API client directly
+        const response = await apiClient.sparePart.getRequestById(requestId);
         
         console.log("Request detail full response:", response);
         
@@ -61,7 +62,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         setRequestDetail(requestData);
         
         // Transform spare parts to the format expected by PartsTable
-        const parts = requestData.sparePartUsages.map(usage => ({
+        const parts = requestData.sparePartUsages.map((usage: any) => ({
           id: usage.sparePartId,
           name: usage.spareparts[0]?.sparepartName || "Unknown Part",
           requested: usage.quantityUsed,
@@ -73,11 +74,11 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         }));
         
         setRequestParts(parts);
-        toast.success("Request details loaded successfully");
+        toast.success("Chi tiết yêu cầu đã được tải thành công");
       } catch (err) {
         console.error("Failed to fetch request detail:", err);
-        setError("Failed to load request details");
-        toast.error("Failed to load request details");
+        setError("Không thể tải chi tiết yêu cầu");
+        toast.error("Không thể tải chi tiết yêu cầu");
       } finally {
         setIsLoading(false);
       }
@@ -109,8 +110,8 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     try {
       setIsLoading(true);
       
-      // Call the API to mark parts as unavailable
-      await sparePartService.markPartsAsUnavailable(
+      // Call the API directly to mark parts as unavailable
+      await apiClient.sparePart.updateInsufficientStatus(
         requestId,
         selectedPartIds,
         restockDate,
@@ -126,7 +127,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       
       setUnavailableParts([...unavailableParts, ...newUnavailableParts]);
       setSubmittedUnavailable(true);
-      toast.success("Parts marked as unavailable");
+      toast.success("Các linh kiện đã được đánh dấu không có sẵn");
       
       // Reset form and reload details to get updated status
       setSelectedPartIds([]);
@@ -139,7 +140,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       
     } catch (error) {
       console.error("Failed to update parts status:", error);
-      toast.error("Failed to update parts status");
+      toast.error("Không thể cập nhật trạng thái linh kiện");
     } finally {
       setIsLoading(false);
     }
@@ -149,13 +150,13 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   const refreshRequestDetail = async () => {
     try {
       setIsLoading(true);
-      const response = await sparePartService.getSparePartRequestDetail(requestId);
+      const response = await apiClient.sparePart.getRequestById(requestId);
       const requestData = response.data || response;
       
       setRequestDetail(requestData);
       
       // Transform spare parts to the format expected by PartsTable
-      const parts = requestData.sparePartUsages.map(usage => ({
+      const parts = requestData.sparePartUsages.map((usage: any) => ({
         id: usage.sparePartId,
         name: usage.spareparts[0]?.sparepartName || "Unknown Part",
         requested: usage.quantityUsed,
@@ -169,7 +170,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       setRequestParts(parts);
     } catch (err) {
       console.error("Failed to refresh request detail:", err);
-      toast.error("Failed to refresh request details");
+      toast.error("Không thể làm mới chi tiết yêu cầu");
     } finally {
       setIsLoading(false);
     }
@@ -180,21 +181,21 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     try {
       setIsLoading(true);
       
-      await sparePartService.confirmSparePartRequest(
+      await apiClient.sparePart.updateStatus(
         requestId,
         user?.id || "", // Use the current user ID or empty string if not available
         notes
       );
       
       setShowConfirmModal(false);
-      toast.success("Request confirmed successfully");
+      toast.success("Yêu cầu đã được xác nhận thành công");
       
       // Reload request data to get updated status
       await refreshRequestDetail();
       
     } catch (error) {
       console.error("Failed to confirm request:", error);
-      toast.error("Failed to confirm request");
+      toast.error("Không thể xác nhận yêu cầu");
     } finally {
       setIsLoading(false);
     }
@@ -205,17 +206,17 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     try {
       setIsLoading(true);
       
-      await sparePartService.markPartsAsDelivered(partUsageIds);
+      await apiClient.sparePart.updateTakenFromStock(partUsageIds);
       
       setShowDeliveryModal(false);
-      toast.success("Parts marked as delivered");
+      toast.success("Các linh kiện đã được đánh dấu là đã giao");
       
       // Reload request data to get updated status
       await refreshRequestDetail();
       
     } catch (error) {
       console.error("Failed to mark parts as delivered:", error);
-      toast.error("Failed to mark parts as delivered");
+      toast.error("Không thể đánh dấu linh kiện là đã giao");
     } finally {
       setIsLoading(false);
     }
@@ -229,13 +230,13 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
   
   // Go back to requests list
   const goBack = () => {
-    router.push("../requests");
+    router.push("../../requests");
   };
 
   // Format date for display
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Not confirmed";
-    return new Date(dateString).toLocaleString();
+    if (!dateString) return "Chưa xác nhận";
+    return new Date(dateString).toLocaleString('vi-VN');
   };
 
   // Determine what actions are available based on status
@@ -251,7 +252,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
           onClick={goBack}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm"
         >
-          Back to Requests
+          Quay lại danh sách
         </button>
         
         {isUnconfirmed && (
@@ -261,14 +262,14 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
               className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm"
               disabled={showUnavailableForm || submittedUnavailable}
             >
-              Mark Parts as Unavailable
+              Đánh dấu linh kiện không có sẵn
             </button> */}
             
             <button
               onClick={() => setShowConfirmModal(true)}
               className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
             >
-              Confirm Request
+              Xác nhận yêu cầu
             </button>
           </>
         )}
@@ -278,7 +279,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
             onClick={() => setShowDeliveryModal(true)}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
           >
-            Mark as Delivered
+            Đánh dấu đã giao
           </button>
         )} */}
       </div>
@@ -313,13 +314,13 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
     return (
       <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow">
         <div className="text-center py-8">
-          <div className="text-red-500 text-lg font-medium mb-2">Error</div>
+          <div className="text-red-500 text-lg font-medium mb-2">Lỗi</div>
           <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
           <button 
             onClick={goBack}
             className="px-4 py-2 bg-primary text-white rounded text-sm"
           >
-            Back to Requests
+            Quay lại danh sách
           </button>
         </div>
       </div>
@@ -337,16 +338,16 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
               className="flex items-center text-gray-500 hover:text-primary mb-2"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              <span className="text-sm">Back to Requests</span>
+              <span className="text-sm">Quay lại danh sách</span>
             </button>
-            <h1 className="text-xl font-bold">Request: {requestDetail?.requestCode}</h1>
+            <h1 className="text-xl font-bold">Yêu cầu: {requestDetail?.requestCode}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              View and manage request information
+              Xem và quản lý thông tin yêu cầu
             </p>
           </div>
           
           <div className="flex items-center">
-            <span className="mr-2 text-sm text-gray-500">Status:</span>
+            <span className="mr-2 text-sm text-gray-500">Trạng thái:</span>
             <StatusBadge status={requestDetail?.status || "Unknown"} />
           </div>
         </div>
@@ -354,28 +355,28 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       
       {/* Request Info */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Request Information</h2>
+        <h2 className="text-lg font-semibold mb-4">Thông tin yêu cầu</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Requested by</p>
-            <p className="font-medium">{requestDetail?.assigneeName || "Unknown"}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Người yêu cầu</p>
+            <p className="font-medium">{requestDetail?.assigneeName || "Không xác định"}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Request Date</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Ngày yêu cầu</p>
             <p className="font-medium">{formatDate(requestDetail?.requestDate || null)}</p>
           </div>
           
           {requestDetail?.confirmedDate && (
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Confirmation Date</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Ngày xác nhận</p>
               <p className="font-medium">{formatDate(requestDetail?.confirmedDate)}</p>
             </div>
           )}
           
           {requestDetail?.notes && (
             <div className="col-span-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Notes</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Ghi chú</p>
               <p className="font-medium">{requestDetail.notes}</p>
             </div>
           )}
@@ -385,14 +386,14 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
       {/* Parts List */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Requested Parts</h2>
+          <h2 className="text-lg font-semibold">Các linh kiện yêu cầu</h2>
           
           {requestDetail?.status === "Unconfirmed" && !submittedUnavailable && !showUnavailableForm && (
             <button
               onClick={() => setShowUnavailableForm(true)}
               className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm font-medium"
             >
-              Mark Parts as Unavailable
+              Đánh dấu linh kiện không có sẵn
             </button>
           )}
         </div>
@@ -409,7 +410,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         {/* Unavailable Form */}
         {showUnavailableForm && (
           <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h3 className="font-medium mb-4">Mark Selected Parts as Unavailable</h3>
+            <h3 className="font-medium mb-4">Đánh dấu linh kiện đã chọn là không có sẵn</h3>
             
             <UnavailablePartsForm
               selectedPartIds={selectedPartIds}
@@ -439,9 +440,9 @@ export default function RequestDetailPage({ params }: { params: Promise<{ "reque
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmRequest}
-        title="Confirm Spare Part Request"
-        description="Confirming this request will notify the requester that the spare parts are ready for pickup."
-        confirmButtonText="Confirm Request"
+        title="Xác nhận yêu cầu linh kiện"
+        description="Xác nhận yêu cầu này sẽ thông báo cho người yêu cầu rằng các linh kiện đã sẵn sàng để lấy."
+        confirmButtonText="Xác nhận yêu cầu"
       />
       
       {/* Delivery Confirmation Modal */}

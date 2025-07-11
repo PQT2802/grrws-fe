@@ -30,7 +30,7 @@ export default function PartsTable({
     // First check if part was marked unavailable manually
     if (isPartUnavailable(part.id)) {
       return {
-        status: "Unavailable",
+        status: "Không có sẵn",
         color: "text-red-500",
         icon: AlertTriangle
       };
@@ -40,13 +40,13 @@ export default function PartsTable({
     if (typeof part.stockQuantity === 'number') {
       if (part.stockQuantity < part.requested) {
         return {
-          status: "Out of Stock",
+          status: "Hết hàng",
           color: "text-amber-500",
           icon: XCircle
         };
       } else {
         return {
-          status: "Available",
+          status: "Có sẵn",
           color: "text-green-500",
           icon: Check
         };
@@ -55,7 +55,7 @@ export default function PartsTable({
     
     // Fallback for when no stock quantity info is available
     return {
-      status: "Unknown",
+      status: "Không xác định",
       color: "text-gray-500",
       icon: AlertTriangle
     };
@@ -67,13 +67,13 @@ export default function PartsTable({
         <thead>
           <tr className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-200">
             {showUnavailableForm && (
-              <th className="px-4 py-2 text-left font-medium w-10">Select</th>
+              <th className="px-4 py-2 text-left font-medium w-10">Chọn</th>
             )}
-            <th className="px-4 py-2 text-left font-medium">Part Code</th>
-            <th className="px-4 py-2 text-left font-medium">Part Name</th>
-            <th className="px-4 py-2 text-left font-medium">Quantity Requested</th>
-            <th className="px-4 py-2 text-left font-medium">In Stock</th>
-            <th className="px-4 py-2 text-left font-medium">Status</th>
+            <th className="px-4 py-2 text-left font-medium">Mã linh kiện</th>
+            <th className="px-4 py-2 text-left font-medium">Tên linh kiện</th>
+            <th className="px-4 py-2 text-left font-medium">Số lượng yêu cầu</th>
+            <th className="px-4 py-2 text-left font-medium">Tồn kho</th>
+            <th className="px-4 py-2 text-left font-medium">Trạng thái</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

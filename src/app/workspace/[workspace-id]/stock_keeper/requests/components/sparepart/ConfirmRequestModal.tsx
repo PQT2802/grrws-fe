@@ -16,7 +16,7 @@ export default function ConfirmRequestModal({
   onConfirm,
   title,
   description,
-  confirmButtonText = "Confirm"
+  confirmButtonText = "Xác nhận"
 }: ConfirmRequestModalProps) {
   const [notes, setNotes] = useState("");
 
@@ -35,7 +35,7 @@ export default function ConfirmRequestModal({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-700 dark:hover:text-white"
-            aria-label="Close"
+            aria-label="Đóng"
           >
             <X className="h-5 w-5" />
           </button>
@@ -48,12 +48,12 @@ export default function ConfirmRequestModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Notes (optional)
+              Ghi chú (tùy chọn)
             </label>
             <textarea
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 
                 focus:ring-primary focus:border-primary dark:bg-slate-700 min-h-[100px]"
-              placeholder="Add any additional notes or instructions..."
+              placeholder="Thêm ghi chú hoặc hướng dẫn bổ sung..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -65,7 +65,7 @@ export default function ConfirmRequestModal({
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
