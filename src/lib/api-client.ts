@@ -44,6 +44,10 @@ import {
   MONTHLY_REQUEST_COUNT,
 } from "@/types/dashboard.type";
 import { create } from "domain";
+import {
+  NOTIFICATION_RESPONSE,
+  NotificationResponse,
+} from "@/types/notification.type";
 
 class APIClient {
   // Auth methods - these are public (no token needed)
@@ -333,9 +337,9 @@ class APIClient {
     ): Promise<MACHINE_WEB[]> => {
       return http.get(
         `/api/Machine/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
-      ); 
+      );
     },
-  }
+  };
 
   sparePart = {
     getRequests: (): Promise<any> => {
@@ -544,7 +548,9 @@ class APIClient {
       pageNumber: number = 1,
       pageSize: number = 10
     ): Promise<ALL_REQUESTS_RESPONSE> => {
-      console.log(`Fetching all requests from API (page ${pageNumber}, size ${pageSize})`);
+      console.log(
+        `Fetching all requests from API (page ${pageNumber}, size ${pageSize})`
+      );
       return http.get<ALL_REQUESTS_RESPONSE>(
         `/api/Request?pageNumber=${pageNumber}&pageSize=${pageSize}`
       );
@@ -557,6 +563,48 @@ class APIClient {
       console.log("Fetching requests with reports from dashboard API");
       return http.get<DASHBOARD_RESPONSE<REQUEST_WITH_REPORT[]>>(
         "/api/Dashboard/get-requests-contain-report"
+      );
+    },
+  };
+  Notification = {
+    getNotifications: (
+      skip: number = 0,
+      take: number = 20,
+      search?: string,
+      type?: string,
+      isRead?: boolean,
+      fromDate?: string,
+      toDate?: string
+    ): Promise<NotificationResponse> => {
+      console.log(`Fetching notifications (skip=${skip}, take=${take})`);
+
+      const params = new URLSearchParams();
+      params.append("skip", skip.toString());
+      params.append("take", take.toString());
+
+      if (search) params.append("search", search);
+      if (type) params.append("type", type);
+      if (isRead !== undefined) params.append("isRead", isRead.toString());
+      if (fromDate) params.append("fromDate", fromDate);
+      if (toDate) params.append("toDate", toDate);
+
+      return http.get<NotificationResponse>(
+        `/api/notifications?${params.toString()}`
+      );
+    },
+    markAsRead: (notificationId: string) => {
+      console.log(`Marking notification ${notificationId} as read`);
+      return http.put(
+        `/api/notifications/${notificationId}/mark-read`,
+        {}
+      );
+    },
+    getUnreadCount: (): Promise<
+      { unreadCount: number }
+    > => {
+      console.log("Fetching unread notification count");
+      return http.get<{ unreadCount: number }>(
+        "/api/notifications/unread-count"
       );
     },
   };

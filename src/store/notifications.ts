@@ -1,133 +1,215 @@
-import { USER_TYPE, NOTIFICATION_TYPE } from "@/types";
+"use client";
+
 import { create } from "zustand";
+import { apiClient } from "@/lib/api-client";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  LogLevel,
+} from "@microsoft/signalr";
+import {
+  NOTIFICATION_TYPES,
+  NotificationType,
+  Notification,
+} from "@/types/notification.type";
 
-export interface NotificationStoreState {
-  notifications: NOTIFICATION_TYPE[];
+interface NotificationStoreState {
+  notifications: Notification[]; // Changed from NOTIFICATION_TYPES[] to Notification[]
+  unreadCount: number;
   loading: boolean;
-  error: unknown;
+  error: string | null;
+  signalRConnection: HubConnection | null;
 
-  setNotifications: (
-    notis: NOTIFICATION_TYPE[]
-  ) => Promise<NOTIFICATION_TYPE[]>;
-  getNotificationsByReceiverId: (
-    receiverId: string
-  ) => Promise<NOTIFICATION_TYPE[]>;
-  createNotification: (
-    notification: NOTIFICATION_TYPE
-  ) => Promise<NOTIFICATION_TYPE>;
-  updateNotificationById: (
-    notification: NOTIFICATION_TYPE
-  ) => Promise<NOTIFICATION_TYPE>;
+  setNotifications: (notis: Notification[]) => void;
+  getNotifications: (
+    skip?: number,
+    take?: number,
+    search?: string,
+    type?: string,
+    isRead?: boolean,
+    fromDate?: string,
+    toDate?: string
+  ) => Promise<Notification[]>;
+  markAsRead: (notificationId: string) => Promise<void>;
+  getUnreadCount: () => Promise<number>;
+  connectToSignalR: (
+    accessToken: string,
+    backendUrl: string,
+    refetchTaskDetails?: () => void
+  ) => void;
+  disconnectSignalR: () => void;
 }
 
-const useNotifcationStore = create<NotificationStoreState>((set, get) => ({
+const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
+  unreadCount: 0,
   loading: false,
   error: null,
+  signalRConnection: null,
 
-  setNotifications: async (notis: NOTIFICATION_TYPE[]) => {
+  setNotifications: (notis: Notification[]) => {
     set({ notifications: notis });
-
-    const currentNotis = get().notifications;
-
-    return currentNotis;
   },
 
-  getNotificationsByReceiverId: async (receiverId: string) => {
+  getNotifications: async (
+    skip = 0,
+    take = 20,
+    search,
+    type,
+    isRead,
+    fromDate,
+    toDate
+  ) => {
     set({ loading: true, error: null });
     try {
-      // Get notifications by receiverId
-      const res = await fetch(
-        `/api/notification/all/receiver-id/${receiverId}`
+      const response = await apiClient.Notification.getNotifications(
+        skip,
+        take,
+        search,
+        type,
+        isRead,
+        fromDate,
+        toDate
       );
-      if (!res.ok) throw new Error("Get notifications by receiverId failed!");
+      console.log("Store: API response", response);
 
-      const data = await res.json();
+      // Fix: Extract notifications array from the correct response structure
+      const notifications = Array.isArray(response.notifications)
+        ? response.notifications
+        : [];
 
-      // Get notification sender
-      await Promise.all(
-        data?.map(async (notification: NOTIFICATION_TYPE) => {
-          const senderResponse = await fetch(
-            `/api/users/${notification?.senderId}`
-          );
+      // Also update unreadCount from response
+      const unreadCount = response?.unreadCount || 0;
 
-          if (!senderResponse.ok)
-            throw new Error("Failed to fetch user details!");
-
-          const sender: USER_TYPE = await senderResponse.json();
-          notification.sender = sender;
-        })
-      );
-
-      // Get notification receiver
-      await Promise.all(
-        data?.map(async (notification: NOTIFICATION_TYPE) => {
-          const receiverResponse = await fetch(`/api/users/${receiverId}`);
-
-          if (!receiverResponse.ok)
-            throw new Error("Failed to fetch user details!");
-
-          const receiver: USER_TYPE = await receiverResponse.json();
-          notification.receiver = receiver;
-        })
-      );
-
-      set({ notifications: data, loading: false });
-
-      return data;
+      console.log("notifications:", notifications);
+      set({ notifications, unreadCount, loading: false });
+      return notifications;
     } catch (error) {
-      set({ error: error, loading: false });
+      console.error("Lỗi khi lấy danh sách thông báo:", error);
+      set({ error: "Không thể lấy danh sách thông báo", loading: false });
+      return [];
     }
   },
 
-  createNotification: async (notification: NOTIFICATION_TYPE) => {
+  markAsRead: async (notificationId: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch("/api/notification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(notification),
+      await apiClient.Notification.markAsRead(notificationId);
+      set((state) => ({
+        notifications: state.notifications.map((noti) =>
+          noti.id === notificationId ? { ...noti, isRead: true } : noti
+        ),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+        loading: false,
+      }));
+    } catch (error) {
+      console.error("Lỗi khi đánh dấu thông báo đã đọc:", error);
+      set({ error: "Không thể đánh dấu thông báo đã đọc", loading: false });
+    }
+  },
+
+  getUnreadCount: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await apiClient.Notification.getUnreadCount();
+      // Fix: Handle the response structure correctly
+      const unreadCount = response?.unreadCount || 0;
+      set({ unreadCount, loading: false });
+      return unreadCount;
+    } catch (error) {
+      console.error("Lỗi khi lấy số lượng thông báo chưa đọc:", error);
+      set({
+        error: "Không thể lấy số lượng thông báo chưa đọc",
+        loading: false,
+      });
+      return 0;
+    }
+  },
+
+  connectToSignalR: (
+    accessToken: string,
+    backendUrl: string,
+    refetchTaskDetails?: () => void
+  ) => {
+    if (!accessToken) {
+      console.log("Không có token truy cập, bỏ qua kết nối SignalR");
+      return;
+    }
+
+    const currentConnection = get().signalRConnection;
+    if (currentConnection) {
+      currentConnection.stop();
+    }
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${backendUrl}/hubs/request`, {
+        accessTokenFactory: () => accessToken,
+        withCredentials: false,
+      })
+      .configureLogging(LogLevel.Information)
+      .withAutomaticReconnect([0, 2000, 10000, 30000])
+      .build();
+
+    set({ signalRConnection: connection });
+
+    connection
+      .start()
+      .then(() => {
+        console.log("Kết nối SignalR thành công!");
+
+        connection.on("NotificationReceived", (notification: Notification) => {
+          console.log("Nhận được thông báo:", notification);
+
+          // Add the new notification to the beginning of the list
+          set((state) => ({
+            notifications: [notification, ...state.notifications],
+            unreadCount: notification.isRead
+              ? state.unreadCount
+              : state.unreadCount + 1,
+          }));
+
+          // Trigger refetch for task completion notifications
+          if (refetchTaskDetails) {
+            console.log(
+              "Nhận thông báo TaskCompleted trên trang taskDetail với trạng thái pending, gọi lại API"
+            );
+            refetchTaskDetails();
+          }
+        });
+
+        connection.on("NotificationUpdated", (notificationId: string) => {
+          console.log("Thông báo được cập nhật:", notificationId);
+          get().getNotifications(); // Refetch notifications
+        });
+      })
+      .catch((err) => {
+        console.error("Lỗi kết nối SignalR:", err);
+        set({ error: "Không thể kết nối với thông báo thời gian thực" });
       });
 
-      if (!response.ok) throw new Error("Create notification failed!");
+    connection.onclose(() => {
+      console.log("Kết nối SignalR đã đóng");
+      set({ signalRConnection: null });
+    });
 
-      const data = await response.json();
+    connection.onreconnecting(() => {
+      console.log("SignalR đang kết nối lại...");
+      set({ error: "Đang kết nối lại với thông báo thời gian thực..." });
+    });
 
-      set({ loading: false });
-
-      return data;
-    } catch (error) {
-      set({ error: error, loading: false });
-    }
+    connection.onreconnected(() => {
+      console.log("SignalR đã kết nối lại");
+      set({ error: null });
+    });
   },
 
-  updateNotificationById: async (notification: NOTIFICATION_TYPE) => {
-    set({ loading: true, error: null });
-    try {
-      const res = await fetch(
-        `/api/notification/update/notification-id/${notification?.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(notification),
-        }
-      );
-
-      if (!res.ok) throw new Error("Update notification failed!");
-
-      const data = await res.json();
-
-      set({ loading: false });
-
-      return data;
-    } catch (error) {
-      set({ error: error, loading: false });
+  disconnectSignalR: () => {
+    const connection = get().signalRConnection;
+    if (connection) {
+      connection.stop();
+      set({ signalRConnection: null });
     }
   },
 }));
 
-export default useNotifcationStore;
+export default useNotificationStore;

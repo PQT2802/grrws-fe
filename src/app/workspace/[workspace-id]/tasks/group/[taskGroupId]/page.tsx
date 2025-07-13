@@ -49,6 +49,7 @@ import {
   Info,
   ArrowRight,
   Timer,
+  RefreshCw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -84,6 +85,7 @@ import {
 } from "@/utils/colorUtils";
 import TaskDetailSidePanel from "@/components/TaskGroupModal/TaskDetailSidePanel";
 import DeviceDetailModal from "@/components/DeviceCpn/DeviceModel";
+import useNotificationStore from "@/store/notifications";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -96,6 +98,7 @@ const GroupTaskDetailsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [applyingTasks, setApplyingTasks] = useState<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<TASK_IN_GROUP | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dropdownTaskDetails, setDropdownTaskDetails] = useState<
     Record<string, WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | null>
   >({});
@@ -165,6 +168,32 @@ const GroupTaskDetailsPage = () => {
 
     if (taskGroupId) {
       fetchTaskGroupDetail();
+    }
+  }, [taskGroupId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token && taskGroupId) {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+      // Simple refresh function
+      const handleNotificationRefresh = async () => {
+        console.log("New notification received, refreshing task groups...");
+        const response = await apiClient.task.getAllTaskGroups(1, 100);
+        const group = response.data.find((g) => g.taskGroupId === taskGroupId);
+        if (group) {
+          setTaskGroup(group);
+          await fetchInstallationTaskDetails(group.tasks);
+        }
+      };
+
+      // Connect to SignalR
+      const { connectToSignalR, disconnectSignalR } =
+        useNotificationStore.getState();
+      connectToSignalR(token, backendUrl, handleNotificationRefresh);
+
+      return () => disconnectSignalR();
     }
   }, [taskGroupId]);
 
@@ -299,26 +328,49 @@ const GroupTaskDetailsPage = () => {
     fetchDeviceDetailsForTab();
   }, [selectedInstallationTaskId, installationTaskDetails]);
 
-  // Refresh task data function
   const refreshTaskData = async () => {
+    setRefreshing(true);
+    console.log("🔄 Bắt đầu làm mới dữ liệu nhóm nhiệm vụ...");
+
     try {
       const response = await apiClient.task.getAllTaskGroups(1, 100);
       const group = response.data.find((g) => g.taskGroupId === taskGroupId);
+
       if (group) {
         setTaskGroup(group);
+
+        // Clear cached data to ensure fresh fetch
+        setDropdownTaskDetails({});
+
         // Refresh installation task details
         await fetchInstallationTaskDetails(group.tasks);
+
+        // Refresh warranty task detail for footer if exists
+        const warrantyTask = group.tasks.find(
+          (task) => task.taskType === "WarrantySubmission"
+        );
+        if (warrantyTask) {
+          await fetchWarrantyTaskDetailForFooter();
+        }
       }
 
       // Refresh selected task detail if one is selected
       if (selectedTask) {
-        await fetchTaskDetail(selectedTask);
+        const taskDetail = await fetchTaskDetail(selectedTask);
+        setSelectedTaskDetail(taskDetail);
       }
 
-      toast.success("Dữ liệu đã được làm mới thành công");
+      console.log("✅ Dữ liệu nhóm nhiệm vụ đã được làm mới thành công");
+      toast.success("Đã làm mới dữ liệu thành công", {
+        description: "Thông tin nhóm nhiệm vụ đã được cập nhật",
+      });
     } catch (error) {
-      console.error("Failed to refresh task data:", error);
-      toast.error("Không thể làm mới dữ liệu");
+      console.error("❌ Lỗi khi làm mới dữ liệu nhóm nhiệm vụ:", error);
+      toast.error("Lỗi khi làm mới dữ liệu", {
+        description: "Vui lòng thử lại sau",
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -493,6 +545,20 @@ const GroupTaskDetailsPage = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Quay lại
           </Button>
+          {/* Refresh Button */}
+          <Button
+            onClick={refreshTaskData}
+            variant="outline"
+            size="sm"
+            disabled={refreshing}
+            className="w-fit"
+            title="Làm mới dữ liệu nhóm nhiệm vụ"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Đang làm mới..." : "Làm mới"}
+          </Button>
         </div>
       </div>
     );
@@ -585,11 +651,26 @@ const GroupTaskDetailsPage = () => {
         )}
       </div>
 
-      {/* Page Title */}
-      <PageTitle
-        title={taskGroup.groupName}
-        description={`Chi tiết nhóm nhiệm vụ và danh sách các nhiệm vụ con`}
-      />
+      {/* Page Title with Refresh Icon */}
+      <div className="flex items-center justify-between">
+        <PageTitle
+          title={taskGroup.groupName}
+          description={`Chi tiết nhóm nhiệm vụ và danh sách các nhiệm vụ con`}
+        />
+        <Button
+          onClick={refreshTaskData}
+          variant="outline"
+          size="sm"
+          disabled={refreshing}
+          className="w-fit"
+          title="Làm mới dữ liệu nhóm nhiệm vụ"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+          />
+          {refreshing ? "Đang làm mới..." : "Làm mới"}
+        </Button>
+      </div>
 
       {/* Summary Section - Updated Layout */}
       <Card className="border-l-4 border-l-blue-500">
@@ -939,7 +1020,7 @@ const GroupTaskDetailsPage = () => {
                         >
                           <CardHeader className="text-center pb-3">
                             <CardTitle className="text-sm text-red-700 dark:text-red-300">
-                              Thiết bị cũ (Tháo)
+                              Thiết bị bảo hành (Tháo)
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
@@ -996,7 +1077,7 @@ const GroupTaskDetailsPage = () => {
                         >
                           <CardHeader className="text-center pb-3">
                             <CardTitle className="text-sm text-green-700 dark:text-green-300">
-                              Thiết bị mới (Lắp)
+                              Thiết bị thay thế (Lắp)
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
