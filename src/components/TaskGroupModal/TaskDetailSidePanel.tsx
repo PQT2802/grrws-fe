@@ -21,7 +21,6 @@ import {
   X,
   Clock,
   Calendar,
-  User,
   AlertCircle,
   Package,
   Shield,
@@ -30,21 +29,9 @@ import {
   Timer,
   Monitor,
   ArrowRight,
-  Phone,
-  MapPin,
-  DollarSign,
   FileImage,
   FileIcon,
-  Eye,
-  ExternalLink,
-  Download,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   translateTaskPriority,
   translateTaskStatus,
@@ -102,35 +89,7 @@ const TaskDetailSidePanel = ({
         return <Clock className="h-5 w-5 text-gray-500" />;
     }
   };
-
-  // Get file icon based on document type or URL
-  const getFileIcon = (document: DOCUMENT) => {
-    const type = document.docymentType?.toLowerCase() || "";
-    const url = document.documentUrl?.toLowerCase() || "";
-
-    if (type.includes("pdf") || url.endsWith(".pdf")) {
-      return <FileText className="h-5 w-5 text-red-500" />;
-    } else if (
-      type.includes("image") ||
-      url.match(/\.(jpg|jpeg|png|gif|webp)$/)
-    ) {
-      return <FileImage className="h-5 w-5 text-blue-500" />;
-    } else if (type.includes("warranty") || type.includes("claim")) {
-      return <Shield className="h-5 w-5 text-indigo-500" />;
-    } else if (type.includes("report")) {
-      return <FileText className="h-5 w-5 text-green-500" />;
-    } else {
-      return <FileIcon className="h-5 w-5 text-gray-500" />;
-    }
-  };
-
-  // Handle document view/download
-  const handleViewDocument = (document: DOCUMENT) => {
-    window.open(document.documentUrl, "_blank");
-  };
-
   const warrantyTaskDetail = taskDetail as WARRANTY_TASK_DETAIL;
-  const installTaskDetail = taskDetail as INSTALL_TASK_DETAIL;
 
   return (
     <>
@@ -251,111 +210,6 @@ const TaskDetailSidePanel = ({
               </CardContent>
             </Card>
 
-            {/* Warranty Information (for warranty tasks) */}
-            {warrantyTaskDetail && warrantyTaskDetail.claimNumber && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Shield className="h-4 w-4 text-blue-600" />
-                    Thông tin Bảo hành
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-col gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-100 dark:border-blue-800">
-                    <div>
-                      <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                        {warrantyTaskDetail.warrantyProvider}
-                      </div>
-                      <div className="font-bold text-lg text-blue-900 dark:text-blue-100">
-                        {warrantyTaskDetail.claimNumber}
-                      </div>
-                      <div className="text-xs text-blue-700 dark:text-blue-400">
-                        Mã bảo hành: {warrantyTaskDetail.warrantyCode}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Trạng thái claim
-                      </label>
-                      <div className="mt-1">
-                        <Badge variant="outline">
-                          {warrantyTaskDetail.claimStatus}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {warrantyTaskDetail.contractNumber && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Số hợp đồng
-                        </label>
-                        <p className="mt-1 text-sm font-medium">
-                          {warrantyTaskDetail.contractNumber}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Mô tả sự cố
-                    </label>
-                    <p className="mt-1 text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700">
-                      {warrantyTaskDetail.issueDescription}
-                    </p>
-                  </div>
-
-                  {warrantyTaskDetail.hotNumber && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500" />
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Hotline kỹ thuật
-                        </label>
-                        <p className="text-sm">
-                          <a
-                            href={`tel:${warrantyTaskDetail.hotNumber}`}
-                            className="text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            {warrantyTaskDetail.hotNumber}
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {warrantyTaskDetail.location && (
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500 mt-1" />
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Vị trí dịch vụ
-                        </label>
-                        <p className="text-sm">{warrantyTaskDetail.location}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {warrantyTaskDetail.claimAmount && (
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-500" />
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Số tiền claim
-                        </label>
-                        <p className="text-sm font-medium">
-                          ${warrantyTaskDetail.claimAmount.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
             {/* Device Information (for installation tasks) */}
             {(oldDevice || newDevice) && (
               <Card>
@@ -433,78 +287,6 @@ const TaskDetailSidePanel = ({
                       </p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Documents Section (for warranty tasks) */}
-            {warrantyTaskDetail && warrantyTaskDetail.documents && warrantyTaskDetail.documents.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FileText className="h-4 w-4 text-orange-600" />
-                    Tài liệu
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {warrantyTaskDetail.documents.map((doc, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <div className="flex items-center gap-3">
-                          {getFileIcon(doc)}
-                          <div>
-                            <div className="text-sm font-medium">
-                              {doc.docymentType || "Document"}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {doc.documentUrl ? "Có sẵn" : "Không có URL"}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewDocument(doc)}
-                                  disabled={!doc.documentUrl}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Xem tài liệu</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleViewDocument(doc)}
-                                  disabled={!doc.documentUrl}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Mở trong tab mới</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             )}
@@ -601,41 +383,6 @@ const TaskDetailSidePanel = ({
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Additional warranty information */}
-            {warrantyTaskDetail && warrantyTaskDetail.resolution && warrantyTaskDetail.warrantyNotes&& (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Shield className="h-4 w-4 text-indigo-600" />
-                    Thông tin bổ sung
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {warrantyTaskDetail.resolution && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Giải pháp
-                      </label>
-                      <p className="mt-1 text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700">
-                        {warrantyTaskDetail.resolution}
-                      </p>
-                    </div>
-                  )}
-
-                  {warrantyTaskDetail.warrantyNotes && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Ghi chú
-                      </label>
-                      <p className="mt-1 text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700">
-                        {warrantyTaskDetail.warrantyNotes}
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}
