@@ -1,48 +1,40 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, Settings } from 'lucide-react';
 import FilterSection from './components/FilterSection';
 import RequestsTable from './components/sparepart/RequestsTable';
 import MachineRequestsTable from './components/machine/MachineRequestsTable';
-import { FILTER_STATE, SPAREPART_REQUEST } from '@/types/sparePart.type';
+import { FILTER_STATE, SPAREPART_REQUEST, MACHINE_REPLACEMENT_REQUEST } from '@/types/sparePart.type';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock interface for machine requests (since API doesn't exist yet)
-interface MACHINE_REQUEST {
-  id: string;
-  requestCode: string;
-  requestDate: string;
-  requestedBy: string;
-  status: string;
-  reason: string;
-  currentMachineName: string;
-  replacementMachineName: string;
-  priority: string;
-}
-
 export default function RequestsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isStockKeeper } = useAuth();
   
-  // Use internal state for tabs instead of URL params
-  const [activeTab, setActiveTab] = useState<string>('spare-parts');
+  // Get initial tab from URL params or default to 'spare-parts'
+  const initialTab = searchParams.get('tab') || 'spare-parts';
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sparePartRequests, setSparePartRequests] = useState<SPAREPART_REQUEST[]>([]);
-  const [machineRequests, setMachineRequests] = useState<MACHINE_REQUEST[]>([]);
+  const [machineRequests, setMachineRequests] = useState<MACHINE_REPLACEMENT_REQUEST[]>([]);
+  
+  // Cache for device names to avoid repeated API calls
+  const [deviceCache, setDeviceCache] = useState<{[key: string]: string}>({});
   
   // Pagination state for spare parts
   const [sparePartPagination, setSparePartPagination] = useState({
     currentPage: 1,
     pageSize: 10,
     totalItems: 0,
-    totalPages: 1 // Ensure minimum 1 page
+    totalPages: 1
   });
 
   // Pagination state for machines
@@ -50,7 +42,7 @@ export default function RequestsPage() {
     currentPage: 1,
     pageSize: 10,
     totalItems: 0,
-    totalPages: 1 // Ensure minimum 1 page
+    totalPages: 1
   });
   
   // Filter and search state for spare parts
@@ -73,42 +65,28 @@ export default function RequestsPage() {
     sortDirection: "desc",
   });
   
-  // Mock data for machine requests (since API doesn't exist yet)
-  const mockMachineRequests: MACHINE_REQUEST[] = [
-    {
-      id: "1",
-      requestCode: "MR-001",
-      requestDate: "2024-01-15T08:00:00Z",
-      requestedBy: "Nguyễn Văn A",
-      status: "Unconfirmed",
-      reason: "Máy cũ bị hỏng không sửa được",
-      currentMachineName: "Máy khoan CNC-01",
-      replacementMachineName: "Máy khoan CNC-05",
-      priority: "High"
-    },
-    {
-      id: "2",
-      requestCode: "MR-002",
-      requestDate: "2024-01-14T10:30:00Z",
-      requestedBy: "Trần Thị B",
-      status: "Confirmed",
-      reason: "Nâng cấp thiết bị",
-      currentMachineName: "Máy tiện T-02",
-      replacementMachineName: "Máy tiện T-06",
-      priority: "Medium"
-    },
-    {
-      id: "3",
-      requestCode: "MR-003",
-      requestDate: "2024-01-13T14:15:00Z",
-      requestedBy: "Lê Văn C",
-      status: "Delivered",
-      reason: "Máy cũ không đạt hiệu suất",
-      currentMachineName: "Máy phay M-03",
-      replacementMachineName: "Máy phay M-07",
-      priority: "Low"
+  // Fetch device name by ID with caching
+  const fetchDeviceName = async (deviceId: string): Promise<string> => {
+    if (deviceCache[deviceId]) {
+      return deviceCache[deviceId];
     }
-  ];
+    
+    try {
+      const device = await apiClient.device.getDeviceById(deviceId);
+      const deviceName = device.deviceName || `Device ${deviceId.slice(0, 8)}`;
+      
+      // Update cache
+      setDeviceCache(prev => ({
+        ...prev,
+        [deviceId]: deviceName
+      }));
+      
+      return deviceName;
+    } catch (error) {
+      console.error(`Failed to fetch device name for ID: ${deviceId}`, error);
+      return `Device ${deviceId.slice(0, 8)}`;
+    }
+  };
   
   // Fetch spare part requests
   const fetchSparePartRequests = async (page: number = 1, pageSize: number = 10) => {
@@ -117,11 +95,9 @@ export default function RequestsPage() {
       
       console.log(`Fetching spare part requests for page ${page}, size ${pageSize}`);
       
-      // Fetch spare part requests directly using API client
       const response = await apiClient.sparePart.getRequests(page, pageSize);
       console.log("Spare part requests API response:", response);
       
-      // Handle various response structures
       let sparePartData: SPAREPART_REQUEST[] = [];
       let totalItems = 0;
       let totalPages = 1;
@@ -143,7 +119,7 @@ export default function RequestsPage() {
         totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
       }
 
-      console.log(`Processed data: ${sparePartData.length} items, ${totalItems} total, ${totalPages} pages`);
+      console.log(`Processed spare part data: ${sparePartData.length} items, ${totalItems} total, ${totalPages} pages`);
 
       setSparePartRequests(sparePartData);
       setSparePartPagination({
@@ -157,7 +133,6 @@ export default function RequestsPage() {
       console.error("Failed to fetch spare part requests:", error);
       toast.error("Không thể tải danh sách yêu cầu linh kiện");
       
-      // Set empty state with default pagination
       setSparePartRequests([]);
       setSparePartPagination({
         currentPage: 1,
@@ -169,10 +144,62 @@ export default function RequestsPage() {
       setIsLoading(false);
     }
   };
+
+  // Fetch machine replacement requests with device names
+  const fetchMachineRequests = async (page: number = 1, pageSize: number = 10) => {
+    try {
+      console.log(`Fetching machine replacement requests for page ${page}, size ${pageSize}`);
+      
+      const response = await apiClient.machine.getReplacementRequests(page, pageSize);
+      console.log("Machine replacement requests API response:", response);
+      
+      let machineData: MACHINE_REPLACEMENT_REQUEST[] = [];
+      let totalItems = 0;
+      let totalPages = 1;
+      let currentPage = page;
+      
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        machineData = response.data.data;
+        totalItems = response.data.totalCount || 0;
+        totalPages = response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
+        currentPage = response.data.pageNumber || page;
+      } else if (response.data && Array.isArray(response.data)) {
+        machineData = response.data;
+        totalItems = response.totalCount || response.data.length;
+        totalPages = response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
+        currentPage = response.pageNumber || page;
+      } else if (Array.isArray(response)) {
+        machineData = response;
+        totalItems = response.length;
+        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+      }
+
+      console.log(`Processed machine data: ${machineData.length} items, ${totalItems} total, ${totalPages} pages`);
+
+      setMachineRequests(machineData);
+      setMachinePagination({
+        currentPage,
+        pageSize,
+        totalItems,
+        totalPages
+      });
+      
+    } catch (error) {
+      console.error("Failed to fetch machine replacement requests:", error);
+      toast.error("Không thể tải danh sách yêu cầu thiết bị");
+      
+      setMachineRequests([]);
+      setMachinePagination({
+        currentPage: 1,
+        pageSize,
+        totalItems: 0,
+        totalPages: 1
+      });
+    }
+  };
   
   // Fetch data on component mount
   useEffect(() => {
-    // Role check - redirect if not stock keeper
     if (user && !isStockKeeper) {
       toast.error("Bạn không có quyền truy cập trang này");
       router.push('/access-denied');
@@ -181,22 +208,20 @@ export default function RequestsPage() {
     
     const fetchData = async () => {
       try {
-        // Fetch spare part requests with pagination
-        await fetchSparePartRequests(1, 10);
+        setIsLoading(true);
         
-        // Set mock machine requests (replace with real API call when available)
-        setMachineRequests(mockMachineRequests);
-        setMachinePagination({
-          currentPage: 1,
-          pageSize: 10,
-          totalItems: mockMachineRequests.length,
-          totalPages: Math.max(1, Math.ceil(mockMachineRequests.length / 10))
-        });
+        // Fetch both spare part and machine requests concurrently
+        await Promise.all([
+          fetchSparePartRequests(1, 10),
+          fetchMachineRequests(1, 10)
+        ]);
         
-        toast.success(`Đã tải yêu cầu linh kiện và ${mockMachineRequests.length} yêu cầu thiết bị`);
+        toast.success("Đã tải danh sách yêu cầu thành công");
       } catch (error) {
         console.error("Failed to fetch requests:", error);
         toast.error("Không thể tải danh sách yêu cầu");
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -260,10 +285,9 @@ export default function RequestsPage() {
         if (machineFilters.search) {
           const searchLower = machineFilters.search.toLowerCase();
           return (
-            req.requestCode.toLowerCase().includes(searchLower) ||
-            req.requestedBy.toLowerCase().includes(searchLower) ||
-            req.currentMachineName.toLowerCase().includes(searchLower) ||
-            req.replacementMachineName.toLowerCase().includes(searchLower)
+            req.title.toLowerCase().includes(searchLower) ||
+            req.assigneeName.toLowerCase().includes(searchLower) ||
+            req.description.toLowerCase().includes(searchLower)
           );
         }
         
@@ -288,6 +312,53 @@ export default function RequestsPage() {
     return filtered;
   }, [machineFilters, machineRequests]);
 
+  // Prepare machine requests with device names
+  const machineRequestsWithDeviceNames = useMemo(() => {
+    return filteredMachineRequests.map(req => ({
+      id: req.id,
+      requestCode: req.title.includes('-') ? req.title.split('-')[0] : `MR-${req.id.slice(0, 8)}`,
+      requestDate: req.requestDate,
+      requestedBy: req.assigneeName,
+      status: req.status,
+      oldDeviceName: req.oldDeviceId 
+        ? (deviceCache[req.oldDeviceId] || `Device ${req.oldDeviceId.slice(0, 8)}`)
+        : 'No Device',
+      newDeviceName: req.newDeviceId 
+        ? (deviceCache[req.newDeviceId] || `Device ${req.newDeviceId.slice(0, 8)}`)
+        : 'No Device',
+    }));
+  }, [filteredMachineRequests, deviceCache]);
+
+  // Fetch device names when machine requests change
+  useEffect(() => {
+    const fetchDeviceNames = async () => {
+      const deviceIds = new Set<string>();
+      
+      // Collect all unique device IDs with null checks
+      machineRequests.forEach(req => {
+        if (req.oldDeviceId) deviceIds.add(req.oldDeviceId);
+        if (req.newDeviceId) deviceIds.add(req.newDeviceId);
+      });
+      
+      // Fetch names for devices not in cache
+      const promises = Array.from(deviceIds)
+        .filter(id => !deviceCache[id])
+        .map(id => fetchDeviceName(id));
+      
+      if (promises.length > 0) {
+        try {
+          await Promise.all(promises);
+        } catch (error) {
+          console.error("Failed to fetch device names:", error);
+        }
+      }
+    };
+    
+    if (machineRequests.length > 0) {
+      fetchDeviceNames();
+    }
+  }, [machineRequests, deviceCache]);
+
   // Handle filter changes
   const handleSparePartFilterChange = (key: keyof FILTER_STATE, value: string) => {
     setSparePartFilters(prev => ({ ...prev, [key]: value }));
@@ -299,26 +370,23 @@ export default function RequestsPage() {
 
   // Handle pagination changes
   const handleSparePartPageChange = (page: number) => {
-    console.log(`Changing to page ${page}`);
+    console.log(`Changing to spare part page ${page}`);
     fetchSparePartRequests(page, sparePartPagination.pageSize);
   };
 
   const handleSparePartPageSizeChange = (pageSize: number) => {
-    console.log(`Changing page size to ${pageSize}`);
+    console.log(`Changing spare part page size to ${pageSize}`);
     fetchSparePartRequests(1, pageSize);
   };
 
   const handleMachinePageChange = (page: number) => {
-    setMachinePagination(prev => ({ ...prev, currentPage: page }));
+    console.log(`Changing to machine page ${page}`);
+    fetchMachineRequests(page, machinePagination.pageSize);
   };
 
   const handleMachinePageSizeChange = (pageSize: number) => {
-    setMachinePagination(prev => ({ 
-      ...prev, 
-      currentPage: 1, 
-      pageSize,
-      totalPages: Math.max(1, Math.ceil(prev.totalItems / pageSize))
-    }));
+    console.log(`Changing machine page size to ${pageSize}`);
+    fetchMachineRequests(1, pageSize);
   };
 
   // Navigate to request detail
@@ -329,7 +397,7 @@ export default function RequestsPage() {
   
   const handleMachineRequestClick = (id: string) => {
     console.log(`Navigating to machine request detail with ID: ${id}`);
-    router.push(`./requests/${id}/machine`);
+    router.push(`./requests/${id}/machine?tab=machines`);
   };
   
   // Clear filters
@@ -355,9 +423,13 @@ export default function RequestsPage() {
     });
   };
 
-  // Handle tab change using internal state
+  // Handle tab change and update URL
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    // Update URL to preserve tab state
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    router.replace(`?${params.toString()}`);
   };
 
   return (
@@ -370,7 +442,7 @@ export default function RequestsPage() {
         </p>
       </div>
       
-      {/* Tabs - now using internal state */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="spare-parts" className="flex items-center gap-2">
@@ -385,7 +457,6 @@ export default function RequestsPage() {
         
         {/* Spare Parts Tab */}
         <TabsContent value="spare-parts" className="space-y-6">
-          {/* Filter section */}
           <FilterSection
             filters={sparePartFilters}
             statuses={sparePartStatuses}
@@ -393,7 +464,6 @@ export default function RequestsPage() {
             onClearFilters={clearSparePartFilters}
           />
 
-          {/* Request list */}
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Danh sách yêu cầu linh kiện</h2>
             
@@ -428,7 +498,6 @@ export default function RequestsPage() {
         
         {/* Machines Tab */}
         <TabsContent value="machines" className="space-y-6">
-          {/* Filter section */}
           <FilterSection
             filters={machineFilters}
             statuses={machineStatuses}
@@ -436,7 +505,6 @@ export default function RequestsPage() {
             onClearFilters={clearMachineFilters}
           />
 
-          {/* Request list */}
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Danh sách yêu cầu thiết bị</h2>
             
@@ -448,9 +516,15 @@ export default function RequestsPage() {
               </div>
             ) : (
               <MachineRequestsTable
-                requests={filteredMachineRequests}
+                requests={machineRequestsWithDeviceNames}
                 onRequestClick={handleMachineRequestClick}
                 onClearFilters={clearMachineFilters}
+                currentPage={machinePagination.currentPage}
+                totalPages={machinePagination.totalPages}
+                pageSize={machinePagination.pageSize}
+                totalItems={machinePagination.totalItems}
+                onPageChange={handleMachinePageChange}
+                onPageSizeChange={handleMachinePageSizeChange}
               />
             )}
           </div>

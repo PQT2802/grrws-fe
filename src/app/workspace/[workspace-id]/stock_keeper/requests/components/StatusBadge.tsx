@@ -13,6 +13,19 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
         return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300";
       case "Insufficient":
         return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+      // Machine Request statuses using same color scheme
+      case "Pending":
+        return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300";
+      case "InProgress":
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300";
+      case "Completed":
+        return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
+      case "Rejected":
+        return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+      case "Cancelled":
+        return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+      case "OnHold":
+        return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
       default:
         return "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
     }
@@ -28,6 +41,19 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
         return "Đã giao";
       case "Insufficient":
         return "Thiếu hàng";
+      // Machine Request status translations
+      case "Pending":
+        return "Chờ duyệt";
+      case "InProgress":
+        return "Đang tiến hành";
+      case "Completed":
+        return "Hoàn thành";
+      case "Rejected":
+        return "Từ chối";
+      case "Cancelled":
+        return "Đã hủy";
+      case "OnHold":
+        return "Tạm dừng";
       default:
         return status;
     }

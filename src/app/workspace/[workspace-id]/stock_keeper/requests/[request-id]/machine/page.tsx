@@ -1,109 +1,114 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, AlertCircle, Settings, Package } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, Settings, Package, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmRequestModal from '../../components/sparepart/ConfirmRequestModal';
+import ConfirmDeviceAvailableModal from '../../components/machine/ConfirmDeviceAvailableModal';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { apiClient } from "@/lib/api-client";
+import { DEVICE_WEB } from "@/types/device.type";
 
-// Mock interface for machine request detail
+// Interface for machine request detail
 interface MachineRequestDetail {
   id: string;
-  requestCode: string;
+  title: string;
+  description: string;
   requestDate: string;
-  requestedBy: string;
+  assigneeName: string;
   status: string;
-  reason: string;
-  priority: string;
-  notes?: string;
+  oldDeviceId: string;
+  newDeviceId: string;
+  machineId: string;
   confirmedDate?: string;
-  currentMachine: {
-    id: string;
-    machineName: string;
-    machineCode: string;
-    location: string;
-    status: string;
-    description?: string;
-    specifications?: string;
-    manufacturer?: string;
-    installationDate?: string;
-  };
-  replacementMachine: {
-    id: string;
-    machineName: string;
-    machineCode: string;
-    location: string;
-    status: string;
-    description?: string;
-    specifications?: string;
-    manufacturer?: string;
-    availableDate?: string;
-  };
+  notes?: string;
 }
 
 export default function MachineRequestDetailPage({ params }: { params: Promise<{ "request-id": string }> }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const { user, isStockKeeper } = useAuth();
   const resolvedParams = React.use(params);
   const requestId = resolvedParams["request-id"];
   
   // State variables
   const [isLoading, setIsLoading] = useState(true);
   const [requestDetail, setRequestDetail] = useState<MachineRequestDetail | null>(null);
+  const [oldDevice, setOldDevice] = useState<DEVICE_WEB | null>(null);
+  const [newDevice, setNewDevice] = useState<DEVICE_WEB | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   // State for action modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showConfirmDeviceModal, setShowConfirmDeviceModal] = useState(false);
   
-  // Mock data for machine request detail
-  const mockRequestDetail: MachineRequestDetail = {
-    id: requestId,
-    requestCode: `MR-${requestId}`,
-    requestDate: "2024-01-15T08:00:00Z",
-    requestedBy: "Nguyễn Văn A",
-    status: "Unconfirmed",
-    reason: "Máy cũ bị hỏng không sửa được, cần thay thế ngay để không ảnh hưởng đến sản xuất",
-    priority: "High",
-    notes: "Máy này đã hỏng từ tuần trước, đã cố gắng sửa chữa nhưng không thể khôi phục",
-    confirmedDate: undefined,
-    currentMachine: {
-      id: "machine-001",
-      machineName: "Máy khoan CNC-01",
-      machineCode: "CNC-DRILL-001",
-      location: "Khu vực sản xuất A - Dây chuyền 1",
-      status: "Broken",
-      description: "Máy khoan CNC chính dùng cho gia công chi tiết kim loại",
-      specifications: "Công suất: 5HP, Tốc độ tối đa: 3000 RPM",
-      manufacturer: "Fanuc",
-      installationDate: "2020-05-15"
-    },
-    replacementMachine: {
-      id: "machine-005",
-      machineName: "Máy khoan CNC-05",
-      machineCode: "CNC-DRILL-005",
-      location: "Kho thiết bị dự phòng",
-      status: "Available",
-      description: "Máy khoan CNC thay thế với công nghệ mới hơn",
-      specifications: "Công suất: 7.5HP, Tốc độ tối đa: 4000 RPM",
-      manufacturer: "Fanuc",
-      availableDate: "2024-01-20"
+  // Find request from the machine requests list (since there's no single request API)
+  const findRequestFromList = async (): Promise<MachineRequestDetail | null> => {
+    try {
+      // Fetch all machine requests and find the one with matching ID
+      const response = await apiClient.machine.getReplacementRequests(1, 100); // Get a large page to find the request
+      
+      let machineData: any[] = [];
+      
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        machineData = response.data.data;
+      } else if (response.data && Array.isArray(response.data)) {
+        machineData = response.data;
+      } else if (Array.isArray(response)) {
+        machineData = response;
+      }
+      
+      const foundRequest = machineData.find(req => req.id === requestId);
+      
+      if (foundRequest) {
+        return {
+          id: foundRequest.id,
+          title: foundRequest.title,
+          description: foundRequest.description,
+          requestDate: foundRequest.requestDate,
+          assigneeName: foundRequest.assigneeName,
+          status: foundRequest.status,
+          oldDeviceId: foundRequest.oldDeviceId,
+          newDeviceId: foundRequest.newDeviceId,
+          machineId: foundRequest.machineId,
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Failed to fetch machine requests:", error);
+      return null;
     }
   };
   
-  // Fetch request detail (mock for now)
+  // Fetch request detail and device information
   useEffect(() => {
     const fetchRequestDetail = async () => {
       try {
         setIsLoading(true);
         
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Find the request from the list
+        const request = await findRequestFromList();
         
-        // Set mock data
-        setRequestDetail(mockRequestDetail);
+        if (!request) {
+          setError("Không tìm thấy yêu cầu");
+          return;
+        }
+        
+        setRequestDetail(request);
+        
+        // Fetch device details concurrently
+        const [oldDeviceData, newDeviceData] = await Promise.all([
+          apiClient.device.getDeviceById(request.oldDeviceId).catch(() => null),
+          apiClient.device.getDeviceById(request.newDeviceId).catch(() => null)
+        ]);
+        
+        setOldDevice(oldDeviceData);
+        setNewDevice(newDeviceData);
+        
         toast.success("Chi tiết yêu cầu đã được tải thành công");
       } catch (err) {
         console.error("Failed to fetch machine request detail:", err);
@@ -124,15 +129,12 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     try {
       setIsLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Re-fetch the request to get updated status
+      const request = await findRequestFromList();
       
-      // Update status to confirmed
-      setRequestDetail(prev => prev ? {
-        ...prev,
-        status: "Confirmed",
-        confirmedDate: new Date().toISOString()
-      } : null);
+      if (request) {
+        setRequestDetail(request);
+      }
       
     } catch (err) {
       console.error("Failed to refresh machine request detail:", err);
@@ -142,7 +144,7 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     }
   };
   
-  // Handle confirming the request
+  // Handle confirming the request (old functionality)
   const handleConfirmRequest = async (notes: string) => {
     try {
       setIsLoading(true);
@@ -163,10 +165,42 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
       setIsLoading(false);
     }
   };
+
+  // NEW: Handle confirming device availability
+  const handleConfirmDeviceAvailable = async () => {
+    if (!requestDetail) return;
+    
+    try {
+      setIsLoading(true);
+      
+      console.log(`Confirming device availability for request: ${requestDetail.id}`);
+      
+      // Call API to confirm device availability
+      await apiClient.machine.confirmDeviceAvailable(requestDetail.id);
+      
+      toast.success("Đã xác nhận thiết bị thay thế thành công");
+      
+      // Update local state immediately
+      setRequestDetail(prev => prev ? {
+        ...prev,
+        status: "InProgress"
+      } : null);
+      
+      // Optionally refresh data from server
+      await refreshRequestDetail();
+      
+    } catch (error) {
+      console.error("Failed to confirm device availability:", error);
+      toast.error("Không thể xác nhận thiết bị thay thế");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-  // Go back to requests list
+  // Go back to requests list with tab memory
   const goBack = () => {
-    router.push("../../requests"); // Now we go back directly without query params
+    const tab = searchParams.get('tab') || 'machines';
+    router.push(`../../requests?tab=${tab}`);
   };
 
   // Format date for display
@@ -175,38 +209,95 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     return new Date(dateString).toLocaleString('vi-VN');
   };
 
-  // Get priority badge
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'High':
-        return (
-          <div className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full">
-            <AlertCircle className="h-3 w-3" />
-            <span className="text-xs font-medium">Cao</span>
+  // Render device information
+  const renderDeviceInfo = (device: DEVICE_WEB | null, title: string, isOld: boolean = false) => {
+    const borderColor = isOld ? 'border-red-200 dark:border-red-800' : 'border-green-200 dark:border-green-800';
+    const bgColor = isOld ? 'bg-red-50 dark:bg-red-950/10' : 'bg-green-50 dark:bg-green-950/10';
+    const titleColor = isOld ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400';
+    const iconColor = isOld ? 'text-red-600' : 'text-green-600';
+    
+    return (
+      <div className={`border ${borderColor} rounded-lg p-4 ${bgColor}`}>
+        <div className="flex items-center gap-2 mb-4">
+          {isOld ? (
+            <Package className={`h-5 w-5 ${iconColor}`} />
+          ) : (
+            <Settings className={`h-5 w-5 ${iconColor}`} />
+          )}
+          <h3 className={`font-semibold ${titleColor}`}>
+            {title}
+          </h3>
+        </div>
+        
+        {device ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Tên thiết bị</p>
+                <p className="font-medium">{device.deviceName}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Mã thiết bị</p>
+                <p className="font-medium">{device.deviceCode}</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Số seri</p>
+                <p className="font-medium">{device.serialNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Model</p>
+                <p className="font-medium">{device.model}</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Nhà sản xuất</p>
+                <p className="font-medium">{device.manufacturer}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Trạng thái</p>
+                <p className={`font-medium ${isOld ? 'text-red-600' : 'text-green-600'}`}>
+                  {device.status}
+                </p>
+              </div>
+            </div>
+            
+            {device.description && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Mô tả</p>
+                <p className="font-medium text-sm">{device.description}</p>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Ngày sản xuất</p>
+                <p className="font-medium text-sm">{formatDate(device.manufactureDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Ngày lắp đặt</p>
+                <p className="font-medium text-sm">{formatDate(device.installationDate)}</p>
+              </div>
+            </div>
+            
+            {device.zoneName && (
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Vị trí</p>
+                <p className="font-medium text-sm">{device.zoneName} - {device.areaName}</p>
+              </div>
+            )}
           </div>
-        );
-      case 'Medium':
-        return (
-          <div className="flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">
-            <AlertCircle className="h-3 w-3" />
-            <span className="text-xs font-medium">Trung bình</span>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-500 dark:text-gray-400">Không thể tải thông tin thiết bị</p>
           </div>
-        );
-      case 'Low':
-        return (
-          <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded-full">
-            <AlertCircle className="h-3 w-3" />
-            <span className="text-xs font-medium">Thấp</span>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-1 rounded-full">
-            <AlertCircle className="h-3 w-3" />
-            <span className="text-xs font-medium">Chưa xác định</span>
-          </div>
-        );
-    }
+        )}
+      </div>
+    );
   };
 
   // Determine what actions are available based on status
@@ -214,6 +305,7 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     if (!requestDetail) return null;
     
     const isUnconfirmed = requestDetail.status === "Unconfirmed";
+    const isPending = requestDetail.status === "Pending";
     
     return (
       <div className="flex justify-end gap-2">
@@ -230,6 +322,18 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
           >
             Xác nhận yêu cầu
+          </button>
+        )}
+        
+        {/* NEW: Show device availability confirmation button for Pending requests */}
+        {isPending && isStockKeeper && (
+          <button
+            onClick={() => setShowConfirmDeviceModal(true)}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-2"
+            disabled={isLoading}
+          >
+            <CheckCircle className="h-4 w-4" />
+            Xác nhận có thiết bị thay thế
           </button>
         )}
       </div>
@@ -290,17 +394,13 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
               <ArrowLeft className="h-4 w-4 mr-1" />
               <span className="text-sm">Quay lại danh sách</span>
             </button>
-            <h1 className="text-xl font-bold">Yêu cầu: {requestDetail?.requestCode}</h1>
+            <h1 className="text-xl font-bold">{requestDetail?.title}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Xem và quản lý thông tin yêu cầu thiết bị
             </p>
           </div>
           
           <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Độ ưu tiên</div>
-              {requestDetail && getPriorityBadge(requestDetail.priority)}
-            </div>
             <div className="text-right">
               <div className="text-sm text-gray-500">Trạng thái</div>
               <StatusBadge status={requestDetail?.status || "Unknown"} />
@@ -321,9 +421,9 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
             <div>
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                 <User className="h-4 w-4" />
-                <span>Người yêu cầu</span>
+                <span>Người nhận thiết bị</span>
               </div>
-              <p className="font-medium">{requestDetail?.requestedBy || "Không xác định"}</p>
+              <p className="font-medium">{requestDetail?.assigneeName || "Không xác định"}</p>
             </div>
             
             <div>
@@ -348,146 +448,32 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
           <div className="space-y-4">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Lý do thay thế</p>
-              <p className="font-medium">{requestDetail?.reason || "Không có"}</p>
+              <p className="font-medium">{requestDetail?.description || "Không có"}</p>
             </div>
-            
-            {requestDetail?.notes && (
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ghi chú</p>
-                <p className="font-medium">{requestDetail.notes}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
       
-      {/* Machine Replacement Details */}
+      {/* Device Replacement Details */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
         <div className="flex items-center gap-2 mb-6">
           <ArrowRightLeft className="h-5 w-5 text-gray-600" />
-          <h2 className="text-lg font-semibold">Chi tiết thay thế thiết bị</h2>
+          <h2 className="text-lg font-semibold">Chi tiết thiết bị thay thế</h2>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Current Machine */}
-          <div className="border border-red-200 dark:border-red-800 rounded-lg p-4 bg-red-50 dark:bg-red-950/10">
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="h-5 w-5 text-red-600" />
-              <h3 className="font-semibold text-red-700 dark:text-red-400">
-                Thiết bị hiện tại (sẽ thay thế)
-              </h3>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Tên thiết bị</p>
-                  <p className="font-medium">{requestDetail?.currentMachine?.machineName || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Mã thiết bị</p>
-                  <p className="font-medium">{requestDetail?.currentMachine?.machineCode || "N/A"}</p>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Vị trí</p>
-                <p className="font-medium">{requestDetail?.currentMachine?.location || "N/A"}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Trạng thái</p>
-                  <p className="font-medium text-red-600">{requestDetail?.currentMachine?.status || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Nhà sản xuất</p>
-                  <p className="font-medium">{requestDetail?.currentMachine?.manufacturer || "N/A"}</p>
-                </div>
-              </div>
-              
-              {requestDetail?.currentMachine?.specifications && (
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Thông số kỹ thuật</p>
-                  <p className="font-medium text-sm">{requestDetail.currentMachine.specifications}</p>
-                </div>
-              )}
-              
-              {requestDetail?.currentMachine?.description && (
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Mô tả</p>
-                  <p className="font-medium text-sm">{requestDetail.currentMachine.description}</p>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Old Device */}
+          {renderDeviceInfo(oldDevice, "Thiết bị hiện tại (sẽ thay thế)", true)}
           
-          {/* Replacement Machine */}
-          <div className="border border-green-200 dark:border-green-800 rounded-lg p-4 bg-green-50 dark:bg-green-950/10">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold text-green-700 dark:text-green-400">
-                Thiết bị thay thế mới
-              </h3>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Tên thiết bị</p>
-                  <p className="font-medium">{requestDetail?.replacementMachine?.machineName || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Mã thiết bị</p>
-                  <p className="font-medium">{requestDetail?.replacementMachine?.machineCode || "N/A"}</p>
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Vị trí hiện tại</p>
-                <p className="font-medium">{requestDetail?.replacementMachine?.location || "N/A"}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Trạng thái</p>
-                  <p className="font-medium text-green-600">{requestDetail?.replacementMachine?.status || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Nhà sản xuất</p>
-                  <p className="font-medium">{requestDetail?.replacementMachine?.manufacturer || "N/A"}</p>
-                </div>
-              </div>
-              
-              {requestDetail?.replacementMachine?.specifications && (
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Thông số kỹ thuật</p>
-                  <p className="font-medium text-sm">{requestDetail.replacementMachine.specifications}</p>
-                </div>
-              )}
-              
-              {requestDetail?.replacementMachine?.description && (
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Mô tả</p>
-                  <p className="font-medium text-sm">{requestDetail.replacementMachine.description}</p>
-                </div>
-              )}
-              
-              {requestDetail?.replacementMachine?.availableDate && (
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Ngày sẵn sàng</p>
-                  <p className="font-medium text-sm">{formatDate(requestDetail.replacementMachine.availableDate)}</p>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* New Device */}
+          {renderDeviceInfo(newDevice, "Thiết bị thay thế mới", false)}
         </div>
       </div>
       
       {/* Action Buttons */}
       {getActionButtons()}
       
-      {/* Confirmation Modal */}
+      {/* Existing Confirmation Modal */}
       <ConfirmRequestModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -495,6 +481,15 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
         title="Xác nhận yêu cầu thiết bị"
         description="Xác nhận yêu cầu này sẽ thông báo cho người yêu cầu rằng thiết bị đã sẵn sàng để thay thế."
         confirmButtonText="Xác nhận yêu cầu"
+      />
+      
+      {/* NEW: Device Availability Confirmation Modal */}
+      <ConfirmDeviceAvailableModal
+        isOpen={showConfirmDeviceModal}
+        onClose={() => setShowConfirmDeviceModal(false)}
+        onConfirm={handleConfirmDeviceAvailable}
+        requestTitle={requestDetail?.title || ""}
+        isLoading={isLoading}
       />
     </div>
   );

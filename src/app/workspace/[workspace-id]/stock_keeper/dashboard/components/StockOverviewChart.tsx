@@ -16,7 +16,7 @@ interface StockData {
 const CATEGORY_OPTIONS = [
   { label: "Linh kiện chính", value: "Core Components" },
   { label: "Đầu nối", value: "Connectors" },
-  { label: "Vât tư tiêu hao", value: "Consumables" },
+  { label: "Vật tư tiêu hao", value: "Consumables" },
   { label: "Phụ kiện", value: "Accessories" },
   { label: "Cảm biến", value: "Sensors" },
   { label: "Điện tử", value: "Electronics" },
@@ -83,11 +83,14 @@ export default function StockOverviewChart() {
         }
       });
 
-      const sortedData = Array.from(categoryMap.values()).sort((a, b) => b.totalItems - a.totalItems);
+      // Filter out categories with no items and sort by total items
+      const filteredData = Array.from(categoryMap.values())
+        .filter(data => data.totalItems > 0) // Only show categories with items
+        .sort((a, b) => b.totalItems - a.totalItems);
 
-      setStockData(sortedData);
+      setStockData(filteredData);
     } catch (error) {
-      console.error('Error fetching stock data:', error);
+      console.error('Lỗi khi tải dữ liệu tồn kho:', error);
       setStockData([]);
     } finally {
       setIsLoading(false);
@@ -109,28 +112,35 @@ export default function StockOverviewChart() {
     );
   }
 
-  const maxTotal = stockData.length > 0 ? Math.max(...stockData.map(d => d.totalItems)) : 1;
+  // Don't render if no data
+  if (stockData.length === 0) {
+    return null;
+  }
+
+  const maxTotal = Math.max(...stockData.map(d => d.totalItems));
 
   return (
     <div className="rounded-lg shadow-sm border p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-green-500" />
-          <h2 className="font-semibold text-lg">Stock Overview by Category</h2>
+          <h2 className="font-semibold text-lg">Tổng quan tồn kho theo danh mục</h2>
         </div>
       </div>
 
       <div className="space-y-4">
-        {stockData.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No stock data available</p>
-        ) : (
-          stockData.map((data) => (
+        {stockData.map((data) => {
+          const goodStock = data.totalItems - data.lowStockItems - data.outOfStockItems;
+          
+          return (
             <div key={data.category} className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium">
                   {getCategoryLabel(data.category)}
                 </span>
-                <span className="text-sm text-gray-300">{data.totalItems} items</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {data.totalItems} sản phẩm
+                </span>
               </div>
 
               <div className="relative">
@@ -142,14 +152,14 @@ export default function StockOverviewChart() {
                     <div
                       className="absolute left-0 top-0 h-full bg-green-500"
                       style={{
-                        width: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%`
+                        width: `${(goodStock / maxTotal) * 100}%`
                       }}
                     ></div>
                     {/* Low stock */}
                     <div
                       className="absolute top-0 h-full bg-yellow-500"
                       style={{
-                        left: `${((data.totalItems - data.lowStockItems - data.outOfStockItems) / maxTotal) * 100}%`,
+                        left: `${(goodStock / maxTotal) * 100}%`,
                         width: `${(data.lowStockItems / maxTotal) * 100}%`
                       }}
                     ></div>
@@ -157,7 +167,7 @@ export default function StockOverviewChart() {
                     <div
                       className="absolute top-0 h-full bg-red-500"
                       style={{
-                        left: `${((data.totalItems - data.outOfStockItems) / maxTotal) * 100}%`,
+                        left: `${((goodStock + data.lowStockItems) / maxTotal) * 100}%`,
                         width: `${(data.outOfStockItems / maxTotal) * 100}%`
                       }}
                     ></div>
@@ -165,23 +175,23 @@ export default function StockOverviewChart() {
                 </div>
               </div>
 
-              <div className="flex justify-between text-xs text-gray-300">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Good: {data.totalItems - data.lowStockItems - data.outOfStockItems}
+                  Đầy đủ: {goodStock}
                 </span>
                 <span className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  Low: {data.lowStockItems}
+                  Sắp hết: {data.lowStockItems}
                 </span>
                 <span className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  Out: {data.outOfStockItems}
+                  Hết hàng: {data.outOfStockItems}
                 </span>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
       </div>
     </div>
   );

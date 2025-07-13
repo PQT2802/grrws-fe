@@ -99,3 +99,47 @@ export interface PAGINATION_PARAMS {
   pageNumber: number;
   pageSize: number;
 }
+
+// Add these new interfaces for Machine Replacement Requests
+export interface MACHINE_REPLACEMENT_REQUEST {
+  id: string;
+  title: string;
+  description: string;
+  requestDate: string;
+  assigneeId: string;
+  assigneeName: string;
+  oldDeviceId: string;
+  newDeviceId: string;
+  machineId: string;
+  status: string;
+}
+
+export interface MACHINE_REPLACEMENT_REQUESTS_RESPONSE {
+  data: {
+    data: MACHINE_REPLACEMENT_REQUEST[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+  }
+}
+
+// Also update the existing MACHINE_REQUEST interface to use the new structure
+export interface MACHINE_REQUEST {
+  id: string;
+  requestCode: string;
+  title: string;
+  description: string;
+  requestDate: string;
+  requestedBy: string;
+  assigneeId: string;
+  assigneeName: string;
+  status: string;
+  reason: string;
+  currentMachineName: string;
+  replacementMachineName: string;
+  priority: string;
+  oldDeviceId: string;
+  newDeviceId: string;
+  machineId: string;
+}

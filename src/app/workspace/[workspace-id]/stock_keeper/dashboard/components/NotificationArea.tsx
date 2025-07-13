@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Bell, ArrowRight, Package, AlertCircle } from 'lucide-react';
+import { Bell, ArrowRight, Package, AlertCircle, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { sparePartService } from '@/app/service/sparePart.service';
+import { apiClient } from '@/lib/api-client';
 
 interface UnconfirmedRequest {
   id: string;
@@ -12,6 +12,15 @@ interface UnconfirmedRequest {
   requestDate: string;
   status: string;
   itemCount: number;
+}
+
+interface UnconfirmedMachineRequest {
+  id: string;
+  title: string;
+  description: string;
+  requestDate: string;
+  status: string;
+  areaPath?: string; 
 }
 
 interface LowStockItem {
@@ -24,19 +33,53 @@ interface LowStockItem {
 
 interface NotificationState {
   unconfirmedRequests: UnconfirmedRequest[];
+  unconfirmedMachineRequests: UnconfirmedMachineRequest[];
   lowStockItems: LowStockItem[];
   totalUnconfirmedCount: number;
+  totalUnconfirmedMachineCount: number;
   totalLowStockCount: number;
   isLoading: boolean;
   error: string | null;
 }
 
+// Vietnamese status mapping
+const getStatusLabel = (status: string): string => {
+  const statusMap: { [key: string]: string } = {
+    'Pending': 'Chờ duyệt',
+    'Unconfirmed': 'Chưa xác nhận',
+    'Confirmed': 'Đã xác nhận',
+    'InProgress': 'Đang tiến hành',
+    'Completed': 'Hoàn thành',
+    'Rejected': 'Từ chối',
+    'OnHold': 'Tạm dừng',
+    'Cancelled': 'Đã hủy'
+  };
+  return statusMap[status] || status;
+};
+
+// Vietnamese status badge colors (consistent with StatusBadge component)
+const getStatusBadgeClass = (status: string): string => {
+  const statusClasses: { [key: string]: string } = {
+    'Pending': 'bg-yellow-100 text-yellow-700',
+    'Unconfirmed': 'bg-yellow-100 text-yellow-700',
+    'Confirmed': 'bg-green-100 text-green-700',
+    'InProgress': 'bg-blue-100 text-blue-700',
+    'Completed': 'bg-green-100 text-green-700',
+    'Rejected': 'bg-red-100 text-red-700',
+    'OnHold': 'bg-gray-100 text-gray-700',
+    'Cancelled': 'bg-red-100 text-red-700'
+  };
+  return statusClasses[status] || 'bg-gray-100 text-gray-700';
+};
+
 export default function NotificationArea() {
   const router = useRouter();
   const [state, setState] = useState<NotificationState>({
     unconfirmedRequests: [],
+    unconfirmedMachineRequests: [],
     lowStockItems: [],
     totalUnconfirmedCount: 0,
+    totalUnconfirmedMachineCount: 0,
     totalLowStockCount: 0,
     isLoading: true,
     error: null
@@ -44,11 +87,19 @@ export default function NotificationArea() {
 
   // Memoized handlers to prevent unnecessary re-renders
   const handleRequestClick = useCallback((requestId: string) => {
-    router.push(`./requests/${requestId}`);
+    router.push(`./requests/${requestId}/sparepart`);
+  }, [router]);
+
+  const handleMachineRequestClick = useCallback((requestId: string) => {
+    router.push(`./requests/${requestId}/machine?tab=machines`);
   }, [router]);
 
   const handleViewAllRequests = useCallback(() => {
-    router.push('./requests?status=Unconfirmed');
+    router.push('./requests?tab=spare-parts&status=Unconfirmed');
+  }, [router]);
+
+  const handleViewAllMachineRequests = useCallback(() => {
+    router.push('./requests?tab=machines&status=Pending');
   }, [router]);
 
   const handleLowStockItemClick = useCallback((item: LowStockItem) => {
@@ -65,25 +116,112 @@ export default function NotificationArea() {
     router.push('./inventory?filter=lowstock');
   }, [router]);
 
-  // Optimized data processing functions
+  const formatAreaPath = (req: any): string => {
+    try {
+      let areaInfo = '';
+      
+      // First priority: Check if there's a specific area field structure
+      if (req.areaName || req.zoneName || req.positionIndex) {
+        const parts = [];
+        if (req.areaName) parts.push(req.areaName);
+        if (req.zoneName) parts.push(req.zoneName);
+        if (req.positionIndex) parts.push(req.positionIndex.toString());
+        
+        if (parts.length > 0) {
+          areaInfo = parts.join(' - ');
+        }
+      }
+      
+      if (!areaInfo && req.title) {
+        const title = req.title;
+        
+        const areaMatch = title.match(/Khu\s+[^-]+(?:\s*-\s*[^-]+)*(?:\s*-\s*\d+)?/i);
+        if (areaMatch) {
+          areaInfo = areaMatch[0].trim();
+        }
+      }
+      
+      if (!areaInfo && req.description) {
+        const desc = req.description;
+        
+        const areaMatch = desc.match(/Khu\s+[^-]+(?:\s*-\s*[^-]+)*(?:\s*-\s*\d+)?/i);
+        if (areaMatch) {
+          areaInfo = areaMatch[0].trim();
+        }
+      }
+      
+      if (!areaInfo) {
+        const fullText = `${req.title || ''} ${req.description || ''}`;
+        
+        const slashPattern = fullText.match(/[A-Za-z\u00C0-\u017F\s]+\/[A-Za-z\u00C0-\u017F\s]+(?:\/\d+)?/);
+        if (slashPattern) {
+          areaInfo = slashPattern[0].replace(/\//g, ' - ');
+        }
+      }
+      
+      if (!areaInfo) {
+        areaInfo = 'Vị trí không xác định';
+      }
+      
+      return areaInfo;
+    } catch (error) {
+      console.error('Error formatting area path:', error);
+      return 'Vị trí không xác định';
+    }
+  };
+
   const processRequests = useCallback((rawRequests: any[]) => {
     const allUnconfirmedRequests = rawRequests.filter((req: any) => 
       req.status === 'Unconfirmed'
     );
     
     const totalUnconfirmed = allUnconfirmedRequests.length;
-    const unconfirmedToDisplay = allUnconfirmedRequests.slice(0, 5);
+    const unconfirmedToDisplay = allUnconfirmedRequests.slice(0, 3);
 
     return {
       unconfirmedRequests: unconfirmedToDisplay.map((req: any) => ({
         id: req.id,
         requestCode: req.requestCode,
         assigneeName: req.assigneeName,
-        requestDate: new Date(req.requestDate).toLocaleDateString(),
+        requestDate: new Date(req.requestDate).toLocaleDateString('vi-VN'),
         status: req.status,
         itemCount: req.sparePartUsages?.length || 0
       })),
       totalUnconfirmedCount: totalUnconfirmed
+    };
+  }, []);
+
+  const processMachineRequests = useCallback((rawRequests: any[]) => {
+    console.log('Processing machine requests:', rawRequests);
+    
+    const allPendingMachineRequests = rawRequests.filter((req: any) => {
+      const isPending = req.status === 'Pending';
+      const isMachineReplacement = req.title && (
+        req.title.toLowerCase().includes('yêu cầu thay thế thiết bị') ||
+        req.title.toLowerCase().includes('machine replacement') ||
+        req.title.toLowerCase().includes('thay thế thiết bị')
+      );
+      
+      console.log(`Request ${req.id}: status=${req.status}, isPending=${isPending}, isMachineReplacement=${isMachineReplacement}, title=${req.title}`);
+      
+      return isPending && isMachineReplacement;
+    });
+    
+    console.log(`Found ${allPendingMachineRequests.length} pending machine replacement requests out of ${rawRequests.length} total`);
+    
+    const totalPending = allPendingMachineRequests.length;
+    const pendingToDisplay = allPendingMachineRequests.slice(0, 3);
+
+    return {
+      unconfirmedMachineRequests: pendingToDisplay.map((req: any) => ({
+        id: req.id,
+        title: 'Yêu cầu thay thế thiết bị', 
+        description: req.description || '', 
+        requestDate: new Date(req.requestDate).toLocaleDateString('vi-VN'),
+        status: req.status,
+        areaPath: formatAreaPath(req) 
+      })),
+      totalUnconfirmedMachineCount: totalPending
     };
   }, []);
 
@@ -105,13 +243,14 @@ export default function NotificationArea() {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Use Promise.allSettled to handle partial failures gracefully
-      const [requestsResult, inventoryResult] = await Promise.allSettled([
-        sparePartService.getSparePartRequests(),
-        sparePartService.getSparePartInventory(1, 1000)
+      
+      const [requestsResult, machineRequestsResult, inventoryResult] = await Promise.allSettled([
+        apiClient.sparePart.getRequests(1, 1000), 
+        apiClient.machine.getReplacementRequests(1, 1000), 
+        apiClient.sparePart.getInventory(1, 1000)
       ]);
 
-      // Process requests
+      // Process spare part requests
       let processedRequests: { unconfirmedRequests: UnconfirmedRequest[]; totalUnconfirmedCount: number } = { unconfirmedRequests: [], totalUnconfirmedCount: 0 };
       if (requestsResult.status === 'fulfilled') {
         const requestsResponse = requestsResult.value;
@@ -125,23 +264,40 @@ export default function NotificationArea() {
           requests = requestsResponse;
         }
 
+        console.log('Spare part requests:', requests);
         processedRequests = processRequests(requests);
       } else {
         console.error('Failed to fetch requests:', requestsResult.reason);
       }
 
-      // Process inventory
+      let processedMachineRequests: { unconfirmedMachineRequests: UnconfirmedMachineRequest[]; totalUnconfirmedMachineCount: number } = { unconfirmedMachineRequests: [], totalUnconfirmedMachineCount: 0 };
+      if (machineRequestsResult.status === 'fulfilled') {
+        const machineRequestsResponse = machineRequestsResult.value;
+        let machineRequests: any[] = [];
+        
+        if (machineRequestsResponse?.data?.data) {
+          machineRequests = machineRequestsResponse.data.data;
+        } else if (machineRequestsResponse?.data && Array.isArray(machineRequestsResponse.data)) {
+          machineRequests = machineRequestsResponse.data;
+        } else if (Array.isArray(machineRequestsResponse)) {
+          machineRequests = machineRequestsResponse;
+        }
+
+        console.log('Machine requests:', machineRequests);
+        processedMachineRequests = processMachineRequests(machineRequests);
+      } else {
+        console.error('Failed to fetch machine requests:', machineRequestsResult.reason);
+      }
+
       let processedInventory: { lowStockItems: LowStockItem[]; totalLowStockCount: number } = { lowStockItems: [], totalLowStockCount: 0 };
       if (inventoryResult.status === 'fulfilled') {
-        const inventoryResponse = inventoryResult.value;
+        const inventoryResponse = inventoryResult.value as any;
         let inventory: any[] = [];
         
-        if (inventoryResponse?.data?.data) {
-          inventory = inventoryResponse.data.data;
+        if (Array.isArray(inventoryResponse)) {
+          inventory = inventoryResponse;
         } else if (inventoryResponse?.data && Array.isArray(inventoryResponse.data)) {
           inventory = inventoryResponse.data;
-        } else if (Array.isArray(inventoryResponse)) {
-          inventory = inventoryResponse;
         }
 
         processedInventory = processInventory(inventory);
@@ -152,19 +308,20 @@ export default function NotificationArea() {
       setState(prev => ({
         ...prev,
         ...processedRequests,
+        ...processedMachineRequests,
         ...processedInventory,
         isLoading: false
       }));
 
     } catch (error) {
-      console.error('Error fetching notification data:', error);
+      console.error('Lỗi khi tải thông báo:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: 'Failed to load notifications'
+        error: 'Không thể tải thông báo'
       }));
     }
-  }, [processRequests, processInventory]);
+  }, [processRequests, processMachineRequests, processInventory]);
 
   // Use useEffect with empty dependency array to prevent unnecessary re-fetches
   useEffect(() => {
@@ -175,33 +332,33 @@ export default function NotificationArea() {
   const LoadingComponent = useMemo(() => (
     <div className="space-y-6">
       <div className="animate-pulse bg-gray-200 dark:bg-slate-700 rounded-lg h-48"></div>
+      <div className="animate-pulse bg-gray-200 dark:bg-slate-700 rounded-lg h-48"></div>
       <div className="animate-pulse bg-gray-200 dark:bg-slate-700 rounded-lg h-32"></div>
     </div>
   ), []);
 
-  const UnconfirmedRequestsSection = useMemo(() => (
-    <div className="rounded-lg shadow-sm border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-blue-500" />
-          <h2 className="font-semibold text-lg">Unconfirmed Requests</h2>
-          {state.totalUnconfirmedCount > 0 && (
+  // Only render if there are unconfirmed requests
+  const UnconfirmedRequestsSection = useMemo(() => {
+    if (state.totalUnconfirmedCount === 0) return null;
+    
+    return (
+      <div className="rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-blue-500" />
+            <h2 className="font-semibold text-lg">Yêu cầu linh kiện chưa xác nhận</h2>
             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
               {state.totalUnconfirmedCount}
             </span>
-          )}
+          </div>
+          <button
+            onClick={handleViewAllRequests}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+          >
+            Xem tất cả <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          onClick={handleViewAllRequests}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-        >
-          View All <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
 
-      {state.unconfirmedRequests.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No unconfirmed requests</p>
-      ) : (
         <ul className="divide-y divide-gray-200 dark:divide-slate-700">
           {state.unconfirmedRequests.map((req) => (
             <li 
@@ -214,14 +371,14 @@ export default function NotificationArea() {
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-gray-400" />
                     <span className="font-medium text-blue-600">{req.requestCode}</span>
-                    <span className="text-sm text-gray-500">by {req.assigneeName}</span>
+                    <span className="text-sm text-gray-500">cho {req.assigneeName}</span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {req.itemCount} items • {req.requestDate}
+                    {req.itemCount} mục • {req.requestDate}
                   </p>
                 </div>
-                <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded">
-                  {req.status}
+                <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(req.status)}`}>
+                  {getStatusLabel(req.status)}
                 </span>
               </div>
             </li>
@@ -229,14 +386,71 @@ export default function NotificationArea() {
           {state.totalUnconfirmedCount > state.unconfirmedRequests.length && (
             <li className="pt-2 text-center">
               <span className="text-sm text-gray-500">
-                and {state.totalUnconfirmedCount - state.unconfirmedRequests.length} more...
+                và {state.totalUnconfirmedCount - state.unconfirmedRequests.length} yêu cầu khác...
               </span>
             </li>
           )}
         </ul>
-      )}
-    </div>
-  ), [state.unconfirmedRequests, state.totalUnconfirmedCount, handleRequestClick, handleViewAllRequests]);
+      </div>
+    );
+  }, [state.unconfirmedRequests, state.totalUnconfirmedCount, handleRequestClick, handleViewAllRequests]);
+
+  // Only render if there are pending machine requests
+  const UnconfirmedMachineRequestsSection = useMemo(() => {
+    if (state.totalUnconfirmedMachineCount === 0) return null;
+    
+    return (
+      <div className="rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-purple-500" />
+            <h2 className="font-semibold text-lg">Yêu cầu thiết bị chưa xác nhận</h2>
+            <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+              {state.totalUnconfirmedMachineCount}
+            </span>
+          </div>
+          <button
+            onClick={handleViewAllMachineRequests}
+            className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1"
+          >
+            Xem tất cả <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        <ul className="divide-y divide-gray-200 dark:divide-slate-700">
+          {state.unconfirmedMachineRequests.map((req) => (
+            <li 
+              key={req.id} 
+              className="py-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer rounded transition-colors"
+              onClick={() => handleMachineRequestClick(req.id)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-gray-400" />
+                    <span className="font-medium text-purple-600">{req.title}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    {req.areaPath} • {req.requestDate}
+                  </p>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeClass(req.status)}`}>
+                  {getStatusLabel(req.status)}
+                </span>
+              </div>
+            </li>
+          ))}
+          {state.totalUnconfirmedMachineCount > state.unconfirmedMachineRequests.length && (
+            <li className="pt-2 text-center">
+              <span className="text-sm text-gray-500">
+                và {state.totalUnconfirmedMachineCount - state.unconfirmedMachineRequests.length} yêu cầu khác...
+              </span>
+            </li>
+          )}
+        </ul>
+      </div>
+    );
+  }, [state.unconfirmedMachineRequests, state.totalUnconfirmedMachineCount, handleMachineRequestClick, handleViewAllMachineRequests]);
 
   // Add category mapping function
   const getCategoryLabel = (value: string): string => {
@@ -258,29 +472,28 @@ export default function NotificationArea() {
     return category ? category.label : value;
   };
 
-  const LowStockSection = useMemo(() => (
-    <div className="rounded-lg shadow-sm border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-orange-500" />
-          <h2 className="font-semibold text-lg">Cảnh báo tồn kho thấp</h2>
-          {state.totalLowStockCount > 0 && (
+  // Only render if there are low stock items
+  const LowStockSection = useMemo(() => {
+    if (state.totalLowStockCount === 0) return null;
+    
+    return (
+      <div className="rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-orange-500" />
+            <h2 className="font-semibold text-lg">Cảnh báo tồn kho thấp</h2>
             <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
               {state.totalLowStockCount}
             </span>
-          )}
+          </div>
+          <button
+            onClick={handleViewInventory}
+            className="text-orange-600 hover:text-orange-800 text-sm font-medium flex items-center gap-1"
+          >
+            Xem tất cả <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          onClick={handleViewInventory}
-          className="text-orange-600 hover:text-orange-800 text-sm font-medium flex items-center gap-1"
-        >
-          Xem tất cả <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
 
-      {state.lowStockItems.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">Tất cả vật tư đều có tồn kho đầy đủ</p>
-      ) : (
         <ul className="divide-y divide-gray-200 dark:divide-slate-700">
           {state.lowStockItems.map((item) => (
             <li 
@@ -310,9 +523,9 @@ export default function NotificationArea() {
             </li>
           )}
         </ul>
-      )}
-    </div>
-  ), [state.lowStockItems, state.totalLowStockCount, handleLowStockItemClick, handleViewInventory]);
+      </div>
+    );
+  }, [state.lowStockItems, state.totalLowStockCount, handleLowStockItemClick, handleViewInventory]);
 
   if (state.isLoading) return LoadingComponent;
 
@@ -325,8 +538,23 @@ export default function NotificationArea() {
             onClick={fetchNotificationData}
             className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Retry
+            Thử lại
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if we have any sections to render
+  const hasNotifications = state.totalUnconfirmedCount > 0 || state.totalUnconfirmedMachineCount > 0 || state.totalLowStockCount > 0;
+
+  if (!hasNotifications) {
+    return (
+      <div className="rounded-lg shadow-sm border p-6">
+        <div className="text-center py-8">
+          <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">Không có thông báo</h3>
+          <p className="text-gray-500">Hiện tại không có yêu cầu nào cần xử lý.</p>
         </div>
       </div>
     );
@@ -335,6 +563,7 @@ export default function NotificationArea() {
   return (
     <div className="space-y-6">
       {UnconfirmedRequestsSection}
+      {UnconfirmedMachineRequestsSection}
       {LowStockSection}
     </div>
   );

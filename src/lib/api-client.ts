@@ -335,6 +335,26 @@ class APIClient {
         `/api/Machine/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
       ); 
     },
+
+    // Add new method for machine replacement requests
+    getReplacementRequests: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
+      console.log("Getting machine replacement requests");
+      return http.get(`/api/RequestMachineReplacement/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    getReplacementRequestById: (requestId: string): Promise<any> => {
+      console.log(`Getting machine replacement request by ID: ${requestId}`);
+      return http.get(`/api/RequestMachineReplacement/${requestId}`);
+    },
+
+    // NEW: Confirm device available for machine replacement request
+    confirmDeviceAvailable: (requestId: string): Promise<any> => {
+      console.log(`Confirming device available for machine replacement request: ${requestId}`);
+      return http.put(`/api/RequestMachineReplacement/confirm-had-device/${requestId}`, {});
+    },
   }
 
   sparePart = {
