@@ -6,13 +6,12 @@ import PartCard from "./components/PartCard";
 import FilterBar from "./components/FilterBar";
 import { PartType } from "../type";
 import PartDetailModal from "./components/PartDetailModal";
-import ImportSparePartModal from "./components/ImportSparePartModal";
 import { apiClient } from "@/lib/api-client";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import { toast } from "react-toastify";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Plus } from "lucide-react";
+import { Package, Upload } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
+import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -349,6 +349,27 @@ export default function InventoryPage() {
     setDirectPartId(undefined);
   };
 
+  // Handle Excel import
+  const handleImportClick = () => {
+    setShowImportModal(true);
+  };
+
+  const handleImportModalClose = () => {
+    setShowImportModal(false);
+  };
+
+  const handleFileImport = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    console.log(`📂 Importing spare parts file: ${file.name}`);
+    
+    await apiClient.sparePart.importSparePart(formData);
+    
+    // Refresh the inventory
+    await fetchInventory();
+  };
+
   const PaginationSection = () => (
     <div className="flex flex-col sm:flex-row items-center sm:justify-end gap-4 mt-6">
       <div className="flex items-center gap-3 w-full sm:w-auto order-2 sm:order-1 justify-center sm:justify-start">
@@ -461,11 +482,11 @@ export default function InventoryPage() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold">Parts Inventory</h1>
             <Button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2"
+              onClick={handleImportClick}
+              className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
             >
-              <Plus className="h-4 w-4" />
-              Import Spare Part
+              <Upload className="h-4 w-4" />
+              Import Spare Parts
             </Button>
           </div>
           
@@ -568,10 +589,13 @@ export default function InventoryPage() {
         onUpdate={refreshSelectedPart}
       />
       
-      <ImportSparePartModal
+      {/* Excel Import Modal */}
+      <ExcelImportModal
         isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={fetchInventory}
+        onClose={handleImportModalClose}
+        onImport={handleFileImport}
+        title="Nhập linh kiện từ Excel"
+        successMessage="Nhập linh kiện thành công"
       />
     </div>
   );

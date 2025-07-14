@@ -89,7 +89,6 @@ class APIClient {
     },
 
     createUser: (data: CREATE_USER_REQUEST): Promise<any> => {
-      // Ensure proper data format and structure
       const payload = {
         ...data,
         Role: Number(data.Role),
@@ -329,7 +328,7 @@ class APIClient {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
 
-    // NEW: Import devices from Excel file
+    // Import devices from Excel file
     importDevice: async (formData: FormData): Promise<any> => {
       console.log("Importing device from Excel file");
       try {
@@ -341,6 +340,18 @@ class APIClient {
         return response;
       } catch (error) {
         console.error("Error importing devices:", error);
+        throw error;
+      }
+    },
+
+    // Delete device
+    deleteDevice: async (deviceId: string): Promise<any> => {
+      console.log(`Deleting device with ID: ${deviceId}`);
+      try {
+        const response = await http.delete(`/api/Device/${deviceId}`);
+        return response;
+      } catch (error) {
+        console.error("Error deleting device:", error);
         throw error;
       }
     },
@@ -376,7 +387,7 @@ class APIClient {
       return http.put(`/api/RequestMachineReplacement/confirm-had-device/${requestId}`, {});
     },
 
-    // NEW: Import machines from Excel file
+    // Import machines from Excel file
     importMachine: async (formData: FormData): Promise<any> => {
       console.log("Importing machine from Excel file");
       try {
@@ -388,6 +399,18 @@ class APIClient {
         return response;
       } catch (error) {
         console.error("Error importing machines:", error);
+        throw error;
+      }
+    },
+
+    // Delete machine
+    deleteMachine: async (machineId: string): Promise<any> => {
+      console.log(`Deleting machine with ID: ${machineId}`);
+      try {
+        const response = await http.delete(`/api/Machine/delete/${machineId}`);
+        return response;
+      } catch (error) {
+        console.error("Error deleting machine:", error);
         throw error;
       }
     },
@@ -417,16 +440,16 @@ class APIClient {
     },
 
     importSparePart: async (formData: FormData): Promise<any> => {
-      console.log("Importing spare part to external API");
+      console.log("Importing spare parts from Excel file");
       try {
-        const response = await http.post("/api/Sparepart", formData, {
+        const response = await http.post("/api/Sparepart/import", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         });
         return response;
       } catch (error) {
-        console.error("Error in external API call:", error);
+        console.error("Error importing spare parts:", error);
         throw error;
       }
     },
@@ -595,7 +618,7 @@ class APIClient {
       return http.get<ALL_REQUESTS_RESPONSE>(
         `/api/Request?pageNumber=${pageNumber}&pageSize=${pageSize}`
       );
-    }, 
+    },
 
     // Keep the old method for backward compatibility
     getRequestsWithReport: (): Promise<

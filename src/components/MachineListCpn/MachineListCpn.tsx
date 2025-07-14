@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -25,6 +25,7 @@ import { toast } from "react-toastify"
 import { Card, CardContent } from "@/components/ui/card"
 import { apiClient } from "@/lib/api-client"
 import { MACHINE_WEB } from "@/types/device.type"
+import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal"
 
 interface MachineListCpnProps {
     onEditMachine?: (machine: MACHINE_WEB) => void
@@ -32,23 +33,27 @@ interface MachineListCpnProps {
     onViewMachine?: (machine: MACHINE_WEB) => void
 }
 
-export default function MachineListCpn({ 
+// Add ref interface for parent component access
+export interface MachineListCpnRef {
+    refetchMachines: () => Promise<void>
+}
+
+const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({ 
     onEditMachine, 
     onDeleteMachine,
     onViewMachine
-}: MachineListCpnProps) {
+}, ref) => {
     const [machines, setMachines] = useState<MACHINE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
-    const [isImporting, setIsImporting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [filterStatus, setFilterStatus] = useState<string>("all")
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     
-    // File input ref for Excel import
-    const fileInputRef = useRef<HTMLInputElement>(null)
+    // Import modal state
+    const [showImportModal, setShowImportModal] = useState(false)
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
@@ -159,6 +164,11 @@ export default function MachineListCpn({
         }
     }, [page, pageSize, debouncedSearchTerm, filterStatus])
 
+    // Expose refetch method to parent component
+    useImperativeHandle(ref, () => ({
+        refetchMachines: fetchMachines
+    }), [fetchMachines])
+
     useEffect(() => {
         fetchMachines()
     }, [fetchMachines])
@@ -175,96 +185,27 @@ export default function MachineListCpn({
         setPage(1)
     }, [pageSize])
 
-    // Handle Excel import - FIXED VERSION
+    // Handle import modal
     const handleImportClick = useCallback(() => {
-        // Reset any previous state before opening file dialog
-        setIsImporting(false)
-        fileInputRef.current?.click()
+        setShowImportModal(true)
     }, [])
 
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (!file) {
-            // Reset importing state if no file selected
-            setIsImporting(false)
-            return
-        }
+    const handleImportModalClose = useCallback(() => {
+        setShowImportModal(false)
+    }, [])
 
-        // Validate file type
-        const allowedTypes = [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel'
-        ]
+    // Handle file import
+    const handleFileImport = useCallback(async (file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        console.log(`📂 Importing machine file: ${file.name}`)
         
-        if (!allowedTypes.includes(file.type)) {
-            toast.error("Please select a valid Excel file (.xlsx or .xls)")
-            setIsImporting(false)
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = ''
-            }
-            return
-        }
-
-        try {
-            setIsImporting(true)
-            
-            const formData = new FormData()
-            formData.append('file', file)
-
-            console.log(`📂 Importing machine file: ${file.name}`)
-            
-            const response = await apiClient.machine.importMachine(formData)
-            console.log('✅ Import successful:', response)
-            
-            toast.success("Machine data imported successfully!")
-            
-            // Refresh the machine list
-            await fetchMachines()
-            
-        } catch (error: any) {
-            console.error("❌ Error importing machine:", error)
-            
-            // Extract error message from response with better error handling
-            let errorMessage = "Failed to import machine data"
-            
-            try {
-                // Handle different error response structures
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message
-                } else if (error.response?.data?.error) {
-                    errorMessage = error.response.data.error
-                } else if (error.response?.data) {
-                    // If data is a string
-                    if (typeof error.response.data === 'string') {
-                        errorMessage = error.response.data
-                    } else {
-                        errorMessage = JSON.stringify(error.response.data)
-                    }
-                } else if (error.message) {
-                    errorMessage = error.message
-                }
-            } catch (parseError) {
-                console.error("Error parsing error response:", parseError)
-                errorMessage = "Failed to import machine data - Unknown error"
-            }
-            
-            toast.error(errorMessage)
-            
-            // Force state reset on error
-            setIsImporting(false)
-            
-        } finally {
-            // Ensure state is always reset
-            setTimeout(() => {
-                setIsImporting(false)
-                
-                // Reset file input
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                }
-            }, 100)
-        }
+        await apiClient.machine.importMachine(formData)
+        
+        // Refresh the machine list
+        await fetchMachines()
+        
     }, [fetchMachines])
 
     const handleViewMachine = useCallback((machine: MACHINE_WEB) => {
@@ -337,32 +278,12 @@ export default function MachineListCpn({
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Machine Management</h1>
                 <div className="flex items-center gap-2">
-                    {/* Hidden file input */}
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={handleFileChange}
-                        className="hidden"
-                    />
-                    
-                    {/* Import button */}
                     <Button 
                         onClick={handleImportClick}
-                        disabled={isImporting}
                         className="bg-green-600 hover:bg-green-700"
                     >
-                        {isImporting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Importing...
-                            </>
-                        ) : (
-                            <>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Import Machine
-                            </>
-                        )}
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import Machine
                     </Button>
                 </div>
             </div>
@@ -429,9 +350,6 @@ export default function MachineListCpn({
                                         <td className="px-4 py-3">
                                             <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
-                                        </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-8 ml-auto" />
                                         </td>
@@ -439,7 +357,7 @@ export default function MachineListCpn({
                                 ))
                             ) : machines.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                                         No machines found
                                     </td>
                                 </tr>
@@ -567,6 +485,19 @@ export default function MachineListCpn({
                     </div>
                 </div>
             </div>
+
+            {/* Import Modal */}
+            <ExcelImportModal
+                isOpen={showImportModal}
+                onClose={handleImportModalClose}
+                onImport={handleFileImport}
+                title="Nhập máy từ Excel"
+                successMessage="Nhập máy thành công"
+            />
         </div>
     )
-}
+})
+
+MachineListCpn.displayName = "MachineListCpn"
+
+export default MachineListCpn

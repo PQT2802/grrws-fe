@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,6 +23,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { apiClient } from "@/lib/api-client"
 import { DEVICE_WEB } from "@/types/device.type"
 import OperationStatsCpn from "../ChartCpn/OperationStatsCpn"
+import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal"
 
 // Updated device status mapping based on backend enum
 type DeviceStatus = "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"
@@ -34,24 +35,28 @@ interface DeviceListCpnProps {
     onViewDevice?: (device: DEVICE_WEB) => void
 }
 
-export default function DeviceListCpn({ 
+// Add ref interface for parent component access
+export interface DeviceListCpnRef {
+    refetchDevices: () => Promise<void>
+}
+
+const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({ 
     onCreateDevice, 
     onEditDevice, 
     onDeleteDevice,
     onViewDevice
-}: DeviceListCpnProps) {
+}, ref) => {
     const [devices, setDevices] = useState<DEVICE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
-    const [isImporting, setIsImporting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [filterStatus, setFilterStatus] = useState<string>("all")
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     
-    // File input ref for Excel import
-    const fileInputRef = useRef<HTMLInputElement>(null)
+    // Import modal state
+    const [showImportModal, setShowImportModal] = useState(false)
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
@@ -162,6 +167,11 @@ export default function DeviceListCpn({
         }
     }, [page, pageSize, debouncedSearchTerm, filterStatus])
 
+    // Expose refetch method to parent component
+    useImperativeHandle(ref, () => ({
+        refetchDevices: fetchDevices
+    }), [fetchDevices])
+
     useEffect(() => {
         fetchDevices()
     }, [fetchDevices])
@@ -178,117 +188,28 @@ export default function DeviceListCpn({
         setPage(1)
     }, [pageSize])
 
-    // Handle Excel import
+    // Handle import modal
     const handleImportClick = useCallback(() => {
-        // Reset any previous state before opening file dialog
-        setIsImporting(false)
-        fileInputRef.current?.click()
+        setShowImportModal(true)
     }, [])
 
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (!file) {
-            // Reset importing state if no file selected
-            setIsImporting(false)
-            return
-        }
+    const handleImportModalClose = useCallback(() => {
+        setShowImportModal(false)
+    }, [])
 
-        // Validate file type
-        const allowedTypes = [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel'
-        ]
+    // Handle file import
+    const handleFileImport = useCallback(async (file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        console.log(`📂 Importing device file: ${file.name}`)
         
-        if (!allowedTypes.includes(file.type)) {
-            toast.error("Please select a valid Excel file (.xlsx or .xls)")
-            setIsImporting(false)
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = ''
-            }
-            return
-        }
-
-        try {
-            setIsImporting(true)
-            
-            const formData = new FormData()
-            formData.append('file', file)
-
-            console.log(`📂 Importing device file: ${file.name}`)
-            
-            const response = await apiClient.device.importDevice(formData)
-            console.log('✅ Device import successful:', response)
-            
-            toast.success("Device data imported successfully!")
-            
-            // Refresh the device list
-            await fetchDevices()
-            
-        } catch (error: any) {
-            console.error("❌ Error importing device:", error)
-            
-            // Extract error message from response with better error handling
-            let errorMessage = "Failed to import device data"
-            
-            try {
-                // Handle different error response structures
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message
-                } else if (error.response?.data?.error) {
-                    errorMessage = error.response.data.error
-                } else if (error.response?.data) {
-                    // If data is a string
-                    if (typeof error.response.data === 'string') {
-                        errorMessage = error.response.data
-                    } else {
-                        errorMessage = JSON.stringify(error.response.data)
-                    }
-                } else if (error.message) {
-                    errorMessage = error.message
-                }
-            } catch (parseError) {
-                console.error("Error parsing error response:", parseError)
-                errorMessage = "Failed to import device data - Unknown error"
-            }
-            
-            toast.error(errorMessage)
-            
-            // Force state reset on error
-            setIsImporting(false)
-            
-        } finally {
-            // Ensure state is always reset
-            setTimeout(() => {
-                setIsImporting(false)
-                
-                // Reset file input
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                }
-            }, 100)
-        }
+        await apiClient.device.importDevice(formData)
+        
+        // Refresh the device list
+        await fetchDevices()
+        
     }, [fetchDevices])
-
-    // Add cleanup and auto-reset effects
-    useEffect(() => {
-        return () => {
-            // Cleanup on unmount
-            setIsImporting(false)
-        }
-    }, [])
-
-    useEffect(() => {
-        // Auto-reset importing state if it gets stuck
-        const timeoutId = setTimeout(() => {
-            if (isImporting) {
-                console.warn("⚠️ Device import seems to be stuck, auto-resetting...")
-                setIsImporting(false)
-            }
-        }, 30000) // 30 seconds timeout
-
-        return () => clearTimeout(timeoutId)
-    }, [isImporting])
 
     const handleViewDevice = useCallback((device: DEVICE_WEB) => {
         if (onViewDevice) {
@@ -368,32 +289,12 @@ export default function DeviceListCpn({
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Device Management</h1>
                 <div className="flex items-center gap-2">
-                    {/* Hidden file input */}
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".xlsx,.xls"
-                        onChange={handleFileChange}
-                        className="hidden"
-                    />
-                    
-                    {/* Import button */}
                     <Button 
                         onClick={handleImportClick}
-                        disabled={isImporting}
                         className="bg-green-600 hover:bg-green-700"
                     >
-                        {isImporting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Importing...
-                            </>
-                        ) : (
-                            <>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Import Device
-                            </>
-                        )}
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import Device
                     </Button>
                 </div>
             </div>
@@ -596,6 +497,19 @@ export default function DeviceListCpn({
                     </div>
                 </div>
             </div>
+
+            {/* Import Modal */}
+            <ExcelImportModal
+                isOpen={showImportModal}
+                onClose={handleImportModalClose}
+                onImport={handleFileImport}
+                title="Nhập thiết bị từ Excel"
+                successMessage="Nhập thiết bị thành công"
+            />
         </div>
     )
-}
+})
+
+DeviceListCpn.displayName = "DeviceListCpn"
+
+export default DeviceListCpn

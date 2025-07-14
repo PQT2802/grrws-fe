@@ -24,8 +24,12 @@ export default function ExcelImportModal({
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle file selection
+  // Handle file selection - FIXED to allow re-selecting same file
   const handleFileSelect = useCallback(() => {
+    // Clear the file input value to allow re-selecting the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     fileInputRef.current?.click();
   }, []);
 
@@ -95,10 +99,15 @@ export default function ExcelImportModal({
     onClose();
   }, [isImporting, onClose]);
 
-  // Handle file replacement
+  // Handle file replacement - FIXED to allow re-selecting same file
   const handleReplaceFile = useCallback(() => {
+    // Clear the current selected file first
     setSelectedFile(null);
-    handleFileSelect();
+    
+    // Small delay to ensure state is updated before opening file picker
+    setTimeout(() => {
+      handleFileSelect();
+    }, 100);
   }, [handleFileSelect]);
 
   // Reset file input when modal closes
@@ -107,6 +116,13 @@ export default function ExcelImportModal({
       fileInputRef.current.value = '';
     }
   }, [isOpen]);
+
+  // Reset file input when selectedFile changes to null
+  React.useEffect(() => {
+    if (!selectedFile && fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [selectedFile]);
 
   if (!isOpen) return null;
 
@@ -149,10 +165,6 @@ export default function ExcelImportModal({
                 Chọn file Excel
               </h3>
               
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Chỉ hỗ trợ file .xlsx
-              </p>
-              
               <Button
                 onClick={handleFileSelect}
                 disabled={isImporting}
@@ -161,6 +173,9 @@ export default function ExcelImportModal({
                 <Upload className="w-4 h-4 mr-2" />
                 Chọn file
               </Button>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Chỉ hỗ trợ file .xlsx
+              </p>
             </div>
           ) : (
             /* File selected display */
