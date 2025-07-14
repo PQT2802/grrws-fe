@@ -324,6 +324,22 @@ class APIClient {
     getDeviceById: (deviceId: string): Promise<DEVICE_WEB> => {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
+
+    // NEW: Import devices from Excel file
+    importDevice: async (formData: FormData): Promise<any> => {
+      console.log("Importing device from Excel file");
+      try {
+        const response = await http.post("/api/Device/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response;
+      } catch (error) {
+        console.error("Error importing devices:", error);
+        throw error;
+      }
+    },
   };
 
   machine = {
@@ -350,10 +366,26 @@ class APIClient {
       return http.get(`/api/RequestMachineReplacement/${requestId}`);
     },
 
-    // NEW: Confirm device available for machine replacement request
+    // Confirm device available for machine replacement request
     confirmDeviceAvailable: (requestId: string): Promise<any> => {
       console.log(`Confirming device available for machine replacement request: ${requestId}`);
       return http.put(`/api/RequestMachineReplacement/confirm-had-device/${requestId}`, {});
+    },
+
+    // NEW: Import machines from Excel file
+    importMachine: async (formData: FormData): Promise<any> => {
+      console.log("Importing machine from Excel file");
+      try {
+        const response = await http.post("/api/Machine/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response;
+      } catch (error) {
+        console.error("Error importing machines:", error);
+        throw error;
+      }
     },
   }
 

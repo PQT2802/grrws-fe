@@ -31,9 +31,9 @@ export default function DeviceListPage() {
         }
     }, [])
 
-    const handleCreateDevice = useCallback(() => {
-        toast.info("Create device functionality will be implemented when the API is available.")
-    }, [])
+    // const handleCreateDevice = useCallback(() => {
+    //     toast.info("Create device functionality will be implemented when the API is available.")
+    // }, [])   
 
     const handleEditDevice = useCallback((device: DEVICE_WEB) => {
         toast.info(`Edit functionality for ${device.deviceName} will be implemented when the API is available.`)
@@ -98,7 +98,7 @@ export default function DeviceListPage() {
     return (
         <div className="flex flex-col gap-6 p-6">
             <DeviceListCpn 
-                onCreateDevice={handleCreateDevice}
+                // onCreateDevice={handleCreateDevice}
                 onEditDevice={handleEditDevice}
                 onDeleteDevice={handleDeleteDevice}
                 onViewDevice={handleViewDevice}

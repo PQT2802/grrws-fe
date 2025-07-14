@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,7 +14,7 @@ import {
     Trash2,
     ChevronLeft,
     ChevronRight,
-    Plus,
+    Upload,
     Loader2,
 } from "lucide-react"
 import { useDebounce } from "@/hooks/useDebounce"
@@ -43,11 +43,15 @@ export default function DeviceListCpn({
     const [devices, setDevices] = useState<DEVICE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
+    const [isImporting, setIsImporting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [filterStatus, setFilterStatus] = useState<string>("all")
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
+    
+    // File input ref for Excel import
+    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
@@ -174,6 +178,118 @@ export default function DeviceListCpn({
         setPage(1)
     }, [pageSize])
 
+    // Handle Excel import
+    const handleImportClick = useCallback(() => {
+        // Reset any previous state before opening file dialog
+        setIsImporting(false)
+        fileInputRef.current?.click()
+    }, [])
+
+    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (!file) {
+            // Reset importing state if no file selected
+            setIsImporting(false)
+            return
+        }
+
+        // Validate file type
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel'
+        ]
+        
+        if (!allowedTypes.includes(file.type)) {
+            toast.error("Please select a valid Excel file (.xlsx or .xls)")
+            setIsImporting(false)
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+            return
+        }
+
+        try {
+            setIsImporting(true)
+            
+            const formData = new FormData()
+            formData.append('file', file)
+
+            console.log(`📂 Importing device file: ${file.name}`)
+            
+            const response = await apiClient.device.importDevice(formData)
+            console.log('✅ Device import successful:', response)
+            
+            toast.success("Device data imported successfully!")
+            
+            // Refresh the device list
+            await fetchDevices()
+            
+        } catch (error: any) {
+            console.error("❌ Error importing device:", error)
+            
+            // Extract error message from response with better error handling
+            let errorMessage = "Failed to import device data"
+            
+            try {
+                // Handle different error response structures
+                if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message
+                } else if (error.response?.data?.error) {
+                    errorMessage = error.response.data.error
+                } else if (error.response?.data) {
+                    // If data is a string
+                    if (typeof error.response.data === 'string') {
+                        errorMessage = error.response.data
+                    } else {
+                        errorMessage = JSON.stringify(error.response.data)
+                    }
+                } else if (error.message) {
+                    errorMessage = error.message
+                }
+            } catch (parseError) {
+                console.error("Error parsing error response:", parseError)
+                errorMessage = "Failed to import device data - Unknown error"
+            }
+            
+            toast.error(errorMessage)
+            
+            // Force state reset on error
+            setIsImporting(false)
+            
+        } finally {
+            // Ensure state is always reset
+            setTimeout(() => {
+                setIsImporting(false)
+                
+                // Reset file input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = ''
+                }
+            }, 100)
+        }
+    }, [fetchDevices])
+
+    // Add cleanup and auto-reset effects
+    useEffect(() => {
+        return () => {
+            // Cleanup on unmount
+            setIsImporting(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        // Auto-reset importing state if it gets stuck
+        const timeoutId = setTimeout(() => {
+            if (isImporting) {
+                console.warn("⚠️ Device import seems to be stuck, auto-resetting...")
+                setIsImporting(false)
+            }
+        }, 30000) // 30 seconds timeout
+
+        return () => clearTimeout(timeoutId)
+    }, [isImporting])
+
     const handleViewDevice = useCallback((device: DEVICE_WEB) => {
         if (onViewDevice) {
             onViewDevice(device)
@@ -251,10 +367,35 @@ export default function DeviceListCpn({
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Device Management</h1>
-                <Button onClick={handleCreateDevice} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Import Device
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                    
+                    {/* Import button */}
+                    <Button 
+                        onClick={handleImportClick}
+                        disabled={isImporting}
+                        className="bg-green-600 hover:bg-green-700"
+                    >
+                        {isImporting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Importing...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Import Device
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             <OperationStatsCpn/>

@@ -31,10 +31,6 @@ export default function MachineListPage() {
         }
     }, [])
 
-    const handleCreateMachine = useCallback(() => {
-        toast.info("Create machine functionality will be implemented when the API is available.")
-    }, [])
-
     const handleEditMachine = useCallback((machine: MACHINE_WEB) => {
         toast.info(`Edit functionality for ${machine.machineName} will be implemented when the API is available.`)
     }, [])
@@ -99,7 +95,6 @@ export default function MachineListPage() {
     return (
         <div className="flex flex-col gap-6 p-6">
             <MachineListCpn 
-                onCreateMachine={handleCreateMachine}
                 onEditMachine={handleEditMachine}
                 onDeleteMachine={handleDeleteMachine}
                 onViewMachine={handleViewMachine}
