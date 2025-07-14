@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { useRouter } from "next/navigation";
 import {
   Package,
   Clock,
@@ -38,19 +37,15 @@ import {
 } from "@/components/ui/pagination";
 import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
+import TaskGroupModal from "@/components/TaskGroupModal/TaskGroupModal";
 import { formatTimeStampDate } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import {
   TASK_GROUP_WEB,
   TASK_GROUP_RESPONSE,
   SINGLE_TASK_WEB,
 } from "@/types/task.type";
-import {
-  getStatusColor,
-  getPriorityColor,
-  getGroupTypeColor,
-} from "@/utils/colorUtils";
-import { translateTaskPriority, translateTaskStatus } from "@/utils/textTypeTask";
 
 const TaskManagementPage = () => {
   const { canAccessWorkspace } = useAuth();
@@ -63,6 +58,9 @@ const TaskManagementPage = () => {
   const [taskGroupsPage, setTaskGroupsPage] = useState<number>(1);
   const [taskGroupsPageSize, setTaskGroupsPageSize] = useState<number>(10);
   const [taskGroupsTotalCount, setTaskGroupsTotalCount] = useState<number>(0);
+  const [selectedTaskGroup, setSelectedTaskGroup] =
+    useState<TASK_GROUP_WEB | null>(null);
+  const [showTaskGroupModal, setShowTaskGroupModal] = useState(false);
 
   // Single Tasks State
   const [singleTasks, setSingleTasks] = useState<SINGLE_TASK_WEB[]>([]);
@@ -181,8 +179,49 @@ const TaskManagementPage = () => {
     }
   };
 
+  const getGroupTypeColor = (groupType: string) => {
+    switch (groupType.toLowerCase()) {
+      case "replacement":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "repair":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "warranty":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "inprogress":
+      case "in progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "high":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
   const handleViewTaskGroup = (taskGroup: TASK_GROUP_WEB) => {
-    router.push(`./tasks/group/${taskGroup.taskGroupId}`);
+    setSelectedTaskGroup(taskGroup);
+    setShowTaskGroupModal(true);
   };
 
   if (!canAccessWorkspace) {
@@ -192,14 +231,14 @@ const TaskManagementPage = () => {
   return (
     <div className="space-y-6">
       <PageTitle
-        title="Quản lý Nhiệm vụ"
-        description="Theo dõi tất cả nhóm nhiệm vụ và nhiệm vụ cá nhân"
+        title="Task Management"
+        description="Monitor all task groups and individual tasks"
       />
 
       <Tabs defaultValue="task-groups" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="task-groups">Nhóm Nhiệm vụ</TabsTrigger>
-          <TabsTrigger value="individual-tasks">Nhiệm vụ Cá nhân</TabsTrigger>
+          <TabsTrigger value="task-groups">Task Groups</TabsTrigger>
+          <TabsTrigger value="individual-tasks">Individual Tasks</TabsTrigger>
         </TabsList>
 
         {/* Task Groups Tab */}
@@ -209,14 +248,14 @@ const TaskManagementPage = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 className="pl-10"
-                placeholder="Tìm kiếm nhóm nhiệm vụ..."
+                placeholder="Search task groups..."
                 value={taskGroupsSearch}
                 onChange={(e) => setTaskGroupsSearch(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
-                Tổng cộng {taskGroupsTotalCount} nhóm
+                {taskGroupsTotalCount} groups total
               </span>
             </div>
           </div>
@@ -229,11 +268,11 @@ const TaskManagementPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tên Nhóm</TableHead>
-                      <TableHead>Loại</TableHead>
-                      <TableHead>Số lượng</TableHead>
-                      <TableHead>Ngày Tạo</TableHead>
-                      <TableHead className="text-right">Hành động</TableHead>
+                      <TableHead>Group Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Tasks Summary</TableHead>
+                      <TableHead>Created Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -276,7 +315,7 @@ const TaskManagementPage = () => {
                             <TableCell>
                               <div className="space-y-1">
                                 <div className="text-sm font-medium">
-                                  {totalTasks} nhiệm vụ
+                                  {totalTasks} tasks total
                                 </div>
                                 <div className="flex gap-3 text-xs">
                                   <span className="text-green-600">
@@ -308,7 +347,7 @@ const TaskManagementPage = () => {
                                   handleViewTaskGroup(group);
                                 }}
                               >
-                                Xem Chi tiết
+                                View Details
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -320,7 +359,7 @@ const TaskManagementPage = () => {
                           colSpan={5}
                           className="text-center py-8 text-gray-500"
                         >
-                          Không tìm thấy nhóm nhiệm vụ nào
+                          No task groups found
                         </TableCell>
                       </TableRow>
                     )}
@@ -331,7 +370,7 @@ const TaskManagementPage = () => {
               {/* Task Groups Pagination */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Số mục mỗi trang:</span>
+                  <span className="text-sm text-gray-600">Items per page:</span>
                   <Select
                     value={taskGroupsPageSize.toString()}
                     onValueChange={(value) => {
@@ -388,7 +427,7 @@ const TaskManagementPage = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 className="pl-10"
-                placeholder="Tìm kiếm nhiệm vụ..."
+                placeholder="Search tasks..."
                 value={singleTasksSearch}
                 onChange={(e) => setSingleTasksSearch(e.target.value)}
               />
@@ -396,36 +435,36 @@ const TaskManagementPage = () => {
             <div className="flex items-center gap-2">
               <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
                 <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Loại nhiệm vụ" />
+                  <SelectValue placeholder="Task Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả loại</SelectItem>
-                  <SelectItem value="Repair">Sửa chữa</SelectItem>
-                  <SelectItem value="Installation">Lắp đặt</SelectItem>
-                  <SelectItem value="Uninstallation">Tháo dỡ</SelectItem>
-                  <SelectItem value="WarrantySubmission">Bảo hành</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Repair">Repair</SelectItem>
+                  <SelectItem value="Installation">Installation</SelectItem>
+                  <SelectItem value="Uninstallation">Uninstallation</SelectItem>
+                  <SelectItem value="WarrantySubmission">Warranty</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Trạng thái" />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="Pending">Đang chờ</SelectItem>
-                  <SelectItem value="InProgress">Đang thực hiện</SelectItem>
-                  <SelectItem value="Completed">Hoàn thành</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="InProgress">In Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Mức độ ưu tiên" />
+                  <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="High">Cao</SelectItem>
-                  <SelectItem value="Medium">Trung bình</SelectItem>
-                  <SelectItem value="Low">Thấp</SelectItem>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -439,12 +478,12 @@ const TaskManagementPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tên Nhiệm vụ</TableHead>
-                      <TableHead>Loại</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Mức độ ưu tiên</TableHead>
-                      <TableHead>Người được giao</TableHead>
-                      <TableHead>Thời gian dự kiến</TableHead>
+                      <TableHead>Task Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Assignee</TableHead>
+                      <TableHead>Expected Time</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -468,7 +507,7 @@ const TaskManagementPage = () => {
                                 task.status
                               )} text-xs`}
                             >
-                              {translateTaskStatus(task.status)}
+                              {task.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -477,7 +516,7 @@ const TaskManagementPage = () => {
                                 task.priority
                               )} text-xs`}
                             >
-                              {translateTaskPriority(task.priority)}
+                              {task.priority}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -499,7 +538,7 @@ const TaskManagementPage = () => {
                           colSpan={6}
                           className="text-center py-8 text-gray-500"
                         >
-                          Không tìm thấy nhiệm vụ nào
+                          No tasks found
                         </TableCell>
                       </TableRow>
                     )}
@@ -510,7 +549,7 @@ const TaskManagementPage = () => {
               {/* Individual Tasks Pagination */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Số mục mỗi trang:</span>
+                  <span className="text-sm text-gray-600">Items per page:</span>
                   <Select
                     value={singleTasksPageSize.toString()}
                     onValueChange={(value) => {
@@ -560,6 +599,13 @@ const TaskManagementPage = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Task Group Modal */}
+      <TaskGroupModal
+        open={showTaskGroupModal}
+        onOpenChange={setShowTaskGroupModal}
+        taskGroup={selectedTaskGroup}
+      />
     </div>
   );
 };

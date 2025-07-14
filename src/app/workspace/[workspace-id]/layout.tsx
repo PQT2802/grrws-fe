@@ -21,9 +21,6 @@ export default function Layout({
           <AppNavbar />
           <div className="mt-[60px]">{children}</div>
         </div>
-        {/* <footer className="bg-zinc-100 dark:bg-slate-900 w-full py-3 absolute bottom-0 flex items-center justify-center">
-          <span className="text-[0.8rem]">Developed by quocthang with ❤️</span>
-        </footer> */}
       </main>
     </SidebarProvider>
   );

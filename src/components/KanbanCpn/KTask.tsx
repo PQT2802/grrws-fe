@@ -1,3 +1,4 @@
+'use client'
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "../providers/AuthProvider";
@@ -194,7 +195,12 @@ const KTask = (props: PropType) => {
         <CardContent className="px-0 py-3 border-t border-zinc-300 dark:border-zinc-700 border-dashed">
           <p className="text-[0.8rem] text-gray-600 dark:text-gray-300 flex items-center gap-2">
             <CalendarClock size={20} /> Due:{" "}
-            {formatTimeStampDate(task?.dueAt as Timestamp, "datetime")}
+            {/* {formatTimeStampDate({task?.dueAt
+              ? formatTimeStampDate(
+                  (task.dueAt as Timestamp).toDate().toISOString(),
+                  "datetime"
+                )
+              : ""})} */}
           </p>
         </CardContent>
 
