@@ -451,7 +451,7 @@ const WarrantyTaskDetailPage = () => {
                   <Phone className="h-4 w-4 text-gray-500" />
                   <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Hotline
+                      Head of Technical Number
                     </label>
                     <p className="text-sm">
                       <a
@@ -1127,6 +1127,10 @@ const WarrantyTaskDetailPage = () => {
             <CreateWarrantyReturnButton
               taskDetail={taskDetail}
               onSuccess={refreshTaskData}
+              open={false}
+              onOpenChange={function (open: boolean): void {
+                throw new Error("Function not implemented.");
+              }}
             />
 
             <Button variant="default">

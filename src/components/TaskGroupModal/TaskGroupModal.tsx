@@ -396,7 +396,9 @@ const TaskGroupModal = ({
                             <div className="flex items-center gap-2">
                               <Avatar className="h-6 w-6">
                                 <AvatarFallback className="bg-primary text-white text-xs">
-                                  {getFirstLetterUppercase(task.assigneeName)}
+                                  {getFirstLetterUppercase(
+                                    task.assigneeName ?? "NA"
+                                  )}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-sm">

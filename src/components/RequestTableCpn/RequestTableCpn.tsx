@@ -201,7 +201,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         try {
           return (
             <span className="text-gray-600 dark:text-gray-400">
-              {formatAPIDateToHoChiMinh(String(value), "datetime")}
+              {formatTimeStampDate(String(value), "datetime")}
             </span>
           );
         } catch (error) {
