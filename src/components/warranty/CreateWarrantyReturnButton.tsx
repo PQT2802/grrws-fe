@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { GET_MECHANIC_USER } from "@/types/user.type";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar } from "@/components/ui/avatar";
+import formatDisplayDate from "@/utils/formatDisplay";
 
 // Form schema
 const formSchema = z.object({
@@ -195,6 +196,8 @@ const CreateWarrantyReturnButton = ({
         ActualReturnDate: combinedDateTime.toISOString(),
         IsEarlyReturn: isEarlyReturn,
         WarrantyNotes: values.warrantyNotes || "",
+        IsWarrantyFailed: false, // Default value, can be updated based on business logic
+        IsReInstallOldDevice: true, // Default value, can be updated based on business
       };
 
       await apiClient.task.createWarrantyReturnTask(submitData);
@@ -417,18 +420,44 @@ const CreateWarrantyReturnButton = ({
                                 <FormControl>
                                   <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500 dark:text-blue-400" />
-                                    <Input
-                                      type="date"
-                                      className="pl-9 h-10 w-full text-sm border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600"
-                                      min={today}
-                                      {...field}
-                                      disabled={useExpectedDate}
-                                      onClick={(e) =>
-                                        (
-                                          e.target as HTMLInputElement
-                                        ).showPicker()
-                                      }
-                                    />
+
+                                    {/* Custom date input with Vietnamese format display */}
+                                    <div className="relative">
+                                      <Input
+                                        type="text"
+                                        className="pl-9 h-10 w-full text-sm border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600"
+                                        value={
+                                          field.value
+                                            ? formatDisplayDate(field.value)
+                                            : ""
+                                        }
+                                        onClick={() => {
+                                          // When clicking the displayed input, open the actual date picker
+                                          const hiddenInput =
+                                            document.getElementById(
+                                              "hidden-date-picker"
+                                            );
+                                          if (hiddenInput)
+                                            (hiddenInput as HTMLInputElement).showPicker();
+                                        }}
+                                        readOnly
+                                        disabled={useExpectedDate}
+                                        placeholder="DD/MM/YYYY"
+                                      />
+
+                                      {/* Hidden actual date input that will handle the picking */}
+                                      <input
+                                        id="hidden-date-picker"
+                                        type="date"
+                                        className="opacity-0 absolute top-0 left-0 w-0 h-0"
+                                        min={today}
+                                        value={field.value}
+                                        onChange={(e) =>
+                                          field.onChange(e.target.value)
+                                        }
+                                        disabled={useExpectedDate}
+                                      />
+                                    </div>
                                   </div>
                                 </FormControl>
                                 <FormMessage className="text-xs" />

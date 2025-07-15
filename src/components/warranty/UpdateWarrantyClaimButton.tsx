@@ -34,6 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CreateWarrantyReturnButton from "./CreateWarrantyReturnButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import formatDisplayDate from "@/utils/formatDisplay";
 
 // Form schema
 const formSchema = z.object({
@@ -73,7 +74,11 @@ const UpdateWarrantyClaimButton = ({
 
   if (!taskDetail) {
     return (
-      <Button disabled variant="secondary" className="bg-blue-50 text-blue-400 border border-blue-100">
+      <Button
+        disabled
+        variant="secondary"
+        className="bg-blue-50 text-blue-400 border border-blue-100"
+      >
         <Shield className="h-4 w-4 mr-2" />
         Cập nhật Bảo hành
       </Button>
@@ -105,7 +110,9 @@ const UpdateWarrantyClaimButton = ({
   const getFormattedDate = (date: string | null) => {
     if (!date) return today;
     const parsedDate = new Date(date);
-    return isNaN(parsedDate.getTime()) ? today : parsedDate.toISOString().split("T")[0];
+    return isNaN(parsedDate.getTime())
+      ? today
+      : parsedDate.toISOString().split("T")[0];
   };
 
   // Initialize the form
@@ -155,15 +162,21 @@ const UpdateWarrantyClaimButton = ({
       formData.append("ClaimStatus", "InProgress");
 
       if (values.resolution) formData.append("Resolution", values.resolution);
-      if (values.warrantyNotes) formData.append("WarrantyNotes", values.warrantyNotes);
-      if (values.claimAmount !== undefined) formData.append("ClaimAmount", values.claimAmount.toString());
+      if (values.warrantyNotes)
+        formData.append("WarrantyNotes", values.warrantyNotes);
+      if (values.claimAmount !== undefined)
+        formData.append("ClaimAmount", values.claimAmount.toString());
       if (selectedFile) formData.append("DocumentFiles", selectedFile);
-      if (values.documentDescription) formData.append("DocumentDescription", values.documentDescription);
+      if (values.documentDescription)
+        formData.append("DocumentDescription", values.documentDescription);
 
       await apiClient.task.updateWarrantyClaim(formData);
 
       toast.success("Cập nhật thành công", {
-        description: `Ngày trả dự kiến: ${format(combinedDateTime, "dd/MM/yyyy HH:mm")}`,
+        description: `Ngày trả dự kiến: ${format(
+          combinedDateTime,
+          "dd/MM/yyyy HH:mm"
+        )}`,
       });
 
       if (values.createReturnTask) {
@@ -202,13 +215,16 @@ const UpdateWarrantyClaimButton = ({
             </Button>
           </DialogTrigger>
         )}
-        
-        <DialogContent className="sm:max-w-lg p-0 max-h-[85vh] overflow-hidden rounded-xl shadow-lg 
-          border-blue-100 dark:border-blue-800 animate-in fade-in-0 zoom-in-95 duration-200">
-          
+
+        <DialogContent
+          className="sm:max-w-lg p-0 max-h-[85vh] overflow-hidden rounded-xl shadow-lg 
+          border-blue-100 dark:border-blue-800 animate-in fade-in-0 zoom-in-95 duration-200"
+        >
           {/* Compact Header */}
-          <div className="bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 
-            px-4 py-3 flex items-center justify-between border-b border-blue-100 dark:border-blue-800 rounded-t-xl">
+          <div
+            className="bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-gray-800 
+            px-4 py-3 flex items-center justify-between border-b border-blue-100 dark:border-blue-800 rounded-t-xl"
+          >
             <div className="flex items-center gap-3">
               <div className="bg-blue-100 dark:bg-blue-800/50 p-2 rounded-full">
                 <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -217,29 +233,38 @@ const UpdateWarrantyClaimButton = ({
                 <h2 className="text-sm font-medium text-blue-700 dark:text-blue-300 leading-tight">
                   Cập nhật Bảo hành #{taskDetail?.claimNumber || "N/A"}
                 </h2>
-                <Badge variant="outline" className="text-[10px] mt-0.5 py-0 px-1 bg-blue-50/50">Đang xử lý</Badge>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] mt-0.5 py-0 px-1 bg-blue-50/50"
+                >
+                  Đang xử lý
+                </Badge>
               </div>
             </div>
           </div>
-          
+
           {/* Scrollable Content with Tabs */}
           <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="w-full grid grid-cols-3 p-0 h-10 bg-gray-50 dark:bg-gray-800/50">
-                <TabsTrigger 
+                <TabsTrigger
                   value="schedule"
                   className="text-xs rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-none"
                 >
                   <Calendar className="h-3.5 w-3.5 mr-1.5" /> Lịch trả
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="details" 
+                <TabsTrigger
+                  value="details"
                   className="text-xs rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-none"
                 >
                   <FileText className="h-3.5 w-3.5 mr-1.5" /> Chi tiết
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="documents" 
+                <TabsTrigger
+                  value="documents"
                   className="text-xs rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-none"
                 >
                   <FileUp className="h-3.5 w-3.5 mr-1.5" /> Tài liệu
@@ -247,7 +272,10 @@ const UpdateWarrantyClaimButton = ({
               </TabsList>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-0 px-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-0 px-4"
+                >
                   {/* Schedule Tab */}
                   <TabsContent value="schedule" className="m-0 py-3 space-y-4">
                     <div className="space-y-1.5">
@@ -255,7 +283,7 @@ const UpdateWarrantyClaimButton = ({
                         <Calendar className="h-4 w-4 mr-2" />
                         Lịch trả bảo hành
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
@@ -271,14 +299,40 @@ const UpdateWarrantyClaimButton = ({
                               <FormControl>
                                 <div className="relative">
                                   <Calendar className="absolute left-2 top-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
-                                  <Input
-                                    type="date"
-                                    className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
-                                    min={today}
-                                    readOnly
-                                    onFocus={(e) => (e.target as HTMLInputElement).showPicker()}
-                                    {...field}
-                                  />
+
+                                  {/* Custom date input with Vietnamese format display */}
+                                  <div className="relative">
+                                    <Input
+                                      type="text"
+                                      className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
+                                      value={
+                                        field.value
+                                          ? formatDisplayDate(field.value)
+                                          : ""
+                                      }
+                                      placeholder="DD/MM/YYYY"
+                                      readOnly
+                                      onClick={() => {
+                                        const hiddenInput =
+                                          document.getElementById(
+                                            "hidden-date-picker-expected"
+                                          );
+                                        if (hiddenInput)
+                                          (hiddenInput as HTMLInputElement).showPicker();
+                                      }}
+                                    />
+
+                                    <input
+                                      id="hidden-date-picker-expected"
+                                      type="date"
+                                      className="opacity-0 absolute top-0 left-0 w-0 h-0"
+                                      min={today}
+                                      value={field.value}
+                                      onChange={(e) =>
+                                        field.onChange(e.target.value)
+                                      }
+                                    />
+                                  </div>
                                 </div>
                               </FormControl>
                             </FormItem>
@@ -301,8 +355,11 @@ const UpdateWarrantyClaimButton = ({
                                   <Input
                                     type="time"
                                     className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
-                                    readOnly
-                                    onFocus={(e) => (e.target as HTMLInputElement).showPicker()}
+                                    onFocus={(e) =>
+                                      (
+                                        e.target as HTMLInputElement
+                                      ).showPicker()
+                                    }
                                     onKeyDown={(e) => e.preventDefault()}
                                     {...field}
                                   />
@@ -313,7 +370,7 @@ const UpdateWarrantyClaimButton = ({
                         />
                       </div>
                     </div>
-                    
+
                     <FormField
                       control={form.control}
                       name="claimAmount"
@@ -340,7 +397,11 @@ const UpdateWarrantyClaimButton = ({
                                 value={field.value ?? ""}
                                 onChange={(e) => {
                                   const val = parseFloat(e.target.value);
-                                  field.onChange(isNaN(val) ? undefined : Math.min(val, 10000000));
+                                  field.onChange(
+                                    isNaN(val)
+                                      ? undefined
+                                      : Math.min(val, 10000000)
+                                  );
                                 }}
                               />
                             </div>
@@ -348,31 +409,34 @@ const UpdateWarrantyClaimButton = ({
                         </FormItem>
                       )}
                     />
-                    
+
                     {/* Create Return Task Checkbox */}
-                    {taskDetail.taskType === "WarrantySubmission" && !taskDetail.actualReturnDate && (
-                      <FormField
-                        control={form.control}
-                        name="createReturnTask"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2 space-y-0 
-                            mt-3 p-2 bg-blue-50/70 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-800">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
-                              />
-                            </FormControl>
-                            <FormLabel className="text-xs text-blue-700 dark:text-blue-300 font-medium cursor-pointer">
-                              Tạo nhiệm vụ trả bảo hành sau khi cập nhật
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    {taskDetail.taskType === "WarrantySubmission" &&
+                      !taskDetail.actualReturnDate && (
+                        <FormField
+                          control={form.control}
+                          name="createReturnTask"
+                          render={({ field }) => (
+                            <FormItem
+                              className="flex items-center space-x-2 space-y-0 
+                            mt-3 p-2 bg-blue-50/70 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-800"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                />
+                              </FormControl>
+                              <FormLabel className="text-xs text-blue-700 dark:text-blue-300 font-medium cursor-pointer">
+                                Tạo nhiệm vụ trả bảo hành sau khi cập nhật
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      )}
                   </TabsContent>
-                  
+
                   {/* Details Tab */}
                   <TabsContent value="details" className="m-0 py-3 space-y-3">
                     <div className="space-y-1.5">
@@ -380,7 +444,7 @@ const UpdateWarrantyClaimButton = ({
                         <FileText className="h-4 w-4 mr-2" />
                         Chi tiết yêu cầu bảo hành
                       </div>
-                      
+
                       <FormField
                         control={form.control}
                         name="resolution"
@@ -402,7 +466,7 @@ const UpdateWarrantyClaimButton = ({
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="warrantyNotes"
@@ -426,7 +490,7 @@ const UpdateWarrantyClaimButton = ({
                       />
                     </div>
                   </TabsContent>
-                  
+
                   {/* Documents Tab */}
                   <TabsContent value="documents" className="m-0 py-3 space-y-3">
                     <div className="space-y-1.5">
@@ -434,18 +498,25 @@ const UpdateWarrantyClaimButton = ({
                         <FileUp className="h-4 w-4 mr-2" />
                         Tài liệu đính kèm
                       </div>
-                      
-                      <div className="border border-dashed border-blue-200 dark:border-blue-800 rounded-md p-4 
-                        text-center hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer">
+
+                      <div
+                        className="border border-dashed border-blue-200 dark:border-blue-800 rounded-md p-4 
+                        text-center hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer"
+                      >
                         <Input
                           type="file"
                           id="documentFile"
                           onChange={handleFileChange}
                           className="hidden"
                         />
-                        <label htmlFor="documentFile" className="cursor-pointer block">
-                          <FileUp className="h-8 w-8 mx-auto mb-2 text-blue-400 dark:text-blue-500 
-                            group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+                        <label
+                          htmlFor="documentFile"
+                          className="cursor-pointer block"
+                        >
+                          <FileUp
+                            className="h-8 w-8 mx-auto mb-2 text-blue-400 dark:text-blue-500 
+                            group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+                          />
                           <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
                             Tải lên tài liệu
                           </p>
@@ -454,10 +525,12 @@ const UpdateWarrantyClaimButton = ({
                           </p>
                         </label>
                       </div>
-                      
+
                       {selectedFile && (
-                        <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10 p-2 
-                          rounded-md border border-blue-200 dark:border-blue-800 mt-2">
+                        <div
+                          className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/10 p-2 
+                          rounded-md border border-blue-200 dark:border-blue-800 mt-2"
+                        >
                           <div className="flex items-center gap-2 text-xs">
                             <FileUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                             <span className="text-blue-700 dark:text-blue-300 font-medium truncate max-w-[150px]">
@@ -479,7 +552,7 @@ const UpdateWarrantyClaimButton = ({
                           </Button>
                         </div>
                       )}
-                      
+
                       <FormField
                         control={form.control}
                         name="documentDescription"
@@ -508,7 +581,7 @@ const UpdateWarrantyClaimButton = ({
               </Form>
             </Tabs>
           </div>
-          
+
           {/* Fixed Footer */}
           <div className="border-t border-gray-100 dark:border-gray-800 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl flex justify-end gap-2 items-center">
             <Button
@@ -536,7 +609,9 @@ const UpdateWarrantyClaimButton = ({
               ) : (
                 <>
                   <Pencil className="mr-1.5 h-3 w-3" />
-                  {form.watch("createReturnTask") ? "Cập nhật & Tạo Trả" : "Cập nhật"}
+                  {form.watch("createReturnTask")
+                    ? "Cập nhật & Tạo Trả"
+                    : "Cập nhật"}
                 </>
               )}
             </Button>

@@ -170,4 +170,6 @@ export interface CreateWarrantyReturn {
   ActualReturnDate: string; // ISO date string
   IsEarlyReturn: boolean;
   WarrantyNotes: string;
+  IsWarrantyFailed: boolean; // Indicates if the warranty claim failed
+  IsReInstallOldDevice: boolean; // Indicates if the old device needs to be reinstalled
 }
