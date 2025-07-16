@@ -85,6 +85,21 @@ export function translateTaskStatus(status: string): string {
   }
 }
 
+export function translateTaskClaimStatus(claimStatus: string): string {
+  switch (claimStatus.toLowerCase()) {
+    case "pending":
+      return "Đang chờ";
+    case "approved":
+      return "đang bảo hành";
+    case "rejected":
+      return "Đã từ chối";
+    case "completed":
+      return "Đã hoàn thành";
+    default:
+      return claimStatus; // Return original if no translation found
+  }
+}
+
 /**
  * Convert task priority to Vietnamese text
  */

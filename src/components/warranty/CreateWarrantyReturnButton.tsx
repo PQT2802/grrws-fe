@@ -38,7 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getCurrentTime, getFormattedDate } from "@/lib/utils";
 import { GET_MECHANIC_USER } from "@/types/user.type";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar } from "@/components/ui/avatar";
@@ -93,29 +93,16 @@ const CreateWarrantyReturnButton = ({
     }
   };
 
-  // Get current time in HH:MM format
-  const getCurrentTime = () => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
-    ).padStart(2, "0")}`;
-  };
-
-  // Format expected return date
-  const getFormattedDate = (date: string | null) => {
-    if (!date) return today;
-    const parsedDate = new Date(date);
-    if (isNaN(parsedDate.getTime())) return today;
-    return parsedDate.toISOString().split("T")[0];
-  };
 
   // Initialize the form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       mode: "manual",
-      actualReturnDate: today,
-      actualReturnTime: getCurrentTime(),
+      actualReturnDate: getFormattedDate(taskDetail.expectedReturnDate),
+      actualReturnTime: taskDetail?.expectedReturnDate
+        ? format(new Date(taskDetail.expectedReturnDate), "HH:mm")
+        : getCurrentTime(),
       useExpectedDate: false,
       warrantyNotes: "",
     },
@@ -773,7 +760,7 @@ const CreateWarrantyReturnButton = ({
                             <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
                             Quay lại
                           </Button>
-                          <Button
+                          {/* <Button
                             type="submit"
                             disabled={
                               isSubmitting ||
@@ -797,7 +784,7 @@ const CreateWarrantyReturnButton = ({
                                   : "Tạo nhiệm vụ trả bảo hành"}
                               </>
                             )}
-                          </Button>
+                          </Button> */}
                         </div>
                       </CardContent>
                     </Card>

@@ -247,7 +247,7 @@ const NotificationBtn = () => {
               )}
             </DropdownMenuLabel>
             
-            <Button 
+            {/* <Button 
               variant="ghost" 
               size="icon" 
               className="h-8 w-8" 
@@ -256,7 +256,7 @@ const NotificationBtn = () => {
             >
               <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only">Làm mới</span>
-            </Button>
+            </Button> */}
           </div>
 
           <div className="p-3">

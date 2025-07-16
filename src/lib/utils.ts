@@ -300,6 +300,28 @@ export const formatAPIDateToHoChiMinh = (
   }
 };
 
+export const formatAPIDateUTC = (
+  dateString: string | null | undefined,
+  type: "date" | "datetime" | "time" = "date"
+): string => {
+  if (!dateString) return "Invalid date";
+
+  const date = dayjs.utc(dateString); // Parse UTC, không đổi timezone
+
+  if (!date.isValid()) return "Invalid date";
+
+  switch (type) {
+    case "date":
+      return date.format("DD/MM/YYYY");
+    case "datetime":
+      return date.format("DD/MM/YYYY HH:mm:ss");
+    case "time":
+      return date.format("HH:mm:ss");
+    default:
+      return date.format("DD/MM/YYYY");
+  }
+};
+
 /**
  * Converts a date string to a Firestore Timestamp.
  * @param dateString - Any valid date string.
@@ -315,9 +337,27 @@ export function convertDateStrToTimestamp(dateString: string): Timestamp {
  * @param timestamp - Firestore Timestamp object.
  * @returns ISO string (e.g. "2025-01-16T12:00:00.000Z")
  */
-export function convertTimestampToFullCalendar(timestamp: Timestamp | null | undefined): string {
+export function convertTimestampToFullCalendar(
+  timestamp: Timestamp | null | undefined
+): string {
   if (!timestamp) return "";
   return timestamp.toDate().toISOString();
 }
 
+export const getFormattedDate = (date: string | null) => {
+  const today = dayjs().format("YYYY-MM-DD");
+  if (!date) return today;
+  return dayjs(date).format("YYYY-MM-DD");
+};
 
+export const formatDateTimeForAPISubmit = (date: Date) => {
+  return dayjs(date).format("YYYY-MM-DDTHH:mm:ss");
+};
+
+// Get current time in HH:MM format
+export const getCurrentTime = () => {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes()
+  ).padStart(2, "0")}`;
+};
