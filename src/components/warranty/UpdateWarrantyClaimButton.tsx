@@ -35,6 +35,7 @@ import CreateWarrantyReturnButton from "./CreateWarrantyReturnButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import formatDisplayDate from "@/utils/formatDisplay";
+import { formatDateTimeForAPISubmit, getCurrentTime, getFormattedDate } from "@/lib/utils";
 
 // Form schema
 const formSchema = z.object({
@@ -98,22 +99,7 @@ const UpdateWarrantyClaimButton = ({
     }
   };
 
-  // Get current time in HH:MM format
-  const getCurrentTime = () => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
-    ).padStart(2, "0")}`;
-  };
-
-  // Format date for form default values
-  const getFormattedDate = (date: string | null) => {
-    if (!date) return today;
-    const parsedDate = new Date(date);
-    return isNaN(parsedDate.getTime())
-      ? today
-      : parsedDate.toISOString().split("T")[0];
-  };
+ 
 
   // Initialize the form
   const form = useForm<FormValues>({
@@ -158,7 +144,10 @@ const UpdateWarrantyClaimButton = ({
 
       const formData = new FormData();
       formData.append("WarrantyClaimId", taskDetail.warrantyClaimId);
-      formData.append("ExpectedReturnDate", combinedDateTime.toISOString());
+      formData.append(
+        "ExpectedReturnDate",
+        formatDateTimeForAPISubmit(combinedDateTime)
+      );
       formData.append("ClaimStatus", "InProgress");
 
       if (values.resolution) formData.append("Resolution", values.resolution);
@@ -318,7 +307,9 @@ const UpdateWarrantyClaimButton = ({
                                             "hidden-date-picker-expected"
                                           );
                                         if (hiddenInput)
-                                          (hiddenInput as HTMLInputElement).showPicker();
+                                          (
+                                            hiddenInput as HTMLInputElement
+                                          ).showPicker();
                                       }}
                                     />
 

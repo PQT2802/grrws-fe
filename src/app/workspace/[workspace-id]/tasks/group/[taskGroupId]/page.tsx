@@ -21,6 +21,7 @@ import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaim
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
 import {
   formatAPIDateToHoChiMinh,
+  formatAPIDateUTC,
   formatTimeStampDate,
   getFirstLetterUppercase,
 } from "@/lib/utils";
@@ -89,6 +90,10 @@ import {
 import TaskDetailSidePanel from "@/components/TaskGroupModal/TaskDetailSidePanel";
 import DeviceDetailModal from "@/components/DeviceCpn/DeviceModel";
 import useNotificationStore from "@/store/notifications";
+import TimelineTab from "@/components/TaskGroupTab/TimelineTab";
+import DeviceTab from "@/components/TaskGroupTab/DeviceTab";
+import WarrantyTab from "@/components/TaskGroupTab/WarrantyTab";
+import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -188,6 +193,7 @@ const GroupTaskDetailsPage = () => {
         if (group) {
           setTaskGroup(group);
           await fetchInstallationTaskDetails(group.tasks);
+          await fetchWarrantyTaskDetailForFooter();
         }
       };
 
@@ -393,32 +399,6 @@ const GroupTaskDetailsPage = () => {
     setDeviceModalTitle("");
   };
 
-  const handleDropdownAction = async (
-    task: TASK_IN_GROUP,
-    actionType: "warranty" | "return"
-  ) => {
-    // Check if we already have the task detail cached
-    let taskDetail = dropdownTaskDetails[task.taskId];
-
-    if (!taskDetail) {
-      // Fetch task detail if not cached
-      taskDetail = await fetchTaskDetail(task);
-      if (taskDetail) {
-        setDropdownTaskDetails((prev) => ({
-          ...prev,
-          [task.taskId]: taskDetail,
-        }));
-      }
-    }
-
-    if (!taskDetail) {
-      toast.error("Không thể tải chi tiết nhiệm vụ");
-      return;
-    }
-
-    return taskDetail;
-  };
-
   // Dynamic task detail fetching based on taskType (removed device fetching logic)
   const fetchTaskDetail = async (task: TASK_IN_GROUP) => {
     try {
@@ -467,24 +447,6 @@ const GroupTaskDetailsPage = () => {
     setShowSidePanel(false);
     setSelectedTask(null);
     setSelectedTaskDetail(null);
-  };
-
-  // Helper functions
-  const getTaskTypeIcon = (taskType: string) => {
-    switch (taskType.toLowerCase()) {
-      case "uninstallation":
-        return <Package className="h-4 w-4 text-red-500" />;
-      case "installation":
-        return <Package className="h-4 w-4 text-green-500" />;
-      case "repair":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      case "warrantysubmission":
-      case "warrantyreturn":
-      case "warranty":
-        return <Shield className="h-4 w-4 text-blue-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
-    }
   };
 
   const getGroupTypeIcon = (groupType: string) => {
@@ -675,7 +637,7 @@ const GroupTaskDetailsPage = () => {
         </Button>
       </div>
 
-      {/* Summary Section - Updated Layout */}
+      {/* Summary Section - Updated Layout with Warranty Dates */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -685,11 +647,12 @@ const GroupTaskDetailsPage = () => {
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="h-4 w-4 text-gray-500" />
-              Ngày tạo: {formatTimeStampDate(taskGroup.createdDate, "datetime")}
+              Ngày tạo: {formatAPIDateUTC(taskGroup.createdDate, "datetime")}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 space-y-4">
+          {/* Task Statistics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex items-center gap-2">
               <Badge
@@ -722,6 +685,51 @@ const GroupTaskDetailsPage = () => {
               <span className="text-sm text-gray-600">Đang chờ</span>
             </div>
           </div>
+
+          {/* Warranty Dates Section - Only show if warranty task exists */}
+          {warrantySubmissionTask && warrantyTaskDetailForFooter && (
+            <div className="border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Ngày bắt đầu:</span>
+                  <span className="text-sm font-medium">
+                    {warrantyTaskDetailForFooter.startDate
+                      ? formatAPIDateUTC(
+                          warrantyTaskDetailForFooter.startDate,
+                          "date"
+                        )
+                      : "Chưa có thông tin"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    Ngày dự kiến trả:
+                  </span>
+                  <span className="text-sm font-medium">
+                    {warrantyTaskDetailForFooter.expectedReturnDate
+                      ? formatAPIDateUTC(
+                          warrantyTaskDetailForFooter.expectedReturnDate,
+                          "datetime"
+                        )
+                      : "Chưa có thông tin"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    Ngày trả thực tế:
+                  </span>
+                  <span className="text-sm font-medium">
+                    {warrantyTaskDetailForFooter.actualReturnDate
+                      ? formatAPIDateUTC(
+                          warrantyTaskDetailForFooter.actualReturnDate,
+                          "date"
+                        )
+                      : "Chưa có thông tin"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -770,739 +778,39 @@ const GroupTaskDetailsPage = () => {
             Tiến trình
           </TabsTrigger>
         </TabsList>
-        {/* Overview Tab - Task List */}
+
         <TabsContent value="overview" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Nhiệm vụ trong Nhóm ({taskGroup.tasks.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Thứ tự</TableHead>
-                    <TableHead>Tên nhiệm vụ</TableHead>
-                    <TableHead>Loại</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead>Mức độ ưu tiên</TableHead>
-                    <TableHead>Người được giao</TableHead>
-                    <TableHead>Thời gian</TableHead>
-                    <TableHead>Hành động</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {taskGroup.tasks
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map((task) => (
-                      <TableRow
-                        key={task.taskId}
-                        className={`hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer ${
-                          task.status.toLowerCase() === "suggested"
-                            ? "bg-purple-50 dark:bg-purple-950/30"
-                            : ""
-                        }`}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <TableCell>
-                          <Badge variant="secondary">#{task.orderIndex}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium flex items-center gap-2">
-                              {task.taskName}
-                              {task.status.toLowerCase() === "suggested" && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-purple-600 border-purple-300"
-                                >
-                                  Mới
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-600 max-w-xs truncate">
-                              {task.taskDescription}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getTaskTypeIcon(task.taskType)}
-                            <span className="text-sm">
-                              {translateTaskType(task.taskType)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={`${getStatusColor(task.status)} text-xs`}
-                          >
-                            {translateTaskStatus(task.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={`${getPriorityColor(
-                              task.priority
-                            )} text-xs`}
-                          >
-                            {translateTaskPriority(task.priority)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="bg-primary text-white text-xs">
-                                {getFirstLetterUppercase(
-                                  task.assigneeName ?? "NA"
-                                )}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm">
-                              {task.assigneeName || "Chưa giao"}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs space-y-1">
-                            {task.startTime && (
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                Bắt đầu:{" "}
-                                {formatAPIDateToHoChiMinh(
-                                  task.startTime,
-                                  "datetime"
-                                )}
-                              </div>
-                            )}
-                            {task.expectedTime && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Dự kiến:{" "}
-                                {formatAPIDateToHoChiMinh(
-                                  task.expectedTime,
-                                  "datetime"
-                                )}
-                              </div>
-                            )}
-                            {task.endTime && (
-                              <div className="flex items-center gap-1">
-                                <CheckCircle className="h-3 w-3 text-green-500" />
-                                Kết thúc:{" "}
-                                {formatAPIDateToHoChiMinh(
-                                  task.endTime,
-                                  "datetime"
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-
-                              {/* Apply Suggested Task */}
-                              {task.status.toLowerCase() === "suggested" && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toast.info(
-                                      "Tính năng áp dụng đơn lẻ sắp ra mắt!"
-                                    );
-                                  }}
-                                >
-                                  <Check className="h-4 w-4 mr-2" />
-                                  Áp dụng nhiệm vụ này
-                                </DropdownMenuItem>
-                              )}
-
-                              {/* View Details - Keep as fallback for non-warranty tasks */}
-                              {![
-                                "WarrantySubmission",
-                                "WarrantyReturn",
-                              ].includes(task.taskType) && (
-                                <DropdownMenuItem
-                                  onClick={() => handleTaskClick(task)}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Xem chi tiết
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <OverviewTab taskGroup={taskGroup} onTaskClick={handleTaskClick} />
         </TabsContent>
-        {/* Warranty Tab - Improved UI/UX */}
+
         <TabsContent value="warranty" className="mt-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-blue-600" />
-                Thông tin Bảo hành
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!warrantySubmissionTask ? (
-                <div className="flex items-center justify-center py-6 text-center">
-                  <div className="flex flex-col items-center max-w-md">
-                    <Shield className="h-8 w-8 text-gray-400 mb-2" />
-                    <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
-                      Không có thông tin bảo hành
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Nhóm nhiệm vụ này không chứa nhiệm vụ bảo hành nào.
-                    </p>
-                  </div>
-                </div>
-              ) : !warrantyTaskDetailForFooter ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-500 mr-2" />
-                  <span className="text-sm text-gray-600">
-                    Đang tải thông tin bảo hành...
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Top Section - Basic Info + Status */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    {/* Basic Warranty Information - Takes 1/3 width */}
-                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-800 p-3 h-full flex flex-col justify-center">
-                      <div className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                        {warrantyTaskDetailForFooter.warrantyProvider}
-                      </div>
-                      <div className="font-bold text-lg text-blue-900 dark:text-blue-100">
-                        {warrantyTaskDetailForFooter.claimNumber}
-                      </div>
-                      <div className="text-sm text-blue-700 dark:text-blue-400">
-                        Mã bảo hành: {warrantyTaskDetailForFooter.warrantyCode}
-                      </div>
-                    </div>
-
-                    {/* Status & Contract - Takes 1/3 width */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700 p-3">
-                      <div className="text-sm font-medium mb-1">
-                        Trạng thái & Liên hệ
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">
-                            Trạng thái:
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                           {translateTaskStatus(warrantyTaskDetailForFooter.claimStatus)}
-                          </Badge>
-                        </div>
-
-                        {warrantyTaskDetailForFooter.hotNumber && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500 text-xs">Số liên hệ do công ty cung cấp:</span>
-                            <a
-                              href={`tel:${warrantyTaskDetailForFooter.hotNumber}`}
-                              className="font-semibold text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              {warrantyTaskDetailForFooter.hotNumber}
-                            </a>
-                          </div>
-                        )}
-
-                        {warrantyTaskDetailForFooter.claimAmount && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">
-                              Số tiền claim:
-                            </span>
-                            <span className="text-xs font-medium">
-                              {warrantyTaskDetailForFooter.claimAmount.toLocaleString(
-                                "vi-VN"
-                              )}{" "}
-                              <span className="text-xs text-gray-500">VND</span>
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Contact and Location - Takes 1/3 width */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700 p-3">
-                      <div className="text-sm font-medium mb-1">
-                        Liên lạc & Vị trí bảo hành
-                      </div>
-                      <div className="space-y-2 text-xs">
-                       {warrantyTaskDetailForFooter.contractNumber && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">
-                              Số liên lạc:
-                            </span>
-                            <span className="text-xs font-medium">
-                              {warrantyTaskDetailForFooter.contractNumber}
-                            </span>
-                          </div>
-                        )}
-
-                        {warrantyTaskDetailForFooter.location && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Vị trí:</span>
-                            <span className="font-medium">
-                              {warrantyTaskDetailForFooter.location}
-                            </span>
-                          </div>
-                        )}
-
-                        {warrantyTaskDetailForFooter.actualReturnDate && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Ngày trả:</span>
-                            <span className="font-medium">
-                              {formatAPIDateToHoChiMinh(
-                                warrantyTaskDetailForFooter.actualReturnDate,
-                                "date"
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tabs for detailed information to save vertical space */}
-                  <Tabs defaultValue="issue" className="mt-2">
-                    <TabsList className="w-full grid grid-cols-3 mb-3">
-                      <TabsTrigger value="issue">Mô tả sự cố</TabsTrigger>
-                      <TabsTrigger value="resolution">
-                        Giải pháp & Ghi chú
-                      </TabsTrigger>
-                      <TabsTrigger value="documents">
-                        Tài liệu (
-                        {warrantyTaskDetailForFooter.documents?.length || 0})
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* Issue Description Tab */}
-                    <TabsContent value="issue">
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[200px] overflow-auto">
-                        {warrantyTaskDetailForFooter.issueDescription ? (
-                          <p className="text-sm">
-                            {warrantyTaskDetailForFooter.issueDescription}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-500 italic text-center py-4">
-                            Không có mô tả sự cố
-                          </p>
-                        )}
-                      </div>
-                    </TabsContent>
-
-                    {/* Resolution & Notes Tab */}
-                    <TabsContent value="resolution">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[200px] overflow-auto">
-                          <h4 className="text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
-                            Giải pháp:
-                          </h4>
-                          {warrantyTaskDetailForFooter.resolution ? (
-                            <p className="text-sm">
-                              {warrantyTaskDetailForFooter.resolution}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-gray-500 italic">
-                              Chưa có giải pháp
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[200px] overflow-auto">
-                          <h4 className="text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
-                            Ghi chú:
-                          </h4>
-                          {warrantyTaskDetailForFooter.warrantyNotes ? (
-                            <p className="text-sm">
-                              {warrantyTaskDetailForFooter.warrantyNotes}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-gray-500 italic">
-                              Không có ghi chú
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    {/* Documents Tab */}
-                    <TabsContent value="documents">
-                      {warrantyTaskDetailForFooter.documents &&
-                      warrantyTaskDetailForFooter.documents.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                          {warrantyTaskDetailForFooter.documents.map(
-                            (doc, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center justify-between p-2 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
-                              >
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                  <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                  <div className="truncate">
-                                    <div className="text-xs font-medium truncate">
-                                      {doc.docymentType || "Document"}
-                                    </div>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    window.open(doc.documentUrl, "_blank")
-                                  }
-                                  disabled={!doc.documentUrl}
-                                  className="h-7 w-7 p-0"
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4 text-sm text-gray-500">
-                          Không có tài liệu đính kèm
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <WarrantyTab
+            warrantySubmissionTask={warrantySubmissionTask}
+            warrantyTaskDetailForFooter={warrantyTaskDetailForFooter}
+          />
         </TabsContent>
-        {/* Device Tab - Updated with pre-fetched data */}
+
         <TabsContent value="device" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Monitor className="h-5 w-5 text-green-600" />
-                Thông tin Thiết bị
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {installationTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                    <Monitor className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                    Không có nhiệm vụ lắp đặt
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md">
-                    Thông tin thiết bị chỉ khả dụng cho các nhiệm vụ lắp đặt.
-                    Nhóm nhiệm vụ này không chứa nhiệm vụ lắp đặt nào.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Installation Task Selector */}
-                  {installationTasks.length > 1 && (
-                    <div className="flex flex-wrap gap-2">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">
-                        Chọn nhiệm vụ lắp đặt:
-                      </span>
-                      {installationTasks.map((task) => (
-                        <Button
-                          key={task.taskId}
-                          variant={
-                            selectedInstallationTaskId === task.taskId
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() =>
-                            setSelectedInstallationTaskId(task.taskId)
-                          }
-                          className="flex items-center gap-1"
-                        >
-                          <Package className="h-3 w-3" />#{task.orderIndex}{" "}
-                          {task.taskName}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-
-                  {deviceTabLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                      <span className="ml-2 text-sm text-gray-600">
-                        Đang tải thông tin thiết bị...
-                      </span>
-                    </div>
-                  ) : deviceTabOldDevice && deviceTabNewDevice ? (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 items-center">
-                        {/* Old Device */}
-                        <Card
-                          className="border-red-200 bg-red-50 dark:bg-red-950/30 cursor-pointer hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors"
-                          onClick={() =>
-                            handleDeviceClick(
-                              deviceTabOldDevice,
-                              "Chi tiết Thiết bị Cũ (Tháo)"
-                            )
-                          }
-                        >
-                          <CardHeader className="text-center pb-3">
-                            <CardTitle className="text-sm text-red-700 dark:text-red-300">
-                              Thiết bị bảo hành (Tháo)
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="text-center">
-                              <div className="h-12 w-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <Monitor className="h-6 w-6 text-red-600 dark:text-red-400" />
-                              </div>
-                              <h4 className="font-semibold">
-                                {deviceTabOldDevice.deviceName}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {deviceTabOldDevice.deviceCode}
-                              </p>
-                            </div>
-                            <div className="space-y-2 text-xs">
-                              <div className="flex justify-between">
-                                <span>Model:</span>
-                                <span className="font-medium">
-                                  {deviceTabOldDevice.model || "N/A"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Vị trí:</span>
-                                <span className="font-medium">
-                                  {`${deviceTabOldDevice.areaName} ,${deviceTabOldDevice.zoneName}, ${deviceTabOldDevice.positionIndex}` ||
-                                    "Trong kho"}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-red-200">
-                              <p className="text-xs text-red-600 text-center font-medium">
-                                Nhấp để xem chi tiết
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Arrow */}
-                        <div className="flex justify-center">
-                          <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                            <ArrowRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                          </div>
-                        </div>
-
-                        {/* New Device */}
-                        <Card
-                          className="border-green-200 bg-green-50 dark:bg-green-950/30 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors"
-                          onClick={() =>
-                            handleDeviceClick(
-                              deviceTabNewDevice,
-                              "Chi tiết Thiết bị Mới (Lắp)"
-                            )
-                          }
-                        >
-                          <CardHeader className="text-center pb-3">
-                            <CardTitle className="text-sm text-green-700 dark:text-green-300">
-                              Thiết bị thay thế (Lắp)
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            <div className="text-center">
-                              <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <Monitor className="h-6 w-6 text-green-600 dark:text-green-400" />
-                              </div>
-                              <h4 className="font-semibold">
-                                {deviceTabNewDevice.deviceName}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {deviceTabNewDevice.deviceCode}
-                              </p>
-                            </div>
-                            <div className="space-y-2 text-xs">
-                              <div className="flex justify-between">
-                                <span>Model:</span>
-                                <span className="font-medium">
-                                  {deviceTabNewDevice.model || "N/A"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Vị trí:</span>
-                                <span className="font-medium">
-                                  {deviceTabNewDevice.zoneName || "Trong kho"}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-green-200">
-                              <p className="text-xs text-green-600 text-center font-medium">
-                                Nhấp để xem chi tiết
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                        <Monitor className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Thông tin thiết bị không khả dụng
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md">
-                        Không thể tải thông tin thiết bị cho nhiệm vụ lắp đặt
-                        này.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <DeviceTab
+            installationTasks={installationTasks}
+            selectedInstallationTaskId={selectedInstallationTaskId}
+            deviceTabLoading={deviceTabLoading}
+            deviceTabOldDevice={deviceTabOldDevice}
+            deviceTabNewDevice={deviceTabNewDevice}
+            onInstallationTaskSelect={setSelectedInstallationTaskId}
+            onDeviceClick={handleDeviceClick}
+          />
         </TabsContent>
-        {/* Timeline Tab */}
+
         <TabsContent value="timeline" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
-                Tiến trình Nhóm Nhiệm vụ
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                {/* Timeline Line */}
-                <div className="absolute top-0 bottom-0 left-5 w-0.5 bg-gray-200 dark:bg-gray-700 ml-2.5"></div>
-
-                <div className="space-y-6 relative z-10 ml-2">
-                  {/* Group Created */}
-                  <div className="flex gap-4 items-start">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 border-4 border-white dark:border-gray-900 flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium">
-                        Nhóm nhiệm vụ được tạo
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatAPIDateToHoChiMinh(
-                          taskGroup.createdDate,
-                          "datetime"
-                        )}
-                      </div>
-                      <div className="mt-2 text-sm bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md border border-blue-100 dark:border-blue-900">
-                        Nhóm nhiệm vụ{" "}
-                        <span className="font-medium">
-                          {taskGroup.groupName}
-                        </span>{" "}
-                        loại{" "}
-                        <span className="font-medium">
-                          {translateGroupType(taskGroup.groupType)}
-                        </span>{" "}
-                        được tạo với {totalTasks} nhiệm vụ.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tasks Progress */}
-                  {completedTasks > 0 && (
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900 border-4 border-white dark:border-gray-900 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          Các nhiệm vụ đã hoàn thành
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Tiến độ hiện tại
-                        </div>
-                        <div className="mt-2 text-sm bg-green-50 dark:bg-green-950/30 p-3 rounded-md border border-green-100 dark:border-green-900">
-                          {completedTasks} / {totalTasks} nhiệm vụ đã hoàn thành
-                          ({Math.round((completedTasks / totalTasks) * 100)}%)
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* In Progress Tasks */}
-                  {inProgressTasks > 0 && (
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 border-4 border-white dark:border-gray-900 flex items-center justify-center flex-shrink-0">
-                        <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          Nhiệm vụ đang thực hiện
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Đang tiến hành
-                        </div>
-                        <div className="mt-2 text-sm bg-blue-50 dark:bg-blue-950/30 p-3 rounded-md border border-blue-100 dark:border-blue-900">
-                          {inProgressTasks} nhiệm vụ đang được thực hiện bởi các
-                          kỹ thuật viên.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Pending Tasks */}
-                  {pendingTasks > 0 && (
-                    <div className="flex gap-4 items-start opacity-70">
-                      <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900 border-4 border-white dark:border-gray-900 flex items-center justify-center flex-shrink-0">
-                        <Timer className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          Nhiệm vụ chờ thực hiện
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Chưa bắt đầu
-                        </div>
-                        <div className="mt-2 text-sm bg-yellow-50 dark:bg-yellow-950/30 p-3 rounded-md border border-yellow-100 dark:border-yellow-900">
-                          {pendingTasks} nhiệm vụ đang chờ được giao hoặc bắt
-                          đầu thực hiện.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Suggested Tasks */}
-                  {suggestedTasks.length > 0 && (
-                    <div className="flex gap-4 items-start">
-                      <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 border-4 border-white dark:border-gray-900 flex items-center justify-center flex-shrink-0">
-                        <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          Nhiệm vụ đề xuất
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Chờ xét duyệt
-                        </div>
-                        <div className="mt-2 text-sm bg-purple-50 dark:bg-purple-950/30 p-3 rounded-md border border-purple-100 dark:border-purple-900">
-                          {suggestedTasks.length} nhiệm vụ được hệ thống đề xuất
-                          và chờ áp dụng.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TimelineTab
+            taskGroup={taskGroup}
+            totalTasks={totalTasks}
+            completedTasks={completedTasks}
+            inProgressTasks={inProgressTasks}
+            pendingTasks={pendingTasks}
+            suggestedTasks={suggestedTasks}
+          />
         </TabsContent>
       </Tabs>
 

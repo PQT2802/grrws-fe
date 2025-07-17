@@ -296,7 +296,7 @@ const TaskDetailSidePanel = ({
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Calendar className="h-4 w-4 text-purple-600" />
-                  Thời gian thực hiện
+                  Thời gian thực hiện công việc
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -305,7 +305,7 @@ const TaskDetailSidePanel = ({
                     <Calendar className="h-4 w-4 text-green-500 mt-1" />
                     <div>
                       <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Thời gian bắt đầu
+                        Thời gian bắt đầu công việc
                       </label>
                       <p className="text-sm">
                         {formatAPIDateToHoChiMinh(task.startTime, "datetime")}
@@ -333,7 +333,7 @@ const TaskDetailSidePanel = ({
                     <CheckCircle className="h-4 w-4 text-green-500 mt-1" />
                     <div>
                       <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Thời gian hoàn thành
+                        Thời gian hoàn thành công việc
                       </label>
                       <p className="text-sm">
                         {formatAPIDateToHoChiMinh(task.endTime, "datetime")}
