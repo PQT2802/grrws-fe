@@ -414,6 +414,23 @@ class APIClient {
         throw error;
       }
     },
+
+    // Replace device in machine replacement request
+    replaceDevice: (data: {
+      RequestMachineId: string;
+      Reason: string;
+      Notes?: string;
+      DeviceId: string;
+    }): Promise<any> => {
+      console.log(`Replacing device for machine replacement request with data:`, data);
+      return http.put(`/api/RequestMachineReplacement`, data);
+    },
+
+    // Get active devices by machine ID for replacement selection
+    getActiveDevicesByMachineId: (machineId: string): Promise<DEVICE_WEB[]> => {
+      console.log(`Getting active devices for machine ID: ${machineId}`);
+      return http.get<DEVICE_WEB[]>(`/api/Device/by-machine/${machineId}?status=Active`);
+    }
   }
 
   sparePart = {

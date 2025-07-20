@@ -29,9 +29,6 @@ export default function RequestStatusPieChart({ data, total }: RequestStatusPieC
     return null;
   };
 
-  // Check if we have an odd number of items to center the last row
-  const isOddNumber = data.length % 2 !== 0;
-
   return (
     <div className="bg-background border rounded-lg shadow-sm p-6">
       <h3 className="text-lg font-semibold mb-4">
@@ -57,16 +54,16 @@ export default function RequestStatusPieChart({ data, total }: RequestStatusPieC
         </PieChart>
       </ResponsiveContainer>
       
-      {/* Updated Legend - 2 Column Grid with Centered Last Row for Odd Numbers */}
+      {/* Fixed Legend - Proper Grid Layout */}
       <div className="mt-4">
-        <div className="grid grid-cols-2 gap-2">
-          {data.slice(0, -1).map((item, index) => (
+        <div className={`grid gap-2 ${data.length === 2 ? 'grid-cols-2' : data.length === 3 ? 'grid-cols-2' : 'grid-cols-2'}`}>
+          {data.map((item, index) => (
             <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-muted/20">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
-                <span className="font-medium text-sm">{item.name}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-3 h-3 rounded-full shadow-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="font-medium text-sm truncate">{item.name}</span>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <span className="text-lg font-bold">{item.value}</span>
                 <div className="text-xs text-muted-foreground">
                   {total > 0 ? ((item.value / total) * 100).toFixed(1) : 0}%
@@ -75,24 +72,6 @@ export default function RequestStatusPieChart({ data, total }: RequestStatusPieC
             </div>
           ))}
         </div>
-        
-        {/* Last item - centered if odd number of total items */}
-        {data.length > 0 && (
-          <div className={`mt-2 ${isOddNumber ? 'flex justify-center' : 'grid grid-cols-2 gap-2'}`}>
-            <div className={`flex items-center justify-between p-2 rounded-lg border bg-muted/20 ${isOddNumber ? 'w-1/2' : ''}`}>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: data[data.length - 1].color }} />
-                <span className="font-medium text-sm">{data[data.length - 1].name}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold">{data[data.length - 1].value}</span>
-                <div className="text-xs text-muted-foreground">
-                  {total > 0 ? ((data[data.length - 1].value / total) * 100).toFixed(1) : 0}%
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

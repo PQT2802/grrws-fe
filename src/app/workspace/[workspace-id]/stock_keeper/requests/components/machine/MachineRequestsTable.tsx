@@ -88,6 +88,11 @@ export default function MachineRequestsTable({
     return pages;
   };
 
+  // Helper function to display assignee name or fallback
+  const displayAssigneeName = (assigneeName: string) => {
+    return assigneeName && assigneeName.trim() !== '' ? assigneeName : 'Chưa có người nhận';
+  };
+
   if (requests.length === 0) {
     return (
       <div className="space-y-4">
@@ -181,7 +186,11 @@ export default function MachineRequestsTable({
               >
                 <td className="px-4 py-3 font-medium">{req.requestCode}</td>
                 <td className="px-4 py-3">{new Date(req.requestDate).toLocaleDateString('vi-VN')}</td>
-                <td className="px-4 py-3">{req.requestedBy}</td>
+                <td className="px-4 py-3">
+                  <span className={`${!req.requestedBy || req.requestedBy.trim() === '' ? 'text-gray-400 italic' : ''}`}>
+                    {displayAssigneeName(req.requestedBy)}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="text-xs max-w-48">

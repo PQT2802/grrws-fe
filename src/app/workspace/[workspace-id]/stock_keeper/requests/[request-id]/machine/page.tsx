@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, Settings, Package, CheckCircle } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Calendar, User, FileText, Settings, Package, CheckCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from '../../components/StatusBadge';
 import ConfirmRequestModal from '../../components/sparepart/ConfirmRequestModal';
 import ConfirmDeviceAvailableModal from '../../components/machine/ConfirmDeviceAvailableModal';
+import ReplaceDeviceModal from '../../components/machine/ReplaceDeviceModal';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
@@ -44,6 +45,7 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
   // State for action modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmDeviceModal, setShowConfirmDeviceModal] = useState(false);
+  const [showReplaceDeviceModal, setShowReplaceDeviceModal] = useState(false);
   
   // Find request from the machine requests list (since there's no single request API)
   const findRequestFromList = async (): Promise<MachineRequestDetail | null> => {
@@ -134,6 +136,15 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
       
       if (request) {
         setRequestDetail(request);
+        
+        // Re-fetch device details
+        const [oldDeviceData, newDeviceData] = await Promise.all([
+          apiClient.device.getDeviceById(request.oldDeviceId).catch(() => null),
+          apiClient.device.getDeviceById(request.newDeviceId).catch(() => null)
+        ]);
+        
+        setOldDevice(oldDeviceData);
+        setNewDevice(newDeviceData);
       }
       
     } catch (err) {
@@ -166,7 +177,7 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     }
   };
 
-  // NEW: Handle confirming device availability
+  // Handle confirming device availability
   const handleConfirmDeviceAvailable = async () => {
     if (!requestDetail) return;
     
@@ -196,6 +207,38 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
       setIsLoading(false);
     }
   };
+
+  // NEW: Handle replacing device
+  const handleReplaceDevice = async (deviceId: string, reason: string, notes?: string) => {
+    if (!requestDetail) return;
+    
+    try {
+      console.log(`Replacing device for request: ${requestDetail.id}`);
+      
+      const payload = {
+        RequestMachineId: requestDetail.id,
+        Reason: reason,
+        Notes: notes || "",
+        DeviceId: deviceId
+      };
+      
+      console.log('Replace device payload:', payload);
+      
+      // Call API to replace device
+      await apiClient.machine.replaceDevice(payload);
+      
+      toast.success("Thiết bị đã được thay thế thành công");
+      
+      // Refresh data from server to get updated information
+      await refreshRequestDetail();
+      
+    } catch (error: any) {
+      console.error("Failed to replace device:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Không thể thay thế thiết bị";
+      toast.error(errorMessage);
+      throw error; // Re-throw to prevent modal from closing on error
+    }
+  };
   
   // Go back to requests list with tab memory
   const goBack = () => {
@@ -209,15 +252,57 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
     return new Date(dateString).toLocaleString('vi-VN');
   };
 
-  // Render device information
+  // Check if the request is eligible for device replacement
+  const canReplaceDevice = () => {
+    if (!requestDetail || !isStockKeeper) return false;
+    
+    return requestDetail.status === "InProgress" 
+  };
+
+  // Render device information with replace functionality
   const renderDeviceInfo = (device: DEVICE_WEB | null, title: string, isOld: boolean = false) => {
     const borderColor = isOld ? 'border-red-200 dark:border-red-800' : 'border-green-200 dark:border-green-800';
     const bgColor = isOld ? 'bg-red-50 dark:bg-red-950/10' : 'bg-green-50 dark:bg-green-950/10';
     const titleColor = isOld ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400';
     const iconColor = isOld ? 'text-red-600' : 'text-green-600';
     
+    const isReplaceable = !isOld && canReplaceDevice();
+    
     return (
-      <div className={`border ${borderColor} rounded-lg p-4 ${bgColor}`}>
+      <div className={`border ${borderColor} rounded-lg p-4 ${bgColor} relative transition-all duration-300 ${
+        isReplaceable ? 'group cursor-pointer hover:shadow-lg' : ''
+      }`}>
+        
+        {/* Enhanced Replace Device Hover Effect */}
+        {isReplaceable && (
+          <>
+            {/* Blur overlay on hover */}
+            <div className="absolute inset-0 bg-white/60 dark:bg-slate800/60 backdrop-blur-[2px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 z-10" />
+            
+            {/* Large centered replace icon */}
+            <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowReplaceDeviceModal(true);
+                }}
+                className="w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50"
+                title="Thay thế thiết bị"
+                type="button"
+              >
+                <RefreshCw className="h-8 w-8 mx-auto" />
+              </button>
+            </div>
+            
+            {/* Corner indicator */}
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-30">
+              <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full shadow-lg">
+                Có thể thay thế
+              </div>
+            </div>
+          </>
+        )}
+        
         <div className="flex items-center gap-2 mb-4">
           {isOld ? (
             <Package className={`h-5 w-5 ${iconColor}`} />
@@ -325,7 +410,7 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
           </button>
         )}
         
-        {/* NEW: Show device availability confirmation button for Pending requests */}
+        {/* Show device availability confirmation button for Pending requests */}
         {isPending && isStockKeeper && (
           <button
             onClick={() => setShowConfirmDeviceModal(true)}
@@ -334,6 +419,18 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
           >
             <CheckCircle className="h-4 w-4" />
             Xác nhận có thiết bị thay thế
+          </button>
+        )}
+        
+        {/* NEW: Show replace device button for InProgress requests */}
+        {canReplaceDevice() && (
+          <button
+            onClick={() => setShowReplaceDeviceModal(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm flex items-center gap-2"
+            disabled={isLoading}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Chọn lại thiết bị thay thế
           </button>
         )}
       </div>
@@ -459,6 +556,14 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
         <div className="flex items-center gap-2 mb-6">
           <ArrowRightLeft className="h-5 w-5 text-gray-600" />
           <h2 className="text-lg font-semibold">Chi tiết thiết bị thay thế</h2>
+          {canReplaceDevice() && (
+            <div className="ml-auto">
+              <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                <RefreshCw className="h-3 w-3" />
+                <span>Nhấp vào thiết bị thay thế để chọn lại</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -483,12 +588,23 @@ export default function MachineRequestDetailPage({ params }: { params: Promise<{
         confirmButtonText="Xác nhận yêu cầu"
       />
       
-      {/* NEW: Device Availability Confirmation Modal */}
+      {/* Device Availability Confirmation Modal */}
       <ConfirmDeviceAvailableModal
         isOpen={showConfirmDeviceModal}
         onClose={() => setShowConfirmDeviceModal(false)}
         onConfirm={handleConfirmDeviceAvailable}
         requestTitle={requestDetail?.title || ""}
+        isLoading={isLoading}
+      />
+      
+      {/* NEW: Replace Device Modal */}
+      <ReplaceDeviceModal
+        isOpen={showReplaceDeviceModal}
+        onClose={() => setShowReplaceDeviceModal(false)}
+        onConfirm={handleReplaceDevice}
+        requestId={requestDetail?.id || ""}
+        machineId={requestDetail?.machineId || ""}
+        currentDeviceName={newDevice?.deviceName || "Thiết bị thay thế"}
         isLoading={isLoading}
       />
     </div>
