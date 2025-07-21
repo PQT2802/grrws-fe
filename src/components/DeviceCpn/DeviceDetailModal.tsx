@@ -429,7 +429,7 @@ export default function DeviceDetailModal({
                             <QRCodeSection
                                 deviceId={device.id}
                                 deviceName={device.deviceName}
-                                // deviceCode={device.deviceCode}
+                                deviceCode={device.deviceCode}
                                 size={200}
                                 showDownload={true}
                                 showCopy={true}
