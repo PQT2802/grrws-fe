@@ -35,11 +35,13 @@ import {
     Download,
     User,
     StickyNote,
-    Truck
+    Truck,
+    QrCode
 } from "lucide-react"
 import { DEVICE_WEB } from "@/types/device.type"
 import { WarrantyInfo, WARRANTY_HISTORY_LIST } from "@/types/warranty.type"
 import { apiClient } from "@/lib/api-client"
+import QRCodeSection from "@/components/QRCodeCpn/QRCodeSection"
 
 interface DeviceDetailModalProps {
     open: boolean
@@ -260,7 +262,7 @@ export default function DeviceDetailModal({
                 <DialogHeader>
                     <DialogTitle>Device Details</DialogTitle>
                     <DialogDescription>
-                        View device information, specifications, warranty details, and service history
+                        View device information, specifications, warranty details, QR code, and service history
                     </DialogDescription>
                 </DialogHeader>
 
@@ -278,13 +280,39 @@ export default function DeviceDetailModal({
                     </div>
 
                     <Tabs defaultValue="details">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="details">Device Details</TabsTrigger>
+                            <TabsTrigger value="qrcode">QR Code</TabsTrigger>
                             <TabsTrigger value="warranty">Device Warranty</TabsTrigger>
                             <TabsTrigger value="history">Warranty History</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="details" className="space-y-4">
+                            {/* Device Photo */}
+                            {/* {device.photoUrl && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                            Device Photo
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex justify-center">
+                                            <img
+                                                src={device.photoUrl}
+                                                alt={device.deviceName}
+                                                className="max-w-full h-48 object-cover rounded-lg border"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.style.display = "none";
+                                                }}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )} */}
+
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Device Code</Label>
@@ -396,6 +424,58 @@ export default function DeviceDetailModal({
                             )}
                         </TabsContent>
 
+                        {/* QR CODE TAB */}
+                        <TabsContent value="qrcode" className="space-y-4">
+                            <QRCodeSection
+                                deviceId={device.id}
+                                deviceName={device.deviceName}
+                                // deviceCode={device.deviceCode}
+                                size={200}
+                                showDownload={true}
+                                showCopy={true}
+                                collapsible={false}
+                                className="border-0 shadow-none bg-transparent"
+                            />
+                            
+                            {/* Additional QR Code Info */}
+                            <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10">
+                                <CardHeader>
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <QrCode className="h-4 w-4 text-blue-600" />
+                                        QR Code Information
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">QR Content Type</Label>
+                                            <p className="text-sm font-medium">Device ID (GUID)</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">Error Correction Level</Label>
+                                            <p className="text-sm font-medium">Medium (M)</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">Usage</Label>
+                                            <p className="text-sm font-medium">Device Identification & Tracking</p>
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">Format</Label>
+                                            <p className="text-sm font-medium">PNG (Downloadable)</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                            <strong>Tip:</strong> Use this QR code for inventory management, device lookup, or linking to device details. 
+                                            The QR code contains the unique Device ID which can be scanned to quickly identify and access this device's information.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* EXISTING WARRANTY AND HISTORY TABS REMAIN THE SAME */}
                         <TabsContent value="warranty" className="space-y-4">
                             {isLoadingWarranties ? (
                                 <Card>

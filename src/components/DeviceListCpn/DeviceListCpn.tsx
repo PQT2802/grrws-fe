@@ -16,6 +16,7 @@ import {
     ChevronRight,
     Upload,
     Loader2,
+    Download
 } from "lucide-react"
 import { useDebounce } from "@/hooks/useDebounce"
 import { toast } from "react-toastify"
@@ -24,6 +25,7 @@ import { apiClient } from "@/lib/api-client"
 import { DEVICE_WEB } from "@/types/device.type"
 import OperationStatsCpn from "../ChartCpn/OperationStatsCpn"
 import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal"
+import DeviceExportModal from '@/components/DeviceCpn/DeviceExportModal'
 
 // Updated device status mapping based on backend enum
 type DeviceStatus = "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"
@@ -57,6 +59,8 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
     
     // Import modal state
     const [showImportModal, setShowImportModal] = useState(false)
+    // Export modal state
+    const [showExportModal, setShowExportModal] = useState(false)
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
@@ -211,6 +215,15 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
         
     }, [fetchDevices])
 
+    // Export handler
+    const handleExportClick = useCallback(() => {
+        setShowExportModal(true);
+    }, []);
+
+    const handleExportModalClose = useCallback(() => {
+        setShowExportModal(false);
+    }, []);
+
     const handleViewDevice = useCallback((device: DEVICE_WEB) => {
         if (onViewDevice) {
             onViewDevice(device)
@@ -289,6 +302,14 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold">Device Management</h1>
                 <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={handleExportClick}
+                        variant="outline"
+                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Export Devices
+                    </Button>
                     <Button 
                         onClick={handleImportClick}
                         className="bg-green-600 hover:bg-green-700"
@@ -505,6 +526,13 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                 onImport={handleFileImport}
                 title="Nhập thiết bị từ Excel"
                 successMessage="Nhập thiết bị thành công"
+            />
+
+            {/* Export Modal */}
+            <DeviceExportModal
+                isOpen={showExportModal}
+                onClose={handleExportModalClose}
+                devices={devices}
             />
         </div>
     )

@@ -128,7 +128,7 @@ export default function RequestDetailModal({ request, isOpen, onClose }: Request
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-slate-800 dark:text-slate-200">
             Chi tiết yêu cầu
