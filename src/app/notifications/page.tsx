@@ -10,6 +10,7 @@ import {
   CheckCheck,
   Bell,
   RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import useNotificationStore from "@/store/notifications";
@@ -301,14 +302,21 @@ const NotificationsPage = () => {
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
-        <PageTitle
-          title="Tất cả thông báo"
-          description="Quản lý và xem tất cả thông báo của bạn"
-        />
-        <Button onClick={handleRefresh} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Làm mới
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={() => router.back()}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </Button>
+          <PageTitle
+            title="Tất cả thông báo"
+            description="Quản lý và xem tất cả thông báo của bạn"
+          />
+        </div>
       </div>
 
       <Card>

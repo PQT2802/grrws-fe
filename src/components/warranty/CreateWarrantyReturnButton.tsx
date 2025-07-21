@@ -93,17 +93,18 @@ const CreateWarrantyReturnButton = ({
     }
   };
 
-
   // Initialize the form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      mode: "manual",
-      actualReturnDate: getFormattedDate(taskDetail.expectedReturnDate),
+      mode: "auto",
+      actualReturnDate: taskDetail.actualReturnDate
+        ? getFormattedDate(taskDetail.actualReturnDate)
+        : getFormattedDate(taskDetail.expectedReturnDate),
       actualReturnTime: taskDetail?.expectedReturnDate
         ? format(new Date(taskDetail.expectedReturnDate), "HH:mm")
         : getCurrentTime(),
-      useExpectedDate: false,
+      useExpectedDate: true,
       warrantyNotes: "",
     },
   });
@@ -134,6 +135,14 @@ const CreateWarrantyReturnButton = ({
 
     fetchMechanics();
   }, [isOpen, mode, form]);
+
+  
+  // Auto-check useExpectedDate when mode is set to auto
+  useEffect(() => {
+    if (mode === "auto") {
+      form.setValue("useExpectedDate", true);
+    }
+  }, [mode, form]);
 
   // Update date when useExpectedDate changes
   useEffect(() => {
@@ -324,6 +333,7 @@ const CreateWarrantyReturnButton = ({
                                     field.onChange(value);
                                     if (value === "auto") {
                                       setActiveTab("details");
+                                      form.setValue("useExpectedDate", true);
                                     }
                                   }}
                                   defaultValue={field.value}
@@ -425,7 +435,9 @@ const CreateWarrantyReturnButton = ({
                                               "hidden-date-picker"
                                             );
                                           if (hiddenInput)
-                                            (hiddenInput as HTMLInputElement).showPicker();
+                                            (
+                                              hiddenInput as HTMLInputElement
+                                            ).showPicker();
                                         }}
                                         readOnly
                                         disabled={useExpectedDate}
@@ -760,31 +772,6 @@ const CreateWarrantyReturnButton = ({
                             <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
                             Quay lại
                           </Button>
-                          {/* <Button
-                            type="submit"
-                            disabled={
-                              isSubmitting ||
-                              (mode === "manual" &&
-                                !form.getValues("mechanicId")) ||
-                              !mechanics ||
-                              mechanics.length === 0
-                            }
-                            className="bg-green-600 hover:bg-green-700 text-white transition-all shadow-sm hover:shadow"
-                          >
-                            {isSubmitting ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang tạo...
-                              </>
-                            ) : (
-                              <>
-                                <PackageCheck className="mr-2 h-4 w-4" />
-                                {mode === "auto"
-                                  ? "Tạo tự động"
-                                  : "Tạo nhiệm vụ trả bảo hành"}
-                              </>
-                            )}
-                          </Button> */}
                         </div>
                       </CardContent>
                     </Card>

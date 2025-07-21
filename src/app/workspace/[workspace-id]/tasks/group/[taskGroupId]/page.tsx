@@ -696,7 +696,7 @@ const GroupTaskDetailsPage = () => {
                     {warrantyTaskDetailForFooter.startDate
                       ? formatAPIDateUTC(
                           warrantyTaskDetailForFooter.startDate,
-                          "date"
+                          "datetime"
                         )
                       : "Chưa có thông tin"}
                   </span>
@@ -722,7 +722,7 @@ const GroupTaskDetailsPage = () => {
                     {warrantyTaskDetailForFooter.actualReturnDate
                       ? formatAPIDateUTC(
                           warrantyTaskDetailForFooter.actualReturnDate,
-                          "date"
+                          "datetime"
                         )
                       : "Chưa có thông tin"}
                   </span>
