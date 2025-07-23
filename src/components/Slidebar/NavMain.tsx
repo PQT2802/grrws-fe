@@ -20,6 +20,7 @@ import {
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { SLIDEBAR_ITEM_TYPE } from "@/types";
+import React from "react";
 
 interface PropType {
   items: SLIDEBAR_ITEM_TYPE[];
@@ -80,10 +81,20 @@ export function NavMain(props: PropType) {
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild>
-                            <a href={subItem.url}>
+                          <SidebarMenuSubButton
+                            asChild
+                            className={`${
+                              pathname === subItem.url &&
+                              "text-white bg-primary hover:text-white hover:bg-primary/90"
+                            }`}
+                          >
+                            <Link href={subItem.url}>
+                              {/* ✅ Fixed icon rendering for sub-items */}
+                              {(subItem as any).icon && 
+                                React.createElement((subItem as any).icon, { className: "mr-2 h-4 w-4" })
+                              }
                               <span>{subItem.title}</span>
-                            </a>
+                            </Link>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}

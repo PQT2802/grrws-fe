@@ -6,7 +6,11 @@ import {
   PieChart,
   Settings,
   House,
-  CircleCheckBig
+  CircleCheckBig,
+  AlertTriangle,
+  Bug,
+  Wrench,
+  AlertCircle
 } from "lucide-react";
 import { NavMain } from "@/components/Slidebar/NavMain";
 import { NavProjects } from "@/components/Slidebar/NavProjects";
@@ -31,7 +35,7 @@ import { NavSKeeper } from "./NavSKeeper";
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isAdmin, isHOT, isStockKeeper }: any = useAuth();
   const params = useParams();
-  const workspaceId = params?.["workspace-id"] as string; // ✅ Get workspace ID from URL
+  const workspaceId = params?.["workspace-id"] as string;
 
   const { workspace }: WorkspaceStoreState = useWorkspaceStore();
   const { projects }: TaskStoreState = useTaskStore();
@@ -41,60 +45,63 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       projects?.map((p: PROJECT_TYPE) => {
         return {
           title: p.name,
-          url: `/workspace/${workspaceId ?? "#"}/project/${p?.id}`, // ✅ Use workspaceId from URL
+          url: `/workspace/${workspaceId ?? "#"}/project/${p?.id}`,
           icon: p?.avatarUrl ?? "",
         } as SLIDEBAR_ITEM_TYPE;
       }) ?? []
     );
-  }, [workspaceId, projects]); // ✅ Updated dependency
+  }, [workspaceId, projects]);
 
   const MAIN_ITEMS: SLIDEBAR_ITEM_TYPE[] = [
     {
       title: "Home",
-      url: `/workspace/${workspaceId ?? "#"}`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId ?? "#"}`,
       icon: House,
       items: [],
     },
     {
       title: "Tasks",
-      url: `/workspace/${workspaceId ?? "#"}/tasks`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId ?? "#"}/tasks`,
       icon: CircleCheckBig,
       items: [],
     },
     {
       title: "Requests",
-      url: `/workspace/${workspaceId ?? "#"}/requests`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId ?? "#"}/requests`,
       icon: Frame,
       items: [],
     },
     {
       title: "Calendar",
-      url: `/workspace/${workspaceId ?? "#"}/projects`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId ?? "#"}/projects`,
       icon: Map,
       items: PROJECT_ITEMS,
     },
     {
       title: "Reports",
-      url: `/workspace/${workspaceId ?? "#"}/reports`, // ✅ Use workspaceId from URL
+      url: `/workspace/${workspaceId ?? "#"}/reports`,
       icon: PieChart,
       items: [],
     },
     {
-      title: "Settings",
+      title: "Incident Tracking", 
       url: "#",
-      icon: Settings,
+      icon: AlertTriangle,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "Issues",
+          url: `/workspace/${workspaceId ?? "#"}/incident/issues`,
+          icon: AlertCircle,
         },
         {
-          title: "Workspace",
-          url: "#",
+          title: "Technical Issues",
+          url: `/workspace/${workspaceId ?? "#"}/incident/technicalIssues`, 
+          icon: Wrench,
         },
         {
-          title: "Project",
-          url: "#",
+          title: "Errors",
+          url: `/workspace/${workspaceId ?? "#"}/incident/errors`, 
+          icon: Bug, 
         },
       ],
     },
@@ -107,8 +114,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        {isAdmin && ( <NavAdmin />)}
-        {isStockKeeper && (<NavSKeeper />)}
+        {isAdmin && <NavAdmin />}
+        {isStockKeeper && <NavSKeeper />}
         {isHOT && (
           <>
             <NavMain items={MAIN_ITEMS} />
