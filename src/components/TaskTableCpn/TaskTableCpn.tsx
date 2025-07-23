@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import TaskGroupModal from "@/components/TaskGroupModal/TaskGroupModal";
+import useSignalRStore from "@/store/useSignalRStore";
 
 interface TaskTableCpnProps {
   requestId: string;
@@ -93,6 +94,35 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
     }
   };
 
+  // Add this new useEffect after the existing fetchTaskGroups useEffect
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token && requestId) {
+      const backendUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const { connect, disconnect } = useSignalRStore.getState();
+
+      const roleName = "HOT"; // or get from auth user
+      connect(
+        token,
+        backendUrl,
+        [`role:${roleName}`],
+        async (eventName, data) => {
+          console.log(`📩 TaskTableCpn SignalR event: ${eventName}`, data);
+          switch (eventName) {
+            case "NotificationReceived":
+            case "ConnectionEstablished":
+              setSelectedTaskGroup(null);
+              await fetchTaskGroups();
+              break;
+          }
+        }
+      );
+
+      return () => disconnect();
+    }
+  }, [requestId]);
+
   useEffect(() => {
     if (requestId) {
       fetchTaskGroups();
@@ -108,14 +138,36 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
     });
   }, [taskGroups, search]);
 
-  const handleViewTaskGroup = (taskGroup: TASK_GROUP_WEB) => {
-    setSelectedTaskGroup(taskGroup);
+  const handleViewTaskGroup = async (taskGroup: TASK_GROUP_WEB) => {
+    // Always fetch fresh data for the selected task group
+    try {
+      const response = await apiClient.task.getTaskGroups(requestId, 1, 1000);
+      const freshTaskGroup = response.data.find(
+        (group: TASK_GROUP_WEB) => group.taskGroupId === taskGroup.taskGroupId
+      );
+
+      if (freshTaskGroup) {
+        setSelectedTaskGroup(freshTaskGroup);
+      } else {
+        setSelectedTaskGroup(taskGroup); // Fallback to original if not found
+      }
+    } catch (error) {
+      console.error("Failed to fetch fresh task group data:", error);
+      setSelectedTaskGroup(taskGroup); // Fallback to original on error
+    }
+
     setShowTaskGroupModal(true);
   };
 
-  const handleTaskGroupUpdated = () => {
-    // Refresh the task groups when a task group is updated
-    fetchTaskGroups();
+  const handleTaskGroupUpdated = async () => {
+    // Clear the selected task group to force fresh data
+    setSelectedTaskGroup(null);
+    setShowTaskGroupModal(false);
+
+    // Refresh the task groups
+    await fetchTaskGroups();
+
+    console.log("✅ Task groups refreshed after update");
   };
 
   const getGroupTypeIcon = (groupType: string) => {
