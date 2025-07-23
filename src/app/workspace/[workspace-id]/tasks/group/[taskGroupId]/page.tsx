@@ -94,6 +94,7 @@ import TimelineTab from "@/components/TaskGroupTab/TimelineTab";
 import DeviceTab from "@/components/TaskGroupTab/DeviceTab";
 import WarrantyTab from "@/components/TaskGroupTab/WarrantyTab";
 import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
+import useSignalRStore from "@/store/useSignalRStore";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -185,26 +186,73 @@ const GroupTaskDetailsPage = () => {
       const backendUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      // Simple refresh function
-      const handleNotificationRefresh = async () => {
-        console.log("New notification received, refreshing task groups...");
-        const response = await apiClient.task.getAllTaskGroups(1, 100);
-        const group = response.data.find((g) => g.taskGroupId === taskGroupId);
-        if (group) {
-          setTaskGroup(group);
-          await fetchInstallationTaskDetails(group.tasks);
-          await fetchWarrantyTaskDetailForFooter();
+      const handleFullDataRefresh = async () => {
+        console.log("🔄 Performing full data refresh...");
+        try {
+          const response = await apiClient.task.getAllTaskGroups(1, 100);
+          const group = response.data.find(
+            (g) => g.taskGroupId === taskGroupId
+          );
+
+          if (group) {
+            setTaskGroup(group);
+            await fetchInstallationTaskDetails(group.tasks);
+
+            const warrantyTask = group.tasks.find(
+              (task) => task.taskType === "WarrantySubmission"
+            );
+            if (warrantyTask) {
+              setDropdownTaskDetails((prev) => ({
+                ...prev,
+                [warrantyTask.taskId]: null,
+              }));
+              await fetchWarrantyTaskDetailForFooter();
+            }
+
+            if (selectedTask) {
+              const updatedTask = group.tasks.find(
+                (t) => t.taskId === selectedTask.taskId
+              );
+              if (updatedTask) {
+                setSelectedTask(updatedTask);
+                const taskDetail = await fetchTaskDetail(updatedTask);
+                setSelectedTaskDetail(taskDetail);
+              }
+            }
+
+            console.log("✅ Full data refresh completed");
+          }
+        } catch (error) {
+          console.error("❌ Full data refresh failed:", error);
         }
       };
 
-      // Connect to SignalR
-      const { connectToSignalR, disconnectSignalR } =
-        useNotificationStore.getState();
-      connectToSignalR(token, backendUrl, handleNotificationRefresh);
+      const { connect, disconnect } = useSignalRStore.getState();
 
-      return () => disconnectSignalR();
+      // 🔑 Join đúng group bên BE
+      const roleName = "HOT"; // hoặc lấy từ auth user của bạn
+      connect(
+        token,
+        backendUrl,
+        [`role:${roleName}`],
+        async (eventName, data) => {
+          console.log(`📩 SignalR event: ${eventName}`, data);
+          switch (eventName) {
+            case "NotificationReceived":
+              await handleFullDataRefresh();
+              break;
+            default:
+              console.log(`ℹ️ Unhandled SignalR event: ${eventName}`);
+          }
+        }
+      );
+
+      // Force initial data fetch when connected
+      setTimeout(handleFullDataRefresh, 1000);
+
+      return () => disconnect();
     }
-  }, [taskGroupId]);
+  }, [taskGroupId]); // Added selectedTask to dependencies
 
   // Pre-fetch installation task details
   const fetchInstallationTaskDetails = async (tasks: TASK_IN_GROUP[]) => {
@@ -361,12 +409,18 @@ const GroupTaskDetailsPage = () => {
         if (warrantyTask) {
           await fetchWarrantyTaskDetailForFooter();
         }
-      }
 
-      // Refresh selected task detail if one is selected
-      if (selectedTask) {
-        const taskDetail = await fetchTaskDetail(selectedTask);
-        setSelectedTaskDetail(taskDetail);
+        // Refresh selected task detail if one is selected
+        if (selectedTask) {
+          const updatedTask = group.tasks.find(
+            (t) => t.taskId === selectedTask.taskId
+          );
+          if (updatedTask) {
+            setSelectedTask(updatedTask);
+            const taskDetail = await fetchTaskDetail(updatedTask);
+            setSelectedTaskDetail(taskDetail);
+          }
+        }
       }
 
       console.log("✅ Dữ liệu nhóm nhiệm vụ đã được làm mới thành công");
