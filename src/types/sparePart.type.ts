@@ -60,6 +60,8 @@ export interface SPAREPART_REQUEST_DETAIL {
   confirmedById: string | null;
   notes: string;
   sparePartUsages: SPAREPART_USAGE_DETAIL[];
+  assigneeConfirm: boolean; // New field
+  stockKeeperConfirm: boolean; // New field
 }
 
 export interface SPAREPART_REQUEST_DETAIL_RESPONSE {
@@ -112,6 +114,8 @@ export interface MACHINE_REPLACEMENT_REQUEST {
   newDeviceId: string;
   machineId: string;
   status: string;
+  assigneeConfirm: boolean; 
+  stokkKeeperConfirm: boolean; 
 }
 
 export interface MACHINE_REPLACEMENT_REQUESTS_RESPONSE {
