@@ -30,6 +30,7 @@ import {
   TASK_IN_GROUP,
   WARRANTY_TASK_DETAIL,
   INSTALL_TASK_DETAIL,
+  REPAIR_TASK_DETAIL,
 } from "@/types/task.type";
 import { DEVICE_WEB } from "@/types/device.type";
 import {
@@ -53,6 +54,7 @@ import {
   RefreshCw,
   Phone,
   MapPin,
+  Wrench,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -95,6 +97,7 @@ import DeviceTab from "@/components/TaskGroupTab/DeviceTab";
 import WarrantyTab from "@/components/TaskGroupTab/WarrantyTab";
 import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
 import useSignalRStore from "@/store/useSignalRStore";
+import RepairTab from "@/components/TaskGroupTab/RepairTab";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -109,20 +112,29 @@ const GroupTaskDetailsPage = () => {
   const [selectedTask, setSelectedTask] = useState<TASK_IN_GROUP | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dropdownTaskDetails, setDropdownTaskDetails] = useState<
-    Record<string, WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | null>
+    Record<string, WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL | null>
   >({});
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<
-    WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | null
+    WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL |  null
   >(null);
   const warrantySubmissionTask =
     taskGroup?.tasks.find((task) => task.taskType === "WarrantySubmission") ||
     null;
+
+  // Add this
+  const repairTask =
+    taskGroup?.tasks.find((task) => task.taskType === "Repair") || null;
 
   // Get warranty task detail for footer button
   const warrantyTaskDetailForFooter = warrantySubmissionTask
     ? (dropdownTaskDetails[
         warrantySubmissionTask.taskId
       ] as WARRANTY_TASK_DETAIL | null)
+    : null;
+
+  // Add this
+  const repairTaskDetail = repairTask
+    ? (dropdownTaskDetails[repairTask.taskId] as REPAIR_TASK_DETAIL | null)
     : null;
 
   const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
@@ -207,6 +219,16 @@ const GroupTaskDetailsPage = () => {
                 [warrantyTask.taskId]: null,
               }));
               await fetchWarrantyTaskDetailForFooter();
+            }
+            // Add this
+            const repairTaskInGroup = group.tasks.find(
+              (task) => task.taskType === "Repair"
+            );
+            if (repairTaskInGroup) {
+              setDropdownTaskDetails((prev) => ({
+                ...prev,
+                [repairTaskInGroup.taskId]: null,
+              }));
             }
 
             if (selectedTask) {
@@ -330,8 +352,27 @@ const GroupTaskDetailsPage = () => {
       }
     };
 
+    const fetchRepairTaskDetailOnLoad = async () => {
+      if (repairTask && !dropdownTaskDetails[repairTask.taskId]) {
+        try {
+          const taskDetail = await apiClient.task.getRepairTaskDetail(
+            repairTask.taskId
+          );
+          if (taskDetail) {
+            setDropdownTaskDetails((prev) => ({
+              ...prev,
+              [repairTask.taskId]: taskDetail,
+            }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch repair task detail:", error);
+        }
+      }
+    };
+
     fetchWarrantyTaskDetailOnLoad();
-  }, [warrantySubmissionTask, dropdownTaskDetails]);
+    fetchRepairTaskDetailOnLoad();
+  }, [warrantySubmissionTask, dropdownTaskDetails, dropdownTaskDetails]);
 
   // Fetch device details for the device tab when installation task is selected
   useEffect(() => {
@@ -466,6 +507,9 @@ const GroupTaskDetailsPage = () => {
           taskDetail = await apiClient.task.getWarrantyReturnTaskDetail(
             task.taskId
           );
+          break;
+        case "repair": // Add this case
+          taskDetail = await apiClient.task.getRepairTaskDetail(task.taskId);
           break;
         case "installation":
           // Use pre-fetched installation task detail
@@ -819,10 +863,17 @@ const GroupTaskDetailsPage = () => {
             <FileText className="h-4 w-4 mr-2" />
             Tổng quan
           </TabsTrigger>
-          <TabsTrigger value="warranty">
-            <Shield className="h-4 w-4 mr-2" />
-            Bảo hành
-          </TabsTrigger>
+          {repairTask ? (
+            <TabsTrigger value="repair">
+              <Wrench className="h-4 w-4 mr-2" />
+              Sửa chữa
+            </TabsTrigger>
+          ) : (
+            <TabsTrigger value="warranty">
+              <Shield className="h-4 w-4 mr-2" />
+              Bảo hành
+            </TabsTrigger>
+          )}
           <TabsTrigger value="device">
             <Monitor className="h-4 w-4 mr-2" />
             Thiết bị
@@ -837,12 +888,21 @@ const GroupTaskDetailsPage = () => {
           <OverviewTab taskGroup={taskGroup} onTaskClick={handleTaskClick} />
         </TabsContent>
 
-        <TabsContent value="warranty" className="mt-6">
-          <WarrantyTab
-            warrantySubmissionTask={warrantySubmissionTask}
-            warrantyTaskDetailForFooter={warrantyTaskDetailForFooter}
-          />
-        </TabsContent>
+        {repairTask ? (
+          <TabsContent value="repair" className="mt-6">
+            <RepairTab
+              repairTask={repairTask}
+              repairTaskDetail={repairTaskDetail}
+            />
+          </TabsContent>
+        ) : (
+          <TabsContent value="warranty" className="mt-6">
+            <WarrantyTab
+              warrantySubmissionTask={warrantySubmissionTask}
+              warrantyTaskDetailForFooter={warrantyTaskDetailForFooter}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="device" className="mt-6">
           <DeviceTab

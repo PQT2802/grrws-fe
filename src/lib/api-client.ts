@@ -18,6 +18,7 @@ import {
   CREATE_WARRANTY_TASK,
   CreateWarrantyReturn,
   INSTALL_TASK_DETAIL,
+  REPAIR_TASK_DETAIL,
   SPAREPART_WEB,
   TASK_GROUP_RESPONSE,
   UNINSTALL_TASK_DETAIL,
@@ -243,6 +244,9 @@ class APIClient {
         `/api/Task/warranty-task-return/${taskId}`
       );
     },
+    getRepairTaskDetail: (taskId: string): Promise<REPAIR_TASK_DETAIL> => {
+      return http.get<REPAIR_TASK_DETAIL>(`/api/Task/repair-task/${taskId}`);
+    },
 
     getSuggestedMechanics: (
       pageSize: number = 5,
@@ -373,7 +377,9 @@ class APIClient {
       pageSize: number = 10
     ): Promise<any> => {
       console.log("Getting machine replacement requests");
-      return http.get(`/api/RequestMachineReplacement/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+      return http.get(
+        `/api/RequestMachineReplacement/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     getReplacementRequestById: (requestId: string): Promise<any> => {
@@ -383,8 +389,13 @@ class APIClient {
 
     // Confirm device available for machine replacement request
     confirmDeviceAvailable: (requestId: string): Promise<any> => {
-      console.log(`Confirming device available for machine replacement request: ${requestId}`);
-      return http.put(`/api/RequestMachineReplacement/confirm-had-device/${requestId}`, {});
+      console.log(
+        `Confirming device available for machine replacement request: ${requestId}`
+      );
+      return http.put(
+        `/api/RequestMachineReplacement/confirm-had-device/${requestId}`,
+        {}
+      );
     },
 
     // Import machines from Excel file
@@ -422,16 +433,21 @@ class APIClient {
       Notes?: string;
       DeviceId: string;
     }): Promise<any> => {
-      console.log(`Replacing device for machine replacement request with data:`, data);
+      console.log(
+        `Replacing device for machine replacement request with data:`,
+        data
+      );
       return http.put(`/api/RequestMachineReplacement`, data);
     },
 
     // Get active devices by machine ID for replacement selection
     getActiveDevicesByMachineId: (machineId: string): Promise<DEVICE_WEB[]> => {
       console.log(`Getting active devices for machine ID: ${machineId}`);
-      return http.get<DEVICE_WEB[]>(`/api/Device/by-machine/${machineId}?status=Active`);
-    }
-  }
+      return http.get<DEVICE_WEB[]>(
+        `/api/Device/by-machine/${machineId}?status=Active`
+      );
+    },
+  };
 
   sparePart = {
     getRequests: (
@@ -439,7 +455,9 @@ class APIClient {
       pageSize: number = 10
     ): Promise<any> => {
       console.log("Getting all spare part requests");
-      return http.get(`/api/SparePartUsage/requests?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+      return http.get(
+        `/api/SparePartUsage/requests?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     getRequestById: (requestId: string): Promise<any> => {
@@ -675,14 +693,9 @@ class APIClient {
     },
     markAsRead: (notificationId: string) => {
       console.log(`Marking notification ${notificationId} as read`);
-      return http.put(
-        `/api/notifications/${notificationId}/mark-read`,
-        {}
-      );
+      return http.put(`/api/notifications/${notificationId}/mark-read`, {});
     },
-    getUnreadCount: (): Promise<
-      { unreadCount: number }
-    > => {
+    getUnreadCount: (): Promise<{ unreadCount: number }> => {
       console.log("Fetching unread notification count");
       return http.get<{ unreadCount: number }>(
         "/api/notifications/unread-count"

@@ -14,7 +14,8 @@ import {
   TASK_IN_GROUP, 
   WARRANTY_TASK_DETAIL, 
   INSTALL_TASK_DETAIL,
-  DOCUMENT 
+  DOCUMENT, 
+  REPAIR_TASK_DETAIL
 } from "@/types/task.type";
 import { DEVICE_WEB } from "@/types/device.type";
 import {
@@ -43,7 +44,7 @@ interface TaskDetailSidePanelProps {
   isOpen: boolean;
   onClose: () => void;
   task: TASK_IN_GROUP | null;
-  taskDetail: WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | null;
+  taskDetail: WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL |  null;
   oldDevice?: DEVICE_WEB | null;
   newDevice?: DEVICE_WEB | null;
 }

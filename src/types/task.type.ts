@@ -173,3 +173,47 @@ export interface CreateWarrantyReturn {
   IsWarrantyFailed: boolean; // Indicates if the warranty claim failed
   IsReInstallOldDevice: boolean; // Indicates if the old device needs to be reinstalled
 }
+
+export interface REPAIR_TASK_DETAIL {
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string;
+  isInstall: boolean;
+  isSigned: boolean;
+  requestMachines: any[]; // hoặc kiểu cụ thể nếu có
+  taskConfirmations: any[];
+  errorDetails: ErrorDetail[];
+}
+
+export interface ErrorDetail {
+  errorId: string;
+  errorDetailId: string;
+  errorName: string;
+  errorGuildelineTitle: string;
+  errorFixProgress: ErrorFixProgress[];
+  sparePartUsages: SparePartUsage[];
+}
+
+export interface ErrorFixProgress {
+  errorFixProgressId: string;
+  stepDescription: string;
+  stepOrder: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+}
+
+export interface SparePartUsage {
+  sparePartUsageId: string;
+  sparePartId: string;
+  sparePartName: string;
+  quantityUsed: number;
+  isTakenFromStock: boolean;
+}
