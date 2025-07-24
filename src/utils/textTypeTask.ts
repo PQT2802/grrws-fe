@@ -49,6 +49,7 @@ export function translateTaskType(taskType: string): string {
       return "Trả kho";
     case "stockreturn":
       return "Trả stock";
+
     default:
       return taskType; // Return original if no translation found
   }
@@ -80,6 +81,8 @@ export function translateTaskStatus(status: string): string {
     case "waitingforconfirmation":
     case "waiting for confirmation":
       return "Chờ xác nhận";
+    case "waitingforinstallation":
+      return "Chờ thiết bị";
     default:
       return status; // Return original if no translation found
   }
