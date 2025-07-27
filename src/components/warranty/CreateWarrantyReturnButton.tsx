@@ -29,9 +29,10 @@ import {
   UserCheck,
   Zap,
   PackageCheck,
-  X,
   InfoIcon,
   FileText,
+  X,
+  Check,
 } from "lucide-react";
 import { format, isBefore, set } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +59,7 @@ const formSchema = z.object({
   }),
   useExpectedDate: z.boolean().optional(),
   warrantyNotes: z.string().optional(),
+  // Remove the warrantyStatus field as we'll use props instead
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -67,6 +69,8 @@ interface CreateWarrantyReturnButtonProps {
   onSuccess?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  isReinstall?: boolean;
+  isFailed?: boolean;
 }
 
 const CreateWarrantyReturnButton = ({
@@ -74,6 +78,8 @@ const CreateWarrantyReturnButton = ({
   onSuccess,
   open,
   onOpenChange,
+  isReinstall,
+  isFailed,
 }: CreateWarrantyReturnButtonProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mechanics, setMechanics] = useState<GET_MECHANIC_USER[] | null>(null);
@@ -106,6 +112,7 @@ const CreateWarrantyReturnButton = ({
         : getCurrentTime(),
       useExpectedDate: true,
       warrantyNotes: "",
+      // Use the returnOption from the previous step if available
     },
   });
 
@@ -136,7 +143,6 @@ const CreateWarrantyReturnButton = ({
     fetchMechanics();
   }, [isOpen, mode, form]);
 
-  
   // Auto-check useExpectedDate when mode is set to auto
   useEffect(() => {
     if (mode === "auto") {
@@ -192,8 +198,8 @@ const CreateWarrantyReturnButton = ({
         ActualReturnDate: combinedDateTime.toISOString(),
         IsEarlyReturn: isEarlyReturn,
         WarrantyNotes: values.warrantyNotes || "",
-        IsWarrantyFailed: false, // Default value, can be updated based on business logic
-        IsReInstallOldDevice: true, // Default value, can be updated based on business
+        IsWarrantyFailed: isFailed || false,
+        IsReInstallOldDevice: isReinstall !== false, // Default to true if not provided
       };
 
       await apiClient.task.createWarrantyReturnTask(submitData);
@@ -236,7 +242,6 @@ const CreateWarrantyReturnButton = ({
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-xl">
-          {/* Header */}
           <div className="bg-gradient-to-r from-green-50 to-white dark:from-green-900/20 dark:to-gray-800 p-6 rounded-t-xl border-b border-green-100 dark:border-green-800">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
@@ -308,7 +313,6 @@ const CreateWarrantyReturnButton = ({
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  {/* Return Schedule Tab */}
                   <TabsContent value="schedule" className="m-0">
                     <Card className="border-blue-100 dark:border-blue-800 shadow-sm">
                       <CardHeader className="bg-blue-50/50 dark:bg-blue-900/10 pb-3 pt-3">
@@ -318,7 +322,6 @@ const CreateWarrantyReturnButton = ({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-4">
-                        {/* Creation Mode Selection */}
                         <FormField
                           control={form.control}
                           name="mode"
@@ -371,7 +374,6 @@ const CreateWarrantyReturnButton = ({
                           )}
                         />
 
-                        {/* Option to use expected return date */}
                         {taskDetail.expectedReturnDate && (
                           <FormField
                             control={form.control}
@@ -405,7 +407,6 @@ const CreateWarrantyReturnButton = ({
                         )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                          {/* Actual Return Date */}
                           <FormField
                             control={form.control}
                             name="actualReturnDate"
@@ -417,8 +418,6 @@ const CreateWarrantyReturnButton = ({
                                 <FormControl>
                                   <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500 dark:text-blue-400" />
-
-                                    {/* Custom date input with Vietnamese format display */}
                                     <div className="relative">
                                       <Input
                                         type="text"
@@ -429,7 +428,6 @@ const CreateWarrantyReturnButton = ({
                                             : ""
                                         }
                                         onClick={() => {
-                                          // When clicking the displayed input, open the actual date picker
                                           const hiddenInput =
                                             document.getElementById(
                                               "hidden-date-picker"
@@ -443,8 +441,6 @@ const CreateWarrantyReturnButton = ({
                                         disabled={useExpectedDate}
                                         placeholder="DD/MM/YYYY"
                                       />
-
-                                      {/* Hidden actual date input that will handle the picking */}
                                       <input
                                         id="hidden-date-picker"
                                         type="date"
@@ -463,8 +459,6 @@ const CreateWarrantyReturnButton = ({
                               </FormItem>
                             )}
                           />
-
-                          {/* Actual Return Time */}
                           <FormField
                             control={form.control}
                             name="actualReturnTime"
@@ -510,7 +504,6 @@ const CreateWarrantyReturnButton = ({
                     </Card>
                   </TabsContent>
 
-                  {/* Mechanic Selection Tab */}
                   <TabsContent value="mechanic" className="m-0">
                     <Card className="border-orange-100 dark:border-orange-800 shadow-sm">
                       <CardHeader className="bg-orange-50/50 dark:bg-orange-900/10 pb-3 pt-3">
@@ -662,7 +655,6 @@ const CreateWarrantyReturnButton = ({
                     </Card>
                   </TabsContent>
 
-                  {/* Additional Information Tab */}
                   <TabsContent value="details" className="m-0">
                     <Card className="border-purple-100 dark:border-purple-800 shadow-sm">
                       <CardHeader className="bg-purple-50/50 dark:bg-purple-900/10 pb-3 pt-3">
@@ -672,7 +664,6 @@ const CreateWarrantyReturnButton = ({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-4">
-                        {/* Summary card */}
                         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
                           <h4 className="text-sm font-medium flex items-center gap-1.5 text-gray-700 dark:text-gray-300 mb-3">
                             <InfoIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -730,6 +721,88 @@ const CreateWarrantyReturnButton = ({
                                 </p>
                               </div>
                             )}
+                            <div className="space-y-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Loại trả bảo hành
+                              </p>
+                              <p className="text-sm font-medium flex items-center gap-1.5">
+                                {isFailed ? (
+                                  <span className="flex items-center text-red-600 gap-1">
+                                    <X className="h-3.5 w-3.5" /> Bảo hành thất
+                                    bại
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center text-green-600 gap-1">
+                                    <Check className="h-3.5 w-3.5" /> Lắp lại
+                                    thiết bị cũ
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">
+                              Trạng thái bảo hành
+                            </label>
+                            <div className="flex flex-col space-y-2">
+                              <div
+                                className={`flex items-center space-x-3 space-y-0 border rounded-lg p-3 transition-colors ${
+                                  !isFailed
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                    : "border-blue-100 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
+                                }`}
+                              >
+                                <div
+                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    !isFailed
+                                      ? "border-blue-500 bg-blue-500"
+                                      : "border-gray-300 dark:border-gray-600"
+                                  }`}
+                                >
+                                  {!isFailed && (
+                                    <div className="w-2 h-2 bg-white rounded-full" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium">
+                                    Lắp lại thiết bị cũ
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Sử dụng thiết bị cũ đã sửa chữa để lắp đặt
+                                  </p>
+                                </div>
+                              </div>
+                              <div
+                                className={`flex items-center space-x-3 space-y-0 border rounded-lg p-3 transition-colors ${
+                                  isFailed
+                                    ? "border-red-500 bg-red-50 dark:bg-red-900/20"
+                                    : "border-blue-100 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
+                                }`}
+                              >
+                                <div
+                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    isFailed
+                                      ? "border-red-500 bg-red-500"
+                                      : "border-gray-300 dark:border-gray-600"
+                                  }`}
+                                >
+                                  {isFailed && (
+                                    <div className="w-2 h-2 bg-white rounded-full" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium">
+                                    Bảo hành không thành công
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Yêu cầu bảo hành không thể hoàn thành
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -777,7 +850,6 @@ const CreateWarrantyReturnButton = ({
                     </Card>
                   </TabsContent>
 
-                  {/* Submit button for all tabs view on smaller screens */}
                   <div className="sm:hidden pt-2">
                     <Button
                       type="submit"

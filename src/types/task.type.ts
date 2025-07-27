@@ -218,3 +218,47 @@ export const TASK_TYPE_MAPPING: Record<string, TaskType[]> = {
 };
 
 export type TaskTabType = 'all' | 'warranty' | 'repair' | 'replace' | 'install_uninstall';
+
+export interface REPAIR_TASK_DETAIL {
+  taskId: string;
+  deviceId: string;
+  taskType: string;
+  taskName: string;
+  taskDescription: string;
+  priority: string;
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string;
+  isInstall: boolean;
+  isSigned: boolean;
+  requestMachines: any[]; // hoặc kiểu cụ thể nếu có
+  taskConfirmations: any[];
+  errorDetails: ErrorDetail[];
+}
+
+export interface ErrorDetail {
+  errorId: string;
+  errorDetailId: string;
+  errorName: string;
+  errorGuildelineTitle: string;
+  errorFixProgress: ErrorFixProgress[];
+  sparePartUsages: SparePartUsage[];
+}
+
+export interface ErrorFixProgress {
+  errorFixProgressId: string;
+  stepDescription: string;
+  stepOrder: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+}
+
+export interface SparePartUsage {
+  sparePartUsageId: string;
+  sparePartId: string;
+  sparePartName: string;
+  quantityUsed: number;
+  isTakenFromStock: boolean;
+}

@@ -31,11 +31,16 @@ import {
 } from "lucide-react";
 import { format, set } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
-import CreateWarrantyReturnButton from "./CreateWarrantyReturnButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import formatDisplayDate from "@/utils/formatDisplay";
-import { formatDateTimeForAPISubmit, getCurrentTime, getFormattedDate } from "@/lib/utils";
+import {
+  formatDateTimeForAPISubmit,
+  getCurrentTime,
+  getFormattedDate,
+} from "@/lib/utils";
+import CreateWarrantyReturnButton from "./CreateWarrantyReturnButton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Form schema
 const formSchema = z.object({
@@ -47,9 +52,12 @@ const formSchema = z.object({
   }),
   resolution: z.string().optional(),
   warrantyNotes: z.string().optional(),
+  showClaimAmount: z.boolean().default(false), // Added checkbox field
   claimAmount: z.number().positive().optional(),
   documentDescription: z.string().optional(),
   createReturnTask: z.boolean(),
+  // Add returnOption to form schema
+  returnOption: z.enum(["reinstallOldDevice", "warrantyFailed"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -72,6 +80,10 @@ const UpdateWarrantyClaimButton = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [openReturnDialog, setOpenReturnDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("schedule");
+  const [updatedTaskDetail, setUpdatedTaskDetail] =
+    useState<WARRANTY_TASK_DETAIL | null>(taskDetail);
+  const [isReinstall, setIsReinstall] = useState(true);
+  const [isFailed, setIsFailed] = useState(false);
 
   if (!taskDetail) {
     return (
@@ -99,9 +111,8 @@ const UpdateWarrantyClaimButton = ({
     }
   };
 
- 
-
   // Initialize the form
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -111,9 +122,11 @@ const UpdateWarrantyClaimButton = ({
         : getCurrentTime(),
       resolution: taskDetail?.resolution || "",
       warrantyNotes: taskDetail?.warrantyNotes || "",
+      showClaimAmount: !!taskDetail?.claimAmount, // Set to true if there's a claim amount
       claimAmount: taskDetail?.claimAmount ?? undefined,
       documentDescription: "",
-      createReturnTask: false,
+      createReturnTask: true, // Set default to true
+      returnOption: "reinstallOldDevice", // Default to reinstall old device
     },
   });
 
@@ -159,7 +172,21 @@ const UpdateWarrantyClaimButton = ({
       if (values.documentDescription)
         formData.append("DocumentDescription", values.documentDescription);
 
-      await apiClient.task.updateWarrantyClaim(formData);
+      const response = await apiClient.task.updateWarrantyClaim(formData);
+
+      // Create a new object that includes the original task detail plus our updated data
+      const updatedDetail = {
+        ...taskDetail,
+        expectedReturnDate: combinedDateTime.toISOString(),
+        resolution: values.resolution || taskDetail.resolution,
+        warrantyNotes: values.warrantyNotes || taskDetail.warrantyNotes,
+        claimAmount:
+          values.claimAmount !== undefined
+            ? values.claimAmount
+            : taskDetail.claimAmount,
+      };
+
+      setUpdatedTaskDetail(updatedDetail);
 
       toast.success("Cập nhật thành công", {
         description: `Ngày trả dự kiến: ${format(
@@ -171,6 +198,9 @@ const UpdateWarrantyClaimButton = ({
       if (values.createReturnTask) {
         handleOpenChange(false);
         setOpenReturnDialog(true);
+        // Pass these values to CreateWarrantyReturnButton
+        setIsReinstall(values.returnOption === "reinstallOldDevice");
+        setIsFailed(values.returnOption === "warrantyFailed");
       } else {
         handleOpenChange(false);
         onSuccess?.();
@@ -289,7 +319,6 @@ const UpdateWarrantyClaimButton = ({
                                 <div className="relative">
                                   <Calendar className="absolute left-2 top-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
 
-                                  {/* Custom date input with Vietnamese format display */}
                                   <div className="relative">
                                     <Input
                                       type="text"
@@ -362,69 +391,146 @@ const UpdateWarrantyClaimButton = ({
                       </div>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="claimAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex items-baseline justify-between">
-                            <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
-                              Số tiền yêu cầu
-                            </FormLabel>
-                            <FormMessage className="text-[10px]" />
-                          </div>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-2 top-1.5 h-4 w-4 text-blue-500 dark:text-blue-400 text-xs font-medium">
-                                ₫
-                              </span>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={10000000}
-                                className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
-                                placeholder="Nhập số tiền yêu cầu"
-                                {...field}
-                                value={field.value ?? ""}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  field.onChange(
-                                    isNaN(val)
-                                      ? undefined
-                                      : Math.min(val, 10000000)
-                                  );
-                                }}
+                    <div className="space-y-3">
+                      <FormField
+                        control={form.control}
+                        name="showClaimAmount"
+                        render={({ field }) => (
+                          <FormItem
+                            className="flex items-center space-x-2 space-y-0 
+                            mt-1 p-2 bg-gray-50/70 dark:bg-gray-800/30 rounded-md border border-gray-200 dark:border-gray-700"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                               />
-                            </div>
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                            </FormControl>
+                            <FormLabel className="text-xs font-medium cursor-pointer">
+                              Khoản chi thêm
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
 
-                    {/* Create Return Task Checkbox */}
-                    {taskDetail.taskType === "WarrantySubmission" &&
-                      !taskDetail.actualReturnDate && (
+                      {form.watch("showClaimAmount") && (
                         <FormField
                           control={form.control}
-                          name="createReturnTask"
+                          name="claimAmount"
                           render={({ field }) => (
-                            <FormItem
-                              className="flex items-center space-x-2 space-y-0 
-                            mt-3 p-2 bg-blue-50/70 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-800"
-                            >
+                            <FormItem className="pl-8">
+                              <div className="flex items-baseline justify-between">
+                                <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
+                                  Số tiền chi thêm
+                                </FormLabel>
+                                <FormMessage className="text-[10px]" />
+                              </div>
                               <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
-                                />
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1.5 h-4 w-4 text-blue-500 dark:text-blue-400 text-xs font-medium">
+                                    ₫
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={10000000}
+                                    className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
+                                    placeholder="Nhập số tiền chi thêm"
+                                    {...field}
+                                    value={field.value ?? ""}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      field.onChange(
+                                        isNaN(val)
+                                          ? undefined
+                                          : Math.min(val, 10000000)
+                                      );
+                                    }}
+                                  />
+                                </div>
                               </FormControl>
-                              <FormLabel className="text-xs text-blue-700 dark:text-blue-300 font-medium cursor-pointer">
-                                Tạo nhiệm vụ trả bảo hành sau khi cập nhật
-                              </FormLabel>
                             </FormItem>
                           )}
                         />
+                      )}
+                    </div>
+
+                    {taskDetail.taskType === "WarrantySubmission" &&
+                      !taskDetail.actualReturnDate && (
+                        <div className="space-y-3 mt-3">
+                          <FormField
+                            control={form.control as any}
+                            name="createReturnTask"
+                            render={({ field }) => (
+                              <FormItem
+                                className="flex items-center space-x-2 space-y-0 
+                                p-2 bg-blue-50/70 dark:bg-blue-900/10 rounded-md border border-blue-100 dark:border-blue-800"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs text-blue-700 dark:text-blue-300 font-medium cursor-pointer">
+                                  Tạo nhiệm vụ trả bảo hành sau khi cập nhật
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+
+                          {form.watch("createReturnTask") && (
+                            <FormField
+                              control={form.control}
+                              name="returnOption"
+                              render={({ field }) => (
+                                <FormItem className="pl-8">
+                                  <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
+                                    Loại trả bảo hành
+                                  </FormLabel>
+                                  <FormControl>
+                                    <RadioGroup
+                                      onValueChange={field.onChange}
+                                      defaultValue={field.value}
+                                      className="grid grid-cols-1 gap-2 mt-2"
+                                    >
+                                      <FormItem className="flex items-center space-x-3 space-y-0 border border-green-100 dark:border-green-800 rounded-lg p-2 hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors">
+                                        <FormControl>
+                                          <RadioGroupItem value="reinstallOldDevice" />
+                                        </FormControl>
+                                        <FormLabel className="font-normal cursor-pointer flex-1 m-0">
+                                          <div className="font-medium text-xs text-green-700 dark:text-green-300">
+                                            Lắp lại thiết bị cũ
+                                          </div>
+                                          <p className="text-[10px] text-green-600/70 dark:text-green-400/70 mt-0.5">
+                                            Lắp đặt lại thiết bị cũ sau khi sửa
+                                            chữa
+                                          </p>
+                                        </FormLabel>
+                                      </FormItem>
+                                      <FormItem className="flex items-center space-x-3 space-y-0 border border-red-100 dark:border-red-800 rounded-lg p-2 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors">
+                                        <FormControl>
+                                          <RadioGroupItem value="warrantyFailed" />
+                                        </FormControl>
+                                        <FormLabel className="font-normal cursor-pointer flex-1 m-0">
+                                          <div className="font-medium text-xs text-red-700 dark:text-red-300">
+                                            Bảo hành thất bại
+                                          </div>
+                                          <p className="text-[10px] text-red-600/70 dark:text-red-400/70 mt-0.5">
+                                            Không thể sửa chữa thiết bị và cần
+                                            thay thế mới
+                                          </p>
+                                        </FormLabel>
+                                      </FormItem>
+                                    </RadioGroup>
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
                       )}
                   </TabsContent>
 
@@ -479,6 +585,8 @@ const UpdateWarrantyClaimButton = ({
                           </FormItem>
                         )}
                       />
+
+                      {/* Add this inside the details tab, right after the warrantyNotes field */}
                     </div>
                   </TabsContent>
 
@@ -611,10 +719,12 @@ const UpdateWarrantyClaimButton = ({
       </Dialog>
 
       <CreateWarrantyReturnButton
-        taskDetail={taskDetail}
+        taskDetail={updatedTaskDetail || taskDetail}
         onSuccess={handleReturnTaskSuccess}
         open={openReturnDialog}
         onOpenChange={setOpenReturnDialog}
+        isReinstall={isReinstall}
+        isFailed={isFailed}
       />
     </>
   );

@@ -50,7 +50,12 @@ import {
   getPriorityColor,
   getGroupTypeColor,
 } from "@/utils/colorUtils";
-import { translateTaskPriority, translateTaskStatus } from "@/utils/textTypeTask";
+import {
+  translateTaskPriority,
+  translateTaskStatus,
+  translateTaskType,
+  translateGroupType,
+} from "@/utils/textTypeTask";
 
 const TaskManagementPage = () => {
   const { canAccessWorkspace } = useAuth();
@@ -269,7 +274,7 @@ const TaskManagementPage = () => {
                                     group.groupType
                                   )} text-xs`}
                                 >
-                                  {group.groupType}
+                                  {translateGroupType(group.groupType)}
                                 </Badge>
                               </div>
                             </TableCell>
@@ -331,7 +336,9 @@ const TaskManagementPage = () => {
               {/* Task Groups Pagination */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Số mục mỗi trang:</span>
+                  <span className="text-sm text-gray-600">
+                    Số mục mỗi trang:
+                  </span>
                   <Select
                     value={taskGroupsPageSize.toString()}
                     onValueChange={(value) => {
@@ -404,6 +411,7 @@ const TaskManagementPage = () => {
                   <SelectItem value="Installation">Lắp đặt</SelectItem>
                   <SelectItem value="Uninstallation">Tháo dỡ</SelectItem>
                   <SelectItem value="WarrantySubmission">Bảo hành</SelectItem>
+                  <SelectItem value="WarrantyReturn">Trả bảo hành</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -460,7 +468,9 @@ const TaskManagementPage = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{task.taskType}</Badge>
+                            <Badge variant="outline">
+                              {translateTaskType(task.taskType)}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -510,7 +520,9 @@ const TaskManagementPage = () => {
               {/* Individual Tasks Pagination */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Số mục mỗi trang:</span>
+                  <span className="text-sm text-gray-600">
+                    Số mục mỗi trang:
+                  </span>
                   <Select
                     value={singleTasksPageSize.toString()}
                     onValueChange={(value) => {
