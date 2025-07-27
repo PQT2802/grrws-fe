@@ -55,9 +55,13 @@ import useSignalRStore from "@/store/useSignalRStore";
 interface TaskTableCpnProps {
   requestId: string;
   refreshTrigger?: number;
+  workspaceId: string;
 }
-
-const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
+const TaskTableCpn = ({
+  requestId,
+  refreshTrigger = 0,
+  workspaceId,
+}: TaskTableCpnProps) => {
   const [taskGroups, setTaskGroups] = useState<TASK_GROUP_WEB[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState("");
@@ -339,15 +343,14 @@ const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
         const taskGroup = info.row.original;
 
         return (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleViewTaskGroup(taskGroup)}
-            className="flex items-center gap-2"
+          <a
+            href={`/workspace/${workspaceId}/tasks/group/${taskGroup.taskGroupId}`}
+            className="inline-block w-full"
           >
-            <Eye className="h-4 w-4" />
-            View Tasks
-          </Button>
+            <Button variant="outline" size="sm" className="w-full">
+              Xem Chi tiết
+            </Button>
+          </a>
         );
       },
     },
