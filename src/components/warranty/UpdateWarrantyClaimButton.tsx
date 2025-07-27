@@ -52,7 +52,7 @@ const formSchema = z.object({
   }),
   resolution: z.string().optional(),
   warrantyNotes: z.string().optional(),
-  showClaimAmount: z.boolean().default(false), // Added checkbox field
+  showClaimAmount: z.boolean(), // Made required to match form type
   claimAmount: z.number().positive().optional(),
   documentDescription: z.string().optional(),
   createReturnTask: z.boolean(),
