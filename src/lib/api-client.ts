@@ -19,6 +19,7 @@ import {
   CreateWarrantyReturn,
   INSTALL_TASK_DETAIL,
   SPAREPART_WEB,
+  STAFF_TASK_RESPONSE,
   TASK_GROUP_RESPONSE,
   UNINSTALL_TASK_DETAIL,
   WARRANTY_TASK_DETAIL,
@@ -282,6 +283,24 @@ class APIClient {
       WarrantyNotes?: string;
     }): Promise<any> => {
       return http.post("/api/Task/warranty-task/return", data);
+    },
+    getAllSingleTasks: (
+      pageNumber: number = 1,
+      pageSize: number = 10,
+      taskType?: string,
+      status?: string,
+      priority?: string
+    ): Promise<STAFF_TASK_RESPONSE> => {
+      const params = new URLSearchParams();
+      params.append('pageNumber', pageNumber.toString());
+      params.append('pageSize', pageSize.toString());
+      
+      if (taskType) params.append('taskType', taskType);
+      if (status) params.append('status', status);
+      if (priority) params.append('priority', priority);
+
+      console.log(`Fetching single tasks with params: ${params.toString()}`);
+      return http.get<STAFF_TASK_RESPONSE>(`/api/Task/single-tasks?${params.toString()}`);
     },
   };
   error = {

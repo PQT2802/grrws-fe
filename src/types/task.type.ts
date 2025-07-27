@@ -173,3 +173,48 @@ export interface CreateWarrantyReturn {
   IsWarrantyFailed: boolean; // Indicates if the warranty claim failed
   IsReInstallOldDevice: boolean; // Indicates if the old device needs to be reinstalled
 }
+
+export interface STAFF_TASK {
+  taskId: string;
+  taskName: string;
+  taskDescription: string;
+  taskType: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  status: string;
+  startTime: string;
+  expectedTime: string;
+  endTime: string | null;
+  assigneeName: string;
+  assigneeId: string;
+  createdDate: string;
+  modifiedDate: string | null;
+  requestId: string;
+  isUninstallDevice: boolean;
+}
+
+export interface STAFF_TASK_RESPONSE {
+  data: STAFF_TASK[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
+// Define allowed task types
+export type TaskType = 
+  | 'Warranty' 
+  | 'WarrantySubmission' 
+  | 'WarrantyReturn' 
+  | 'Repair' 
+  | 'Replacement' 
+  | 'Installation' 
+  | 'Uninstallation';
+
+// Task type mapping for tabs with proper typing
+export const TASK_TYPE_MAPPING: Record<string, TaskType[]> = {
+  warranty: ['Warranty', 'WarrantySubmission', 'WarrantyReturn'],
+  repair: ['Repair'],
+  replace: ['Replacement'],
+  install_uninstall: ['Installation', 'Uninstallation']
+};
+
+export type TaskTabType = 'all' | 'warranty' | 'repair' | 'replace' | 'install_uninstall';
