@@ -19,6 +19,7 @@ import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaimButton";
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
+import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn"; // Add this import
 import {
   formatAPIDateToHoChiMinh,
   formatAPIDateUTC,
@@ -117,6 +118,7 @@ const GroupTaskDetailsPage = () => {
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<
     WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL |  null
   >(null);
+  const [showCreateInstallModal, setShowCreateInstallModal] = useState(false);
   const warrantySubmissionTask =
     taskGroup?.tasks.find((task) => task.taskType === "WarrantySubmission") ||
     null;
@@ -960,7 +962,6 @@ const GroupTaskDetailsPage = () => {
                   taskDetail={warrantyTaskDetailForFooter}
                   onSuccess={async () => {
                     await refreshTaskData();
-                    // Re-fetch warranty task detail after update
                     await fetchWarrantyTaskDetailForFooter();
                   }}
                 />
@@ -974,13 +975,13 @@ const GroupTaskDetailsPage = () => {
                   Đang tải Bảo hành...
                 </Button>
               ))}
+
             {warrantySubmissionTask &&
               (warrantyTaskDetailForFooter ? (
                 <CreateWarrantyReturnButton
                   taskDetail={warrantyTaskDetailForFooter}
                   onSuccess={async () => {
                     await refreshTaskData();
-                    // Re-fetch warranty task detail after update
                     await fetchWarrantyTaskDetailForFooter();
                   }}
                 />
@@ -994,10 +995,30 @@ const GroupTaskDetailsPage = () => {
                   Đang tải Trả Bảo hành...
                 </Button>
               ))}
-            <Button variant="default">
+
+            {/* Add this: Show CreateInstallUninstallTaskCpn button when warranty return is completed */}
+            {warrantyTaskDetailForFooter?.status?.toLowerCase() === "completed" && (
+              <>
+                <Button
+                  variant="default"
+                  onClick={() => setShowCreateInstallModal(true)}
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Tạo nhiệm vụ lắp đặt
+                </Button>
+                <CreateInstallUninstallTaskCpn
+                  open={showCreateInstallModal}
+                  setOpen={setShowCreateInstallModal}
+                  requestId={taskGroup.requestId}
+                  onTaskCreated={refreshTaskData}
+                />
+              </>
+            )}
+
+            {/* <Button variant="default">
               <Eye className="h-4 w-4 mr-2" />
               Xem Yêu cầu
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
