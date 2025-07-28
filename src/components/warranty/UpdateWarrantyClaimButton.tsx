@@ -82,7 +82,7 @@ const UpdateWarrantyClaimButton = ({
   const [activeTab, setActiveTab] = useState("schedule");
   const [updatedTaskDetail, setUpdatedTaskDetail] =
     useState<WARRANTY_TASK_DETAIL | null>(taskDetail);
-  const [isReinstall, setIsReinstall] = useState(true);
+  const [isReinstall, setIsReinstall] = useState(false);
   const [isFailed, setIsFailed] = useState(false);
 
   if (!taskDetail) {
@@ -481,7 +481,7 @@ const UpdateWarrantyClaimButton = ({
                             )}
                           />
 
-                          {form.watch("createReturnTask") && (
+                          {/* {form.watch("createReturnTask") && (
                             <FormField
                               control={form.control}
                               name="returnOption"
@@ -529,7 +529,7 @@ const UpdateWarrantyClaimButton = ({
                                 </FormItem>
                               )}
                             />
-                          )}
+                          )} */}
                         </div>
                       )}
                   </TabsContent>

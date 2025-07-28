@@ -20,6 +20,7 @@ import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaimButton";
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
 import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn"; // Add this import
+import CreateReinstallTaskButton from "@/components/warranty/CreateReinstallTaskButton";
 import {
   formatAPIDateToHoChiMinh,
   formatAPIDateUTC,
@@ -113,10 +114,13 @@ const GroupTaskDetailsPage = () => {
   const [selectedTask, setSelectedTask] = useState<TASK_IN_GROUP | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dropdownTaskDetails, setDropdownTaskDetails] = useState<
-    Record<string, WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL | null>
+    Record<
+      string,
+      WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL | null
+    >
   >({});
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<
-    WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL |  null
+    WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL | null
   >(null);
   const [showCreateInstallModal, setShowCreateInstallModal] = useState(false);
   const warrantySubmissionTask =
@@ -997,7 +1001,8 @@ const GroupTaskDetailsPage = () => {
               ))}
 
             {/* Add this: Show CreateInstallUninstallTaskCpn button when warranty return is completed */}
-            {warrantyTaskDetailForFooter?.status?.toLowerCase() === "completed" && (
+            {warrantyTaskDetailForFooter?.status?.toLowerCase() ===
+              "completed" && (
               <>
                 <Button
                   variant="default"
@@ -1013,6 +1018,17 @@ const GroupTaskDetailsPage = () => {
                   onTaskCreated={refreshTaskData}
                 />
               </>
+            )}
+
+            {/* Add the CreateReinstallTaskButton when warrantyTaskDetailForFooter exists */}
+            {warrantyTaskDetailForFooter && (
+              <CreateReinstallTaskButton
+                requestId={taskGroup.requestId}
+                taskGroupId={taskGroupId}
+                deviceId={warrantyTaskDetailForFooter.deviceId}
+                deviceName={"Thiết bị Bảo hành"}
+                onSuccess={refreshTaskData}
+              />
             )}
 
             {/* <Button variant="default">
