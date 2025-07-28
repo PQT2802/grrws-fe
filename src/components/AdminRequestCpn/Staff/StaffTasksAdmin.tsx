@@ -192,6 +192,7 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
       case 'inprogress': case 'in-progress': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
       case 'completed': return 'bg-green-500/10 text-green-400 border-green-500/20';
       case 'cancelled': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      case 'waitingforconfirmation': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case 'waitingforinstallation': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case 'paused': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
       default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
@@ -237,6 +238,7 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
       'in-progress': 'Đang thực hiện',
       'completed': 'Hoàn thành',
       'cancelled': 'Đã hủy',
+      'waitingforconfirmation': 'Chờ xác nhận',
       'waitingforinstallation': 'Chờ lắp đặt',
       'paused': 'Tạm dừng'
     };

@@ -591,6 +591,51 @@ class APIClient {
       });
     },
   };
+
+  // NEW: Machine Action Confirmation API
+  machineActionConfirmation = {
+    getAll: (
+      pageNumber: number = 1,
+      pageSize: number = 10,
+      isAscending: boolean = true,
+      status?: string,
+      actionType?: string
+    ): Promise<any> => {
+      console.log(`Getting machine action confirmations (page ${pageNumber}, size ${pageSize})`);
+      
+      const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+        isAscending: isAscending.toString(),
+      });
+
+      if (status && status !== 'all') {
+        params.append('status', status);
+      }
+      
+      if (actionType && actionType !== 'all') {
+        params.append('actionType', actionType);
+      }
+
+      return http.get(`/api/MachineActionConfirmation/search?${params.toString()}`);
+    },
+
+    getById: (requestId: string): Promise<any> => {
+      console.log(`Getting machine action confirmation by ID: ${requestId}`);
+      return http.get(`/api/MachineActionConfirmation/${requestId}`);
+    },
+
+    // Update confirmation status
+    updateConfirmation: async (requestId: string, data: {
+      mechanicConfirm?: boolean;
+      stockkeeperConfirm?: boolean;
+      notes?: string;
+    }): Promise<any> => {
+      console.log(`Updating machine action confirmation: ${requestId}`);
+      return http.put(`/api/MachineActionConfirmation/${requestId}`, data);
+    },
+  };
+
   dashboard = {
     getTechnicalHeadStats: (): Promise<any> => {
       return http.get("/api/Dashboard/technical-head-stats");

@@ -147,3 +147,54 @@ export interface MACHINE_REQUEST {
   newDeviceId: string;
   machineId: string;
 }
+
+// NEW: Machine Action Confirmation types
+export type MachineActionType = 'StockOut' | 'StockIn' | 'Installation' | 'WarrantySubmission' | 'SparePartRequest';
+
+export interface MACHINE_ACTION_CONFIRMATION {
+  id: string;
+  confirmationCode: string;
+  startDate: string;
+  requestedById: string;
+  assigneeId: string;
+  assigneeName: string;
+  deviceId: string;
+  machineId: string;
+  status: string;
+  actionType: MachineActionType;
+  mechanicConfirm: boolean;
+  stockkeeperConfirm: boolean;
+  notes: string;
+}
+
+export interface MACHINE_ACTION_CONFIRMATION_RESPONSE {
+  data: {
+    data: MACHINE_ACTION_CONFIRMATION[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+  }
+}
+
+// Unified request interface for the merged list
+export interface UNIFIED_SKEEPER_REQUEST {
+  id: string;
+  type: 'machineAction' | 'sparePart' | 'machineReplacement';
+  title: string;
+  description: string;
+  requestDate: string;
+  status: string;
+  assigneeName: string;
+  actionType?: MachineActionType;
+  confirmationCode?: string;
+  mechanicConfirm?: boolean;
+  stockkeeperConfirm?: boolean;
+  // Spare part specific
+  requestCode?: string;
+  sparePartCount?: number;
+  // Machine replacement specific  
+  oldDeviceName?: string;
+  newDeviceName?: string;
+  // Original data for detail modal
+  originalData: MACHINE_ACTION_CONFIRMATION | SPAREPART_REQUEST | MACHINE_REPLACEMENT_REQUEST;
+}

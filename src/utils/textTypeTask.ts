@@ -49,7 +49,6 @@ export function translateTaskType(taskType: string): string {
       return "Trả kho";
     case "stockreturn":
       return "Trả stock";
-
     default:
       return taskType; // Return original if no translation found
   }
@@ -83,6 +82,8 @@ export function translateTaskStatus(status: string): string {
       return "Chờ xác nhận";
     case "waitingforinstallation":
       return "Chờ thiết bị";
+    case "confirmed":
+      return "Đã xác nhận";
     default:
       return status; // Return original if no translation found
   }
@@ -118,5 +119,25 @@ export function translateTaskPriority(priority: string): string {
       return "Khẩn cấp";
     default:
       return priority; // Return original if no translation found
+  }
+}
+
+/**
+ * Convert machine action type to Vietnamese text
+ */
+export function translateActionType(actionType: string): string {
+  switch (actionType.toLowerCase()) {
+    case "stockout":
+      return "Xuất kho";
+    case "stockin":
+      return "Nhập kho";
+    case "installation":
+      return "Lắp đặt";
+    case "warrantysubmission":
+      return "Gửi bảo hành";
+    case "sparepartrequest":
+      return "Yêu cầu linh kiện";
+    default:
+      return actionType; // Return original if no translation found
   }
 }

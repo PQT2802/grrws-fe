@@ -20,6 +20,7 @@ import {
   Building
 } from "lucide-react"
 import { REQUEST_ITEM } from "@/types/dashboard.type"
+import { translateTaskStatus, translateTaskPriority } from "@/utils/textTypeTask"
 
 interface UnifiedRequestListProps {
   requests: REQUEST_ITEM[]
@@ -43,6 +44,25 @@ export default function UnifiedRequestList({
   const [expandedAreas, setExpandedAreas] = useState<{ [key: string]: boolean }>({})
   const [expandedZones, setExpandedZones] = useState<{ [key: string]: boolean }>({})
 
+  // Safe translation functions
+  const safeTranslateTaskStatus = (status: string) => {
+    try {
+      return translateTaskStatus(status || 'unknown');
+    } catch (error) {
+      console.error('Error translating status:', error);
+      return status || 'Unknown';
+    }
+  };
+
+  const safeTranslateTaskPriority = (priority: string) => {
+    try {
+      return translateTaskPriority(priority || 'medium');
+    } catch (error) {
+      console.error('Error translating priority:', error);
+      return priority || 'Medium';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000))
@@ -59,8 +79,10 @@ export default function UnifiedRequestList({
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'high':
+      case 'urgent':
         return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      case 'high':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
       case 'medium':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
       case 'low':
@@ -79,8 +101,11 @@ export default function UnifiedRequestList({
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-      default:
+      case 'inprogress':
+      case 'in-progress':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
     }
   }
 
@@ -272,11 +297,11 @@ export default function UnifiedRequestList({
                                   <tr className="border-b bg-muted/30">
                                     <th className="px-4 py-3 text-left text-sm font-medium">Tiêu đề yêu cầu</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Người tạo</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">Độ ưu tiên</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium w-[100px]">Độ ưu tiên</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Trạng thái</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Báo cáo</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Ngày tạo</th>
-                                    <th className="px-4 py-3 text-right text-sm font-medium">Thao tác</th>
+                                    <th className="pr-4 py-3 text-right text-sm font-medium w-[80px]">Thao tác</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -312,7 +337,7 @@ export default function UnifiedRequestList({
                                           variant="secondary" 
                                           className={`${getPriorityColor(request.priority)} border-0`}
                                         >
-                                          {request.priority}
+                                          {safeTranslateTaskPriority(request.priority)}
                                         </Badge>
                                       </td>
                                       <td className="px-4 py-3">
@@ -322,7 +347,7 @@ export default function UnifiedRequestList({
                                             variant="secondary" 
                                             className={`${getStatusColor(request.status)} border-0`}
                                           >
-                                            {request.status}
+                                            {safeTranslateTaskStatus(request.status)}
                                           </Badge>
                                         </div>
                                       </td>
