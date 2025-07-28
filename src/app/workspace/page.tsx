@@ -130,7 +130,7 @@ const WorkspacePage = () => {
     } else {
       handleSearchWorkspace(debouncedQuery);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [debouncedQuery]);
 
   // Show loading while checking auth
