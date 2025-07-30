@@ -39,6 +39,7 @@ interface RequestSummaryData {
     sparePartRequest: number;
     pending: number;
     completed: number;
+    inprogess: number;
   };
 }
 
@@ -117,6 +118,7 @@ export default function RequestSummaryAdmin() {
         sparePartRequest: machineActionData.filter((req: any) => req.actionType?.toLowerCase() === 'sparepartrequest').length,
         pending: machineActionData.filter((req: any) => req.status?.toLowerCase() === 'pending').length,
         completed: machineActionData.filter((req: any) => req.status?.toLowerCase() === 'completed').length,
+        inprogess: machineActionData.filter((req: any) => req.status?.toLowerCase() === 'inprogress').length
       };
 
       setSummaryData({
@@ -479,10 +481,10 @@ export default function RequestSummaryAdmin() {
                   {summaryData.machineActions.warrantySubmission}
                 </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-900/20 dark:border-gray-800">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-400">Khác</span>
-                <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
-                  {summaryData.machineActions.total - summaryData.machineActions.pending - summaryData.machineActions.completed}
+              <div className="flex items-center justify-between p-3 bg-gray-50 hover:bg-blue-100 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Đang thực hiện</span>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                  {summaryData.machineActions.inprogess}
                 </Badge>
               </div>
             </div>
@@ -517,9 +519,9 @@ export default function RequestSummaryAdmin() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả loại</SelectItem>
-                {availableActionTypes.map(actionType => (
-                  <SelectItem key={actionType} value={actionType}>
-                    {safeTranslateActionType(actionType)}
+                {availableActionTypes.filter(actionType => actionType).map(actionType => (
+                  <SelectItem key={actionType} value={actionType!}>
+                    {safeTranslateActionType(actionType!)}
                   </SelectItem>
                 ))}
               </SelectContent>

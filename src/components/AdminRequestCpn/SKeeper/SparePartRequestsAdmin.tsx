@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Eye, Search, Filter, Package, Calendar, User, Clock } from 'lucide-react';
+import { Eye, Search, Filter, Package, Calendar, User, Clock, CheckCircle, XCircle, Wrench } from 'lucide-react';
 import { 
   Pagination, 
   PaginationContent, 
@@ -24,16 +24,17 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { SPAREPART_REQUEST, SPAREPART_REQUEST_DETAIL } from '@/types/sparePart.type';
+import { UNIFIED_SKEEPER_REQUEST } from '@/types/sparePart.type';
 import { Skeleton } from '@/components/ui/skeleton';
-import SparePartRequestDetailModal from './SparePartRequestDetailModal';
+import { translateActionType, translateTaskStatus } from '@/utils/textTypeTask';
+import UnifiedRequestDetailModal from './UnifiedRequestDetailModal';
 
 export default function SparePartRequestsAdmin() {
-  const [requests, setRequests] = useState<SPAREPART_REQUEST[]>([]);
+  const [requests, setRequests] = useState<UNIFIED_SKEEPER_REQUEST[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedRequest, setSelectedRequest] = useState<SPAREPART_REQUEST_DETAIL | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<UNIFIED_SKEEPER_REQUEST | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   
   // Pagination state
@@ -48,43 +49,86 @@ export default function SparePartRequestsAdmin() {
     fetchRequests(1, pagination.pageSize);
   }, []);
 
+  // Safe translation functions
+  const safeTranslateTaskStatus = (status: string) => {
+    try {
+      return translateTaskStatus(status || 'unknown');
+    } catch (error) {
+      console.error('Error translating status:', error);
+      return status || 'Unknown';
+    }
+  };
+
+  const safeTranslateActionType = (actionType: string) => {
+    try {
+      return translateActionType(actionType || 'unknown');
+    } catch (error) {
+      console.error('Error translating action type:', error);
+      return actionType || 'Unknown';
+    }
+  };
+
   const fetchRequests = async (page: number = 1, pageSize: number = 10) => {
     try {
       setIsLoading(true);
       console.log(`Fetching spare part requests for page ${page}, size ${pageSize}`);
       
-      const response = await apiClient.sparePart.getRequests(page, pageSize);
-      console.log("Spare part requests API response:", response);
-      
-      let sparePartData: SPAREPART_REQUEST[] = [];
+      // Fetch from unified API with filter for spare part requests
+      const response = await apiClient.machineActionConfirmation.getAll(
+        page, 
+        pageSize, 
+        false, // newest first
+        statusFilter !== 'all' ? statusFilter : undefined,
+        'SparePartRequest' // Filter for spare part requests only
+      );
+
+      let machineActionData: any[] = [];
       let totalItems = 0;
       let totalPages = 1;
       let currentPage = page;
-      
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        sparePartData = response.data.data;
+
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        machineActionData = response.data.data;
         totalItems = response.data.totalCount || 0;
-        totalPages = response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
+        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         currentPage = response.data.pageNumber || page;
-      } else if (response.data && Array.isArray(response.data)) {
-        sparePartData = response.data;
+      } else if (Array.isArray(response?.data)) {
+        machineActionData = response.data;
         totalItems = response.totalCount || response.data.length;
-        totalPages = response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
+        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         currentPage = response.pageNumber || page;
       } else if (Array.isArray(response)) {
-        sparePartData = response;
+        machineActionData = response;
         totalItems = response.length;
         totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
       }
 
-      console.log(`Processed spare part data: ${sparePartData.length} items, ${totalItems} total, ${totalPages} pages`);
+      // Transform to unified format - only spare part requests
+      const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
+        .filter(req => req.actionType?.toLowerCase() === 'sparepartrequest')
+        .map(req => ({
+          id: req.id,
+          type: 'machineAction' as const,
+          title: req.confirmationCode,
+          description: `${safeTranslateActionType(req.actionType)} - ${req.notes || 'Không có ghi chú'}`,
+          requestDate: req.startDate,
+          status: req.status,
+          assigneeName: req.assigneeName,
+          actionType: req.actionType,
+          confirmationCode: req.confirmationCode,
+          mechanicConfirm: req.mechanicConfirm,
+          stockkeeperConfirm: req.stockkeeperConfirm,
+          originalData: req
+        }));
 
-      setRequests(sparePartData);
+      console.log(`Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`);
+
+      setRequests(sparePartRequests);
       setPagination({
         currentPage,
         pageSize,
-        totalItems,
-        totalPages
+        totalItems: sparePartRequests.length, // Use filtered count
+        totalPages: Math.max(1, Math.ceil(sparePartRequests.length / pageSize))
       });
       
     } catch (error) {
@@ -109,11 +153,10 @@ export default function SparePartRequestsAdmin() {
       'PENDING': 'Đang chờ xử lý',
       'APPROVED': 'Đã duyệt',
       'CONFIRMED': 'Đã xác nhận',
-      'UNCONFIRMED': 'Chưa xác nhận',
-      'DELIVERED': 'Đã giao',
-      'INSUFFICIENT': 'Thiếu hàng',
-      'REJECTED': 'Từ chối',
-      'CANCELLED': 'Đã hủy'
+      'INPROGRESS': 'Đang thực hiện',
+      'COMPLETED': 'Hoàn thành',
+      'CANCELLED': 'Đã hủy',
+      'REJECTED': 'Đã từ chối'
     };
     return statusMap[status.toUpperCase()] || status;
   };
@@ -143,8 +186,9 @@ export default function SparePartRequestsAdmin() {
   const filteredRequests = useMemo(() => {
     return requests.filter(request => {
       const matchesSearch = searchTerm === '' || 
-        request.requestCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase());
+        request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.description.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
       
@@ -198,11 +242,18 @@ export default function SparePartRequestsAdmin() {
     fetchRequests(1, pageSize);
   };
 
-  const handleViewRequest = async (request: SPAREPART_REQUEST) => {
+  const handleViewRequest = async (request: UNIFIED_SKEEPER_REQUEST) => {
     try {
       // Fetch detailed request data
-      const detailResponse = await apiClient.sparePart.getRequestById(request.id);
-      setSelectedRequest(detailResponse.data || detailResponse);
+      const detailResponse = await apiClient.machineActionConfirmation.getById(request.id);
+      
+      // Update the request with detailed data
+      const updatedRequest = {
+        ...request,
+        originalData: detailResponse.data || detailResponse
+      };
+      
+      setSelectedRequest(updatedRequest);
       setIsDetailModalOpen(true);
     } catch (error) {
       console.error('Failed to fetch request details:', error);
@@ -212,10 +263,10 @@ export default function SparePartRequestsAdmin() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'unconfirmed': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'delivered': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'insufficient': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'confirmed': case 'inprogress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'cancelled': case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
   };
@@ -223,6 +274,13 @@ export default function SparePartRequestsAdmin() {
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
+  };
+
+  // Update filter change handlers
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    fetchRequests(1, pagination.pageSize);
   };
 
   return (
@@ -234,13 +292,13 @@ export default function SparePartRequestsAdmin() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Tìm kiếm theo mã yêu cầu, người nhận..."
+                placeholder="Tìm kiếm theo mã xác nhận, người thực hiện..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Lọc theo trạng thái" />
               </SelectTrigger>
@@ -263,7 +321,7 @@ export default function SparePartRequestsAdmin() {
       <Card className="border border-slate-200 dark:border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-green-400" />
+            <Wrench className="h-5 w-5 text-purple-400" />
             Danh sách yêu cầu linh kiện
             <Badge variant="secondary">{filteredRequests.length}</Badge>
           </CardTitle>
@@ -277,7 +335,7 @@ export default function SparePartRequestsAdmin() {
             </div>
           ) : filteredRequests.length === 0 ? (
             <div className="text-center py-8">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">
                 Không có yêu cầu linh kiện nào
               </p>
@@ -295,10 +353,10 @@ export default function SparePartRequestsAdmin() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-200">
-                    <th className="px-4 py-3 text-left font-medium">Mã yêu cầu</th>
+                    <th className="px-4 py-3 text-left font-medium">Mã xác nhận</th>
                     <th className="px-4 py-3 text-left font-medium">Ngày yêu cầu</th>
-                    <th className="px-4 py-3 text-left font-medium">Người nhận</th>
-                    <th className="px-4 py-3 text-left font-medium">Số lượng mặt hàng</th>
+                    <th className="px-4 py-3 text-left font-medium">Người thực hiện</th>
+                    <th className="px-4 py-3 text-left font-medium">Xác nhận</th>
                     <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
                     <th className="px-4 py-3 text-center font-medium">Thao tác</th>
                   </tr>
@@ -315,9 +373,9 @@ export default function SparePartRequestsAdmin() {
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                       >
                         <td className="px-4 py-3">
-                          <div className="font-medium">{request.requestCode}</div>
+                          <div className="font-medium">{request.title}</div>
                           <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Package className="h-3 w-3 text-green-400" />
+                            <Wrench className="h-3 w-3 text-purple-400" />
                             <span>Yêu cầu linh kiện</span>
                           </div>
                         </td>
@@ -334,13 +392,30 @@ export default function SparePartRequestsAdmin() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4 text-gray-400" />
-                            {request.assigneeName || "Chưa có người nhận"}
+                            <span className={`${!request.assigneeName || request.assigneeName.trim() === '' ? 'text-gray-400 italic' : ''}`}>
+                              {request.assigneeName || 'Chưa có người thực hiện'}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline">
-                            {request.sparePartUsages?.length || 0} mặt hàng
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">Thợ máy:</span>
+                              {request.mechanicConfirm ? (
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <XCircle className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">Thủ kho:</span>
+                              {request.stockkeeperConfirm ? (
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <XCircle className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <Badge className={getStatusColor(request.status)}>
@@ -440,7 +515,7 @@ export default function SparePartRequestsAdmin() {
       </Card>
 
       {/* Detail Modal */}
-      <SparePartRequestDetailModal
+      <UnifiedRequestDetailModal
         request={selectedRequest}
         isOpen={isDetailModalOpen}
         onClose={() => {
