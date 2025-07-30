@@ -5,7 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, Monitor, Package, CalendarIcon } from "lucide-react";
+import {
+  Loader2,
+  Monitor,
+  Package,
+  CalendarIcon,
+  Calendar,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -67,6 +74,32 @@ const CreateReinstallTaskButton = ({
     },
   });
 
+  // Automatically set current date and time as default when dialog opens
+  const handleDialogOpenChange = (newOpen: boolean) => {
+    if (newOpen) {
+      const now = new Date();
+      // Only reset if user hasn't changed the value (i.e., value is empty or invalid)
+      const currentDate = form.getValues("date");
+      const currentTime = form.getValues("time");
+      if (
+        !currentDate ||
+        isNaN(new Date(currentDate).getTime())
+      ) {
+        form.setValue("date", now);
+      }
+      if (
+        !currentTime ||
+        !/^\d{2}:\d{2}$/.test(currentTime)
+      ) {
+        form.setValue("time", format(now, "HH:mm"));
+      }
+    }
+    // Only allow closing if we're not submitting
+    if (!isSubmitting) {
+      setOpen(newOpen);
+    }
+  };
+
   const handleSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
@@ -119,7 +152,7 @@ const CreateReinstallTaskButton = ({
       <Button
         variant="default"
         onClick={() => setOpen(true)}
-        className="bg-green-600 hover:bg-green-700"
+        className="bg-orange-500 hover:bg-orange-600"
       >
         <Package className="h-4 w-4 mr-2" />
         Tạo nhiệm vụ lắp lại
@@ -127,12 +160,7 @@ const CreateReinstallTaskButton = ({
 
       <Dialog
         open={open}
-        onOpenChange={(newOpen) => {
-          // Only allow closing if we're not submitting
-          if (!isSubmitting) {
-            setOpen(newOpen);
-          }
-        }}
+        onOpenChange={handleDialogOpenChange}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -163,44 +191,46 @@ const CreateReinstallTaskButton = ({
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ngày lắp đặt</FormLabel>
+                    <div className="flex items-baseline justify-between mb-1">
+                      <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
+                        Ngày lắp đặt
+                      </FormLabel>
+                      <FormMessage className="text-[10px]" />
+                    </div>
                     <FormControl>
-                      <div className="relative focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary">
-                        {/* Show the native date picker more clearly */}
-                        <div className="flex items-center border rounded-md overflow-hidden">
-                          <div className="flex-1 px-3 py-2">
-                            <span
-                              className={
-                                field.value
-                                  ? "text-foreground"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {field.value
-                                ? format(field.value, "dd/MM/yyyy")
-                                : "Chọn ngày"}
-                            </span>
-                          </div>
-
-                          <Input
-                            type="date"
-                            className="absolute inset-0 text-transparent bg-transparent caret-transparent cursor-pointer z-10"
-                            {...field}
-                            value={
-                              field.value
-                                ? format(field.value, "yyyy-MM-dd")
-                                : ""
-                            }
-                            min={format(new Date(), "yyyy-MM-dd")}
-                            onChange={(e) => {
-                              const date = e.target.valueAsDate || new Date();
-                              field.onChange(date);
-                            }}
-                          />
-                        </div>
+                      <div className="relative">
+                        <Calendar className="absolute left-2 top-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
+                        <Input
+                          type="text"
+                          className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
+                          value={
+                            field.value ? format(field.value, "dd/MM/yyyy") : ""
+                          }
+                          placeholder="DD/MM/YYYY"
+                          readOnly
+                          onClick={() => {
+                            const hiddenInput = document.getElementById(
+                              "hidden-date-picker-install"
+                            );
+                            if (hiddenInput)
+                              (hiddenInput as HTMLInputElement).showPicker();
+                          }}
+                        />
+                        <input
+                          id="hidden-date-picker-install"
+                          type="date"
+                          className="opacity-0 absolute top-0 left-0 w-0 h-0"
+                          min={format(new Date(), "yyyy-MM-dd")}
+                          value={
+                            field.value ? format(field.value, "yyyy-MM-dd") : ""
+                          }
+                          onChange={(e) => {
+                            const date = e.target.valueAsDate || new Date();
+                            field.onChange(date);
+                          }}
+                        />
                       </div>
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -210,19 +240,32 @@ const CreateReinstallTaskButton = ({
                 name="time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Giờ lắp đặt</FormLabel>
+                    <div className="flex items-baseline justify-between">
+                      <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
+                        Giờ lắp đặt
+                      </FormLabel>
+                      <FormMessage className="text-[10px]" />
+                    </div>
                     <FormControl>
-                      <Input
-                        type="time"
-                        {...field}
-                        min={
-                          isToday(form.getValues("date"))
-                            ? format(now, "HH:mm")
-                            : undefined
-                        }
-                      />
+                      <div className="relative">
+                        {/* Icon phía trước giữ lại */}
+                        <Clock className="absolute left-2 top-2 h-4 w-4 text-blue-500 dark:text-blue-400" />
+                        <Input
+                          type="time"
+                          className="pl-8 text-xs h-8 border-gray-200 dark:border-gray-700 focus:border-blue-300 dark:focus:border-blue-600 rounded-md"
+                          onFocus={(e) =>
+                            (e.target as HTMLInputElement).showPicker()
+                          }
+                          onKeyDown={(e) => e.preventDefault()}
+                          {...field}
+                          min={
+                            isToday(form.getValues("date"))
+                              ? format(new Date(), "HH:mm")
+                              : undefined
+                          }
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
                   </FormItem>
                 )}
               />

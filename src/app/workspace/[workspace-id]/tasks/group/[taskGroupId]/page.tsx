@@ -126,6 +126,8 @@ const GroupTaskDetailsPage = () => {
   const warrantySubmissionTask =
     taskGroup?.tasks.find((task) => task.taskType === "WarrantySubmission") ||
     null;
+  const warrantyReturnTask =
+    taskGroup?.tasks.find((task) => task.taskType === "WarrantyReturn") || null;
 
   // Add this
   const repairTask =
@@ -1001,7 +1003,7 @@ const GroupTaskDetailsPage = () => {
               ))}
 
             {/* Add this: Show CreateInstallUninstallTaskCpn button when warranty return is completed */}
-            {warrantyTaskDetailForFooter?.status?.toLowerCase() ===
+            {/* {warrantyTaskDetailForFooter?.status?.toLowerCase() ===
               "completed" && (
               <>
                 <Button
@@ -1018,10 +1020,10 @@ const GroupTaskDetailsPage = () => {
                   onTaskCreated={refreshTaskData}
                 />
               </>
-            )}
+            )} */}
 
             {/* Add the CreateReinstallTaskButton when warrantyTaskDetailForFooter exists */}
-            {warrantyTaskDetailForFooter && (
+            {warrantyTaskDetailForFooter && warrantyReturnTask?.status == "Completed" && (
               <CreateReinstallTaskButton
                 requestId={taskGroup.requestId}
                 taskGroupId={taskGroupId}
