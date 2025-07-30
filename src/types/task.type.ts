@@ -29,7 +29,7 @@ export interface CREATE_UNINSTALL_TASK {
 export interface CREATE_INSTALL_TASK {
   RequestId: string;
   StartDate: string; // ISO string format
-  AssigneeId: string;
+  AssigneeId?: string | null; // User ID of the assignee, can be null if not assigned yet
   TaskGroupId?: string; // Task group ID for installation
   NewDeviceId: string; // New device ID to be installed
 }
@@ -233,32 +233,20 @@ export interface REPAIR_TASK_DETAIL {
   assigneeName: string;
   isInstall: boolean;
   isSigned: boolean;
-  requestMachines: any[]; // hoặc kiểu cụ thể nếu có
-  taskConfirmations: any[];
   errorDetails: ErrorDetail[];
 }
 
 export interface ErrorDetail {
   errorId: string;
-  errorDetailId: string;
+  errorCode: string;
   errorName: string;
-  errorGuildelineTitle: string;
-  errorFixProgress: ErrorFixProgress[];
-  sparePartUsages: SparePartUsage[];
-}
-
-export interface ErrorFixProgress {
-  errorFixProgressId: string;
-  stepDescription: string;
-  stepOrder: number;
-  isCompleted: boolean;
-  completedAt: string | null;
+  spareParts: SparePartUsage[];
 }
 
 export interface SparePartUsage {
-  sparePartUsageId: string;
-  sparePartId: string;
-  sparePartName: string;
-  quantityUsed: number;
-  isTakenFromStock: boolean;
+  sparepartId: string;
+  sparepartName: string;
+  quantityNeeded: number;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////

@@ -6,16 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { formatAPIDateToHoChiMinh, getFirstLetterUppercase } from "@/lib/utils";
 import {
-  formatAPIDateToHoChiMinh,
-  getFirstLetterUppercase,
-} from "@/lib/utils";
-import { 
-  TASK_IN_GROUP, 
-  WARRANTY_TASK_DETAIL, 
+  TASK_IN_GROUP,
+  WARRANTY_TASK_DETAIL,
   INSTALL_TASK_DETAIL,
-  DOCUMENT, 
-  REPAIR_TASK_DETAIL
+  DOCUMENT,
+  REPAIR_TASK_DETAIL,
 } from "@/types/task.type";
 import { DEVICE_WEB } from "@/types/device.type";
 import {
@@ -44,7 +41,11 @@ interface TaskDetailSidePanelProps {
   isOpen: boolean;
   onClose: () => void;
   task: TASK_IN_GROUP | null;
-  taskDetail: WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL |  null;
+  taskDetail:
+    | WARRANTY_TASK_DETAIL
+    | INSTALL_TASK_DETAIL
+    | REPAIR_TASK_DETAIL
+    | null;
   oldDevice?: DEVICE_WEB | null;
   newDevice?: DEVICE_WEB | null;
 }
@@ -179,7 +180,9 @@ const TaskDetailSidePanel = ({
                     </label>
                     <div className="mt-1 flex items-center gap-2">
                       {getTaskTypeIcon(task.taskType)}
-                      <span className="text-sm font-medium">{translateTaskType(task.taskType)}</span>
+                      <span className="text-sm font-medium">
+                        {translateTaskType(task.taskType)}
+                      </span>
                     </div>
                   </div>
 
@@ -187,7 +190,9 @@ const TaskDetailSidePanel = ({
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       Thứ tự thực hiện
                     </label>
-                    <p className="mt-1 text-sm font-medium">#{task.orderIndex}</p>
+                    <p className="mt-1 text-sm font-medium">
+                      #{task.orderIndex}
+                    </p>
                   </div>
                 </div>
 
@@ -236,9 +241,13 @@ const TaskDetailSidePanel = ({
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                           <Monitor className="h-4 w-4 text-red-600" />
-                          <span className="font-medium text-sm">{oldDevice.deviceName}</span>
+                          <span className="font-medium text-sm">
+                            {oldDevice.deviceName}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-600">{oldDevice.deviceCode}</div>
+                        <div className="text-xs text-gray-600">
+                          {oldDevice.deviceCode}
+                        </div>
                       </div>
 
                       {/* Arrow */}
@@ -253,9 +262,13 @@ const TaskDetailSidePanel = ({
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                           <Monitor className="h-4 w-4 text-green-600" />
-                          <span className="font-medium text-sm">{newDevice.deviceName}</span>
+                          <span className="font-medium text-sm">
+                            {newDevice.deviceName}
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-600">{newDevice.deviceCode}</div>
+                        <div className="text-xs text-gray-600">
+                          {newDevice.deviceCode}
+                        </div>
                       </div>
                     </div>
                   ) : oldDevice ? (
@@ -265,9 +278,13 @@ const TaskDetailSidePanel = ({
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <Monitor className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium text-sm">{oldDevice.deviceName}</span>
+                        <span className="font-medium text-sm">
+                          {oldDevice.deviceName}
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-600">{oldDevice.deviceCode}</div>
+                      <div className="text-xs text-gray-600">
+                        {oldDevice.deviceCode}
+                      </div>
                     </div>
                   ) : newDevice ? (
                     <div className="p-3 border border-green-200 bg-green-50 dark:bg-green-950/30 rounded-md">
@@ -276,9 +293,13 @@ const TaskDetailSidePanel = ({
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <Monitor className="h-4 w-4 text-green-600" />
-                        <span className="font-medium text-sm">{newDevice.deviceName}</span>
+                        <span className="font-medium text-sm">
+                          {newDevice.deviceName}
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-600">{newDevice.deviceCode}</div>
+                      <div className="text-xs text-gray-600">
+                        {newDevice.deviceCode}
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-4">
@@ -291,6 +312,67 @@ const TaskDetailSidePanel = ({
                 </CardContent>
               </Card>
             )}
+
+            {/* Error Details (for repair tasks) */}
+            {task.taskType.toLowerCase() === "repair" &&
+              (taskDetail as REPAIR_TASK_DETAIL)?.errorDetails &&
+              (taskDetail as REPAIR_TASK_DETAIL).errorDetails.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                      Chi tiết Lỗi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(taskDetail as REPAIR_TASK_DETAIL).errorDetails.map(
+                      (error, index) => (
+                        <div
+                          key={error.errorId}
+                          className={`p-3 border rounded-md ${
+                            index % 2 === 0
+                              ? "border-orange-200 bg-orange-50 dark:bg-orange-950/30"
+                              : "border-amber-200 bg-amber-50 dark:bg-amber-950/30"
+                          }`}
+                        >
+                          <div className="font-medium mb-2 flex items-center gap-1.5">
+                            <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+                            <span>{error.errorName}</span>
+                          </div>
+
+                          {/* Spare Parts */}
+                          {error.spareParts && error.spareParts.length > 0 ? (
+                            <div className="mt-2">
+                              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Phụ tùng sử dụng:
+                              </div>
+                              <div className="pl-2 border-l-2 border-orange-300 dark:border-orange-700">
+                                {error.spareParts.map((part) => (
+                                  <div
+                                    key={part.sparepartId}
+                                    className="text-xs py-1 flex justify-between"
+                                  >
+                                    <span className="text-gray-800 dark:text-gray-200">
+                                      {part.sparepartName}
+                                    </span>
+                                    <span className="font-medium text-orange-700 dark:text-orange-400">
+                                      x{part.quantityNeeded}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic">
+                              Không có phụ tùng được sử dụng
+                            </div>
+                          )}
+                        </div>
+                      )
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Timeline Information */}
             <Card>
@@ -323,7 +405,10 @@ const TaskDetailSidePanel = ({
                         Thời gian dự kiến hoàn thành
                       </label>
                       <p className="text-sm">
-                        {formatAPIDateToHoChiMinh(task.expectedTime, "datetime")}
+                        {formatAPIDateToHoChiMinh(
+                          task.expectedTime,
+                          "datetime"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -351,7 +436,10 @@ const TaskDetailSidePanel = ({
                         Ngày trả thực tế
                       </label>
                       <p className="text-sm">
-                        {formatAPIDateToHoChiMinh(warrantyTaskDetail.actualReturnDate, "datetime")}
+                        {formatAPIDateToHoChiMinh(
+                          warrantyTaskDetail.actualReturnDate,
+                          "datetime"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -379,8 +467,9 @@ const TaskDetailSidePanel = ({
                         Nhiệm vụ đề xuất
                       </h4>
                       <p className="text-sm text-purple-600 dark:text-purple-300">
-                        Nhiệm vụ này được đề xuất tự động và chưa được áp dụng. 
-                        Bạn có thể áp dụng nó để chuyển trạng thái thành "Đang chờ".
+                        Nhiệm vụ này được đề xuất tự động và chưa được áp dụng.
+                        Bạn có thể áp dụng nó để chuyển trạng thái thành
+                        &quot;Đang chờ&quot;.
                       </p>
                     </div>
                   </div>

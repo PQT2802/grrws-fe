@@ -198,8 +198,8 @@ const CreateWarrantyReturnButton = ({
         ActualReturnDate: combinedDateTime.toISOString(),
         IsEarlyReturn: isEarlyReturn,
         WarrantyNotes: values.warrantyNotes || "",
-        IsWarrantyFailed: isFailed || false,
-        IsReInstallOldDevice: isReinstall !== false, // Default to true if not provided
+        IsWarrantyFailed: false,
+        IsReInstallOldDevice: false, // Default to true if not provided
       };
 
       await apiClient.task.createWarrantyReturnTask(submitData);
@@ -721,88 +721,6 @@ const CreateWarrantyReturnButton = ({
                                 </p>
                               </div>
                             )}
-                            <div className="space-y-1">
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Loại trả bảo hành
-                              </p>
-                              <p className="text-sm font-medium flex items-center gap-1.5">
-                                {isFailed ? (
-                                  <span className="flex items-center text-red-600 gap-1">
-                                    <X className="h-3.5 w-3.5" /> Bảo hành thất
-                                    bại
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center text-green-600 gap-1">
-                                    <Check className="h-3.5 w-3.5" /> Lắp lại
-                                    thiết bị cũ
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">
-                              Trạng thái bảo hành
-                            </label>
-                            <div className="flex flex-col space-y-2">
-                              <div
-                                className={`flex items-center space-x-3 space-y-0 border rounded-lg p-3 transition-colors ${
-                                  !isFailed
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                    : "border-blue-100 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
-                                }`}
-                              >
-                                <div
-                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                    !isFailed
-                                      ? "border-blue-500 bg-blue-500"
-                                      : "border-gray-300 dark:border-gray-600"
-                                  }`}
-                                >
-                                  {!isFailed && (
-                                    <div className="w-2 h-2 bg-white rounded-full" />
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="font-medium">
-                                    Lắp lại thiết bị cũ
-                                  </div>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Sử dụng thiết bị cũ đã sửa chữa để lắp đặt
-                                  </p>
-                                </div>
-                              </div>
-                              <div
-                                className={`flex items-center space-x-3 space-y-0 border rounded-lg p-3 transition-colors ${
-                                  isFailed
-                                    ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                                    : "border-blue-100 dark:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20"
-                                }`}
-                              >
-                                <div
-                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                    isFailed
-                                      ? "border-red-500 bg-red-500"
-                                      : "border-gray-300 dark:border-gray-600"
-                                  }`}
-                                >
-                                  {isFailed && (
-                                    <div className="w-2 h-2 bg-white rounded-full" />
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="font-medium">
-                                    Bảo hành không thành công
-                                  </div>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Yêu cầu bảo hành không thể hoàn thành
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
                           </div>
                         </div>
 
