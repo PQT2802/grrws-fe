@@ -208,6 +208,18 @@ const NotificationBtn = () => {
     }
   };
 
+  // Add this function to mark all unread notifications as read
+  const handleMarkAllAsRead = async () => {
+    const unreadIds = unreadNotifications.map(n => n.id);
+    if (unreadIds.length === 0) return;
+    try {
+      await Promise.all(unreadIds.map(id => markAsRead(id)));
+      await getUnreadCount();
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -246,17 +258,18 @@ const NotificationBtn = () => {
                 </Badge>
               )}
             </DropdownMenuLabel>
-            
-            {/* <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <RefreshCcw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="sr-only">Làm mới</span>
-            </Button> */}
+            {/* Add the "Mark all as read" button here */}
+            {unreadNotifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={handleMarkAllAsRead}
+                disabled={loading}
+              >
+                Đánh dấu tất cả đã đọc
+              </Button>
+            )}
           </div>
 
           <div className="p-3">
