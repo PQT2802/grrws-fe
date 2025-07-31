@@ -99,6 +99,16 @@ export function NavAdmin() {
     },
   ];
 
+  // Helper function to check if current path matches any child item
+  const shouldMenuBeOpen = (item: typeof ADMIN_ITEMS[0]) => {
+    if (!item.items || item.items.length === 0) {
+      return false;
+    }
+    
+    // Check if current pathname matches any child item URL
+    return item.items.some(subItem => pathname === subItem.url);
+  };
+
   return (
     <SidebarGroup>
       <SidebarMenu>
@@ -121,11 +131,13 @@ export function NavAdmin() {
               </SidebarMenuItem>
             );
           } else {
+            const isMenuOpen = shouldMenuBeOpen(item);
+            
             return (
               <Collapsible
                 key={item.title}
                 asChild
-                defaultClosed={item.title === "Request"}
+                defaultOpen={isMenuOpen}
                 className="group/collapsible"
               >
                 <SidebarMenuItem>
