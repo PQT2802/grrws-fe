@@ -5,7 +5,11 @@ import {
   SUGGEST_OBJECT_RESPONSE,
 } from "@/types/comon.type";
 import { DEVICE_WEB, MACHINE_WEB } from "@/types/device.type";
-import { CREATE_ERROR_DETAIL, ErrorGuideline } from "@/types/error.type";
+import {
+  AddError,
+  CREATE_ERROR_DETAIL,
+  ErrorGuideline,
+} from "@/types/error.type";
 import {
   REQUEST_SUMMARY,
   TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB,
@@ -296,31 +300,36 @@ class APIClient {
       priority?: string
     ): Promise<STAFF_TASK_RESPONSE> => {
       const params = new URLSearchParams();
-      params.append('pageNumber', pageNumber.toString());
-      params.append('pageSize', pageSize.toString());
-      
-      if (taskType) params.append('taskType', taskType);
-      if (status) params.append('status', status);
-      if (priority) params.append('priority', priority);
+      params.append("pageNumber", pageNumber.toString());
+      params.append("pageSize", pageSize.toString());
+
+      if (taskType) params.append("taskType", taskType);
+      if (status) params.append("status", status);
+      if (priority) params.append("priority", priority);
 
       console.log(`Fetching single tasks with params: ${params.toString()}`);
-      return http.get<STAFF_TASK_RESPONSE>(`/api/Task/single-tasks?${params.toString()}`);
+      return http.get<STAFF_TASK_RESPONSE>(
+        `/api/Task/single-tasks?${params.toString()}`
+      );
     },
   };
   error = {
     getSuggestedErrors: (
       request: SUGGEST_OBJECT_REQUEST
-    ): Promise<SUGGEST_OBJECT_RESPONSE> => {
+    ): Promise<SUGGEST_OBJECT_RESPONSE[]> => {
       return http.get(
         `/api/Error/suggestions?query=${request.query}&maxResults=${request.maxResults}`
       ); // ✅ Auto token
     },
-    createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
-      return http.post("/api/Error/create-error-detail", errorDetail);
+    addError: (errors: AddError): Promise<any> => {
+      return http.post("/api/ErrorDetail", errors);
     },
-    getErrorGuidelines: (errorId: string): Promise<ErrorGuideline[]> => {
-      return http.get(`/api/ErrorGuideline/by-error/${errorId}`);
-    },
+    // createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
+    //   return http.post("/api/Error/create-error-detail", errorDetail);
+    // },
+    // getErrorGuidelines: (errorId: string): Promise<ErrorGuideline[]> => {
+    //   return http.get(`/api/ErrorGuideline/by-error/${errorId}`);
+    // },
   };
   warranty = {
     getWarrantyHistory: (
@@ -601,23 +610,27 @@ class APIClient {
       status?: string,
       actionType?: string
     ): Promise<any> => {
-      console.log(`Getting machine action confirmations (page ${pageNumber}, size ${pageSize})`);
-      
+      console.log(
+        `Getting machine action confirmations (page ${pageNumber}, size ${pageSize})`
+      );
+
       const params = new URLSearchParams({
         pageNumber: pageNumber.toString(),
         pageSize: pageSize.toString(),
         isAscending: isAscending.toString(),
       });
 
-      if (status && status !== 'all') {
-        params.append('status', status);
-      }
-      
-      if (actionType && actionType !== 'all') {
-        params.append('actionType', actionType);
+      if (status && status !== "all") {
+        params.append("status", status);
       }
 
-      return http.get(`/api/MachineActionConfirmation/search?${params.toString()}`);
+      if (actionType && actionType !== "all") {
+        params.append("actionType", actionType);
+      }
+
+      return http.get(
+        `/api/MachineActionConfirmation/search?${params.toString()}`
+      );
     },
 
     getById: (requestId: string): Promise<any> => {
@@ -626,11 +639,14 @@ class APIClient {
     },
 
     // Update confirmation status
-    updateConfirmation: async (requestId: string, data: {
-      mechanicConfirm?: boolean;
-      stockkeeperConfirm?: boolean;
-      notes?: string;
-    }): Promise<any> => {
+    updateConfirmation: async (
+      requestId: string,
+      data: {
+        mechanicConfirm?: boolean;
+        stockkeeperConfirm?: boolean;
+        notes?: string;
+      }
+    ): Promise<any> => {
       console.log(`Updating machine action confirmation: ${requestId}`);
       return http.put(`/api/MachineActionConfirmation/${requestId}`, data);
     },

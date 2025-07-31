@@ -40,6 +40,7 @@ import WarrantiesModal from "@/components/WarrantiesModal/WarrantiesModal";
 import CreateTaskFromErrorsCpn from "@/components/CreateTaskFromErrorsCpn/CreateTaskFromErrorsCpn";
 import CreateTaskFromTechnicalIssuesCpn from "@/components/CreateTaskFromTechnicalIssuesCpn/CreateTaskFromTechnicalIssuesCpn";
 import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn";
+import AddErrorToRequestModal from "@/components/ErrorTableCpn/AddErrorToRequestModal";
 
 // ✅ Updated to include Technical Issues
 const TAB_CONTENT_LIST = ["Issues", "Errors", "Tasks", "Technical Issues"];
@@ -75,6 +76,7 @@ const RequestDetailPage = () => {
     showCreateTaskFromTechnicalIssues,
     setShowCreateTaskFromTechnicalIssues,
   ] = useState(false);
+  const [showAddErrorModal, setShowAddErrorModal] = useState(false);
 
   const [tasks, setTasks] = useState<TASK_FOR_REQUEST_DETAIL_WEB[]>([]);
 
@@ -354,17 +356,14 @@ const RequestDetailPage = () => {
                       <>
                         <ButtonCpn
                           type="button"
-                          title="Add New Error"
+                          title="Thêm Lỗi Mới"
                           icon={<Plus />}
-                          onClick={() => {
-                            // TODO: Implement add new error functionality
-                            console.log("Add new error");
-                          }}
+                          onClick={() => setShowAddErrorModal(true)}
                         />
                         {selectedErrors.length > 0 && (
                           <ButtonCpn
                             type="button"
-                            title={`Create Repair Task (${selectedErrors.length})`}
+                            title={`Tạo Nhiệm vụ Sửa chữa (${selectedErrors.length})`}
                             icon={<Plus />}
                             onClick={handleCreateTaskFromErrors}
                           />
@@ -428,6 +427,7 @@ const RequestDetailPage = () => {
                     <TaskTableCpn
                       requestId={requestId}
                       refreshTrigger={refreshTrigger}
+                      workspaceId={workspaceId}
                     />
                   </TabsContent>
                   {/* ✅ Add Technical Issues tab content */}
@@ -488,6 +488,15 @@ const RequestDetailPage = () => {
             onTaskCreated={() => {
               handleTaskCreated();
               fetchTasks();
+            }}
+          />
+
+          <AddErrorToRequestModal
+            open={showAddErrorModal}
+            onOpenChange={setShowAddErrorModal}
+            requestId={requestId}
+            onErrorsAdded={() => {
+              setRefreshTrigger((prev) => prev + 1);
             }}
           />
         </div>

@@ -3,7 +3,10 @@ export interface CREATE_ERROR_DETAIL {
   ErrorId: string; // The ID of the request this error is associated with
   RequestId: string; // The ID of the error being created
 }
-
+export interface AddError {
+  ErrorId: string[]; // The ID of the request this error is associated with
+  RequestId: string; // The ID of the error being created
+}
 export interface ErrorFixStep {
   id: string;
   stepDescription: string;
@@ -32,8 +35,8 @@ export interface ISSUE_WEB {
   id: string;
   title: string;
   description: string;
-  severity: 'Low' | 'Medium' | 'High' | 'Critical';
-  status: 'Open' | 'InProgress' | 'Resolved' | 'Closed';
+  severity: "Low" | "Medium" | "High" | "Critical";
+  status: "Open" | "InProgress" | "Resolved" | "Closed";
   reportedBy: string;
   reportedByEmail?: string;
   assignedTo?: string;
@@ -66,8 +69,14 @@ export interface TECHNICAL_ISSUE_WEB {
   id: string;
   title: string;
   description: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
-  status: 'Reported' | 'InvestigationStarted' | 'FixInProgress' | 'Testing' | 'Resolved' | 'Closed';
+  priority: "Low" | "Medium" | "High" | "Urgent";
+  status:
+    | "Reported"
+    | "InvestigationStarted"
+    | "FixInProgress"
+    | "Testing"
+    | "Resolved"
+    | "Closed";
   deviceId?: string;
   deviceName?: string;
   deviceCode?: string;
@@ -91,7 +100,7 @@ export interface TECHNICAL_ISSUE_WEB {
   sparepartsUsed?: TechnicalIssueSparePart[];
   workLog?: TechnicalIssueWorkLog[];
   affectedUsers?: number;
-  businessImpact?: 'Low' | 'Medium' | 'High' | 'Critical';
+  businessImpact?: "Low" | "Medium" | "High" | "Critical";
 }
 
 export interface TechnicalIssueSparePart {
@@ -111,7 +120,12 @@ export interface TechnicalIssueWorkLog {
   workDescription: string;
   hoursSpent: number;
   workDate: string;
-  workType: 'Investigation' | 'Diagnosis' | 'Repair' | 'Testing' | 'Documentation';
+  workType:
+    | "Investigation"
+    | "Diagnosis"
+    | "Repair"
+    | "Testing"
+    | "Documentation";
 }
 
 // Error Log Management Types
@@ -120,7 +134,7 @@ export interface ERROR_LOG_WEB {
   errorCode: string;
   errorMessage: string;
   stackTrace?: string;
-  severity: 'Info' | 'Warning' | 'Error' | 'Critical' | 'Fatal';
+  severity: "Info" | "Warning" | "Error" | "Critical" | "Fatal";
   source: string; // Application, Database, Network, Hardware, etc.
   sourceDetails?: string;
   userId?: string;
@@ -133,10 +147,16 @@ export interface ERROR_LOG_WEB {
   resolvedAt?: string;
   acknowledgedAt?: string;
   acknowledgedBy?: string;
-  status: 'New' | 'Acknowledged' | 'Investigating' | 'Resolved' | 'Ignored' | 'Archived';
+  status:
+    | "New"
+    | "Acknowledged"
+    | "Investigating"
+    | "Resolved"
+    | "Ignored"
+    | "Archived";
   category: string;
   subcategory?: string;
-  environment: 'Development' | 'Testing' | 'Staging' | 'Production';
+  environment: "Development" | "Testing" | "Staging" | "Production";
   serverName?: string;
   applicationVersion?: string;
   affectedFeature?: string;
@@ -187,7 +207,7 @@ export interface IncidentListResponse<T> {
 
 // Export and Import Types
 export interface IncidentExportOptions {
-  format: 'pdf' | 'excel' | 'csv';
+  format: "pdf" | "excel" | "csv";
   includeDetails: boolean;
   includeComments: boolean;
   includeAttachments: boolean;
