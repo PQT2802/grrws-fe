@@ -56,8 +56,8 @@ const formSchema = z.object({
   claimAmount: z.number().positive().optional(),
   documentDescription: z.string().optional(),
   createReturnTask: z.boolean(),
+  warrantyFailed: z.boolean(),
   // Add returnOption to form schema
-  returnOption: z.enum(["reinstallOldDevice", "warrantyFailed"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -125,8 +125,8 @@ const UpdateWarrantyClaimButton = ({
       showClaimAmount: !!taskDetail?.claimAmount, // Set to true if there's a claim amount
       claimAmount: taskDetail?.claimAmount ?? undefined,
       documentDescription: "",
-      createReturnTask: true, // Set default to true
-      returnOption: "reinstallOldDevice", // Default to reinstall old device
+      createReturnTask: true,
+      warrantyFailed: false,
     },
   });
 
@@ -199,8 +199,7 @@ const UpdateWarrantyClaimButton = ({
         handleOpenChange(false);
         setOpenReturnDialog(true);
         // Pass these values to CreateWarrantyReturnButton
-        setIsReinstall(values.returnOption === "reinstallOldDevice");
-        setIsFailed(values.returnOption === "warrantyFailed");
+        setIsFailed(values.warrantyFailed);
       } else {
         handleOpenChange(false);
         onSuccess?.();
@@ -481,38 +480,24 @@ const UpdateWarrantyClaimButton = ({
                             )}
                           />
 
-                          {/* {form.watch("createReturnTask") && (
+                          {form.watch("createReturnTask") && (
                             <FormField
                               control={form.control}
-                              name="returnOption"
+                              name="warrantyFailed"
                               render={({ field }) => (
                                 <FormItem className="pl-8">
                                   <FormLabel className="text-xs text-gray-600 dark:text-gray-400">
                                     Loại trả bảo hành
                                   </FormLabel>
                                   <FormControl>
-                                    <RadioGroup
-                                      onValueChange={field.onChange}
-                                      defaultValue={field.value}
-                                      className="grid grid-cols-1 gap-2 mt-2"
-                                    >
-                                      <FormItem className="flex items-center space-x-3 space-y-0 border border-green-100 dark:border-green-800 rounded-lg p-2 hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors">
-                                        <FormControl>
-                                          <RadioGroupItem value="reinstallOldDevice" />
-                                        </FormControl>
-                                        <FormLabel className="font-normal cursor-pointer flex-1 m-0">
-                                          <div className="font-medium text-xs text-green-700 dark:text-green-300">
-                                            Lắp lại thiết bị cũ
-                                          </div>
-                                          <p className="text-[10px] text-green-600/70 dark:text-green-400/70 mt-0.5">
-                                            Lắp đặt lại thiết bị cũ sau khi sửa
-                                            chữa
-                                          </p>
-                                        </FormLabel>
-                                      </FormItem>
+                                    <div className="mt-2">
                                       <FormItem className="flex items-center space-x-3 space-y-0 border border-red-100 dark:border-red-800 rounded-lg p-2 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors">
                                         <FormControl>
-                                          <RadioGroupItem value="warrantyFailed" />
+                                          <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                                          />
                                         </FormControl>
                                         <FormLabel className="font-normal cursor-pointer flex-1 m-0">
                                           <div className="font-medium text-xs text-red-700 dark:text-red-300">
@@ -524,12 +509,12 @@ const UpdateWarrantyClaimButton = ({
                                           </p>
                                         </FormLabel>
                                       </FormItem>
-                                    </RadioGroup>
+                                    </div>
                                   </FormControl>
                                 </FormItem>
                               )}
                             />
-                          )} */}
+                          )}
                         </div>
                       )}
                   </TabsContent>
