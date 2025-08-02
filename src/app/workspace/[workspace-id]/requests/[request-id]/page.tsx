@@ -42,8 +42,8 @@ import CreateTaskFromTechnicalIssuesCpn from "@/components/CreateTaskFromTechnic
 import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn";
 import AddErrorToRequestModal from "@/components/ErrorTableCpn/AddErrorToRequestModal";
 
-// ✅ Updated to include Technical Issues
-const TAB_CONTENT_LIST = ["Issues", "Errors", "Tasks", "Technical Issues"];
+// Cập nhật danh sách tab sang tiếng Việt
+const TAB_CONTENT_LIST = ["Sự cố", "Lỗi", "Nhiệm vụ", "Sự cố kỹ thuật"];
 
 const RequestDetailPage = () => {
   const params = useParams();
@@ -157,9 +157,20 @@ const RequestDetailPage = () => {
     refreshAllData(); // Use the new refresh function
   };
 
-  // ✅ Helper function to get tab value for technical issues
+  // Helper function để lấy giá trị tab tiếng Việt
   const getTabValue = (tab: string) => {
-    return tab.toLowerCase().replace(" ", "-");
+    switch (tab) {
+      case "Sự cố":
+        return "issues";
+      case "Lỗi":
+        return "errors";
+      case "Nhiệm vụ":
+        return "tasks";
+      case "Sự cố kỹ thuật":
+        return "technical-issues";
+      default:
+        return tab.toLowerCase().replace(" ", "-");
+    }
   };
 
   return (
@@ -174,7 +185,7 @@ const RequestDetailPage = () => {
                 <BreadcrumbItem>
                   <Link href={`/workspace/${workspaceId}/requests`}>
                     <div className="flex items-center gap-3">
-                      <span>Requests</span>
+                      <span>Danh sách yêu cầu</span>
                     </div>
                   </Link>
                 </BreadcrumbItem>
@@ -188,22 +199,22 @@ const RequestDetailPage = () => {
             <div className="flex items-center gap-3">
               <ButtonCpn
                 type="button"
-                title="Back"
+                title="Quay lại"
                 icon={<RotateCcw size={15} />}
                 onClick={handleBack}
               />
             </div>
           </div>
 
-          {/* Request Detail Card */}
+          {/* Thông tin yêu cầu */}
           <Card className="p-0 bg-zinc-50 dark:bg-slate-900 rounded-md mb-5">
             <CardHeader className="px-5 pt-5 pb-5">
               <div className="flex items-center justify-between">
                 <h1 className="text-[1.05rem] font-semibold">
-                  Request Overview
+                  Tổng quan yêu cầu
                 </h1>
 
-                {/* ✅ Add warranty buttons */}
+                {/* Nút bảo hành */}
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
@@ -213,7 +224,7 @@ const RequestDetailPage = () => {
                     disabled={!requestDetail?.deviceId}
                   >
                     <Eye size={16} />
-                    View History
+                    Xem lịch sử bảo hành
                   </Button>
 
                   <Button
@@ -224,7 +235,7 @@ const RequestDetailPage = () => {
                     disabled={!requestDetail?.deviceId}
                   >
                     <Eye size={16} />
-                    View Warranties
+                    Xem bảo hành
                   </Button>
                 </div>
               </div>
@@ -233,18 +244,18 @@ const RequestDetailPage = () => {
             <CardContent className="px-5 pt-0 pb-5">
               <div className="pt-5 flex border-t border-dashed border-gray-300 dark:border-gray-700">
                 <div className="basis-full flex flex-col gap-5">
-                  {/* ✅ Request Title */}
+                  {/* Tiêu đề yêu cầu */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Title
+                      Tiêu đề
                     </h1>
                     <span>{requestDetail?.requestTitle}</span>
                   </div>
 
-                  {/* ✅ Status */}
+                  {/* Trạng thái */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Status
+                      Trạng thái
                     </h1>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -255,14 +266,18 @@ const RequestDetailPage = () => {
                           : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
                       }`}
                     >
-                      {requestDetail?.status}
+                      {requestDetail?.status === "Completed"
+                        ? "Hoàn thành"
+                        : requestDetail?.status === "In Progress"
+                        ? "Đang xử lý"
+                        : "Chờ xử lý"}
                     </span>
                   </div>
 
-                  {/* ✅ Request Date */}
+                  {/* Ngày yêu cầu */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Request Date
+                      Ngày yêu cầu
                     </h1>
                     <span className="text-gray-600 dark:text-gray-400">
                       {requestDetail?.requestDate &&
@@ -273,10 +288,10 @@ const RequestDetailPage = () => {
                     </span>
                   </div>
 
-                  {/* ✅ Warranty Status */}
+                  {/* Trạng thái bảo hành */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Warranty
+                      Bảo hành
                     </h1>
                     <span
                       className={
@@ -286,23 +301,23 @@ const RequestDetailPage = () => {
                       }
                     >
                       {requestDetail?.isWarranty
-                        ? `Active (${requestDetail?.remainingWarratyDate} days left)`
-                        : "Expired"}
+                        ? `Còn hạn (${requestDetail?.remainingWarratyDate} ngày)`
+                        : "Hết hạn"}
                     </span>
                   </div>
 
-                  {/* ✅ Device Name */}
+                  {/* Tên thiết bị */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Device
+                      Thiết bị
                     </h1>
                     <span>{requestDetail?.deviceName}</span>
                   </div>
 
-                  {/* ✅ Location */}
+                  {/* Vị trí */}
                   <div className="text-[0.9rem] flex items-center gap-3">
                     <h1 className="w-[150px] max-w-[150px] truncate font-semibold text-gray-400">
-                      Location
+                      Vị trí
                     </h1>
                     <span>{requestDetail?.location}</span>
                   </div>
@@ -338,32 +353,32 @@ const RequestDetailPage = () => {
                   </TabsList>
 
                   <div className="flex items-center gap-3">
-                    {/* ✅ Add New Issue Button */}
+                    {/* Thêm sự cố mới */}
                     {activeTab === "issues" && (
                       <ButtonCpn
                         type="button"
-                        title="Add New Issue"
+                        title="Thêm sự cố mới"
                         icon={<Plus />}
                         onClick={() => {
-                          // TODO: Implement add new issue functionality
-                          console.log("Add new issue");
+                          // TODO: Thêm chức năng thêm sự cố mới
+                          console.log("Thêm sự cố mới");
                         }}
                       />
                     )}
 
-                    {/* ✅ Add New Error Button */}
+                    {/* Thêm lỗi mới */}
                     {activeTab === "errors" && (
                       <>
                         <ButtonCpn
                           type="button"
-                          title="Thêm Lỗi Mới"
+                          title="Thêm lỗi mới"
                           icon={<Plus />}
                           onClick={() => setShowAddErrorModal(true)}
                         />
                         {selectedErrors.length > 0 && (
                           <ButtonCpn
                             type="button"
-                            title={`Tạo Nhiệm vụ Sửa chữa (${selectedErrors.length})`}
+                            title={`Tạo nhiệm vụ sửa chữa (${selectedErrors.length})`}
                             icon={<Plus />}
                             onClick={handleCreateTaskFromErrors}
                           />
@@ -371,32 +386,32 @@ const RequestDetailPage = () => {
                       </>
                     )}
 
-                    {/* ✅ Add New Task Button */}
+                    {/* Thêm nhiệm vụ mới */}
                     {activeTab === "tasks" && (
                       <ButtonCpn
                         type="button"
-                        title="Add New Task"
+                        title="Thêm nhiệm vụ mới"
                         icon={<Plus />}
                         onClick={() => setShowCreateInstallUninstallTask(true)}
                       />
                     )}
 
-                    {/* ✅ Add New Technical Issue Button */}
+                    {/* Thêm sự cố kỹ thuật mới */}
                     {activeTab === "technical-issues" && (
                       <>
                         <ButtonCpn
                           type="button"
-                          title="Add New Technical Issue"
+                          title="Thêm sự cố kỹ thuật mới"
                           icon={<Plus />}
                           onClick={() => {
-                            // TODO: Implement add new technical issue functionality
-                            console.log("Add new technical issue");
+                            // TODO: Thêm chức năng thêm sự cố kỹ thuật mới
+                            console.log("Thêm sự cố kỹ thuật mới");
                           }}
                         />
                         {selectedTechnicalIssues.length > 0 && (
                           <ButtonCpn
                             type="button"
-                            title={`Create Warranty Task (${selectedTechnicalIssues.length})`}
+                            title={`Tạo nhiệm vụ bảo hành (${selectedTechnicalIssues.length})`}
                             icon={<Plus />}
                             onClick={handleCreateTaskFromTechnicalIssues}
                           />
@@ -430,7 +445,7 @@ const RequestDetailPage = () => {
                       workspaceId={workspaceId}
                     />
                   </TabsContent>
-                  {/* ✅ Add Technical Issues tab content */}
+                  {/* Sự cố kỹ thuật */}
                   <TabsContent value="technical-issues">
                     <TechnicalIssueTableCpn
                       requestId={requestId}
@@ -444,7 +459,7 @@ const RequestDetailPage = () => {
             </Tabs>
           </Card>
 
-          {/* ✅ Warranty and History Modals */}
+          {/* Modal bảo hành và lịch sử */}
           <WarrantyHistoryModal
             open={showWarrantyHistory}
             onOpenChange={setShowWarrantyHistory}
@@ -459,7 +474,7 @@ const RequestDetailPage = () => {
             deviceName={requestDetail?.deviceName || ""}
           />
 
-          {/* ✅ Task Creation Modals */}
+          {/* Modal tạo nhiệm vụ */}
           <CreateTaskFromErrorsCpn
             open={showCreateTaskFromErrors}
             setOpen={setShowCreateTaskFromErrors}

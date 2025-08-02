@@ -224,7 +224,7 @@ const TaskTableCpn = ({
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Group Name
+          Tên nhóm nhiệm vụ
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === "desc" ? (
@@ -254,7 +254,7 @@ const TaskTableCpn = ({
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Group Type
+          Loại nhóm
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === "desc" ? (
@@ -272,7 +272,13 @@ const TaskTableCpn = ({
           <div className="flex items-center gap-2">
             {getGroupTypeIcon(value)}
             <Badge className={`${getGroupTypeColor(value)} text-xs`}>
-              {value}
+              {value === "replacement"
+                ? "Thay thế"
+                : value === "repair"
+                ? "Sửa chữa"
+                : value === "warranty"
+                ? "Bảo hành"
+                : value}
             </Badge>
           </div>
         );
@@ -280,7 +286,7 @@ const TaskTableCpn = ({
     },
     {
       accessorKey: "tasks",
-      header: "Tasks Summary",
+      header: "Tóm tắt nhiệm vụ",
       enableSorting: false,
       cell: (info) => {
         const taskGroup = info.row.original;
@@ -289,12 +295,12 @@ const TaskTableCpn = ({
         return (
           <div className="space-y-1">
             <div className="text-sm font-medium">
-              Total: {summary.total} tasks
+              Tổng cộng: {summary.total} nhiệm vụ
             </div>
             <div className="flex gap-2 text-xs">
-              <span className="text-green-600">✓ {summary.completed}</span>
-              <span className="text-blue-600">⟳ {summary.inProgress}</span>
-              <span className="text-yellow-600">⏸ {summary.pending}</span>
+              <span className="text-green-600">✓ {summary.completed} hoàn thành</span>
+              <span className="text-blue-600">⟳ {summary.inProgress} đang xử lý</span>
+              <span className="text-yellow-600">⏸ {summary.pending} chờ xử lý</span>
             </div>
           </div>
         );
@@ -308,7 +314,7 @@ const TaskTableCpn = ({
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Created Date
+          Ngày tạo
           {column.getIsSorted() === "asc" ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === "desc" ? (
@@ -337,7 +343,7 @@ const TaskTableCpn = ({
 
     {
       id: "actions",
-      header: "Actions",
+      header: "Thao tác",
       enableSorting: false,
       cell: (info) => {
         const taskGroup = info.row.original;
@@ -348,7 +354,7 @@ const TaskTableCpn = ({
             className="inline-block w-full"
           >
             <Button variant="outline" size="sm" className="w-full">
-              Xem Chi tiết
+              Xem chi tiết
             </Button>
           </a>
         );
@@ -383,10 +389,10 @@ const TaskTableCpn = ({
       <div className="text-center py-12">
         <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No task groups found
+          Không tìm thấy nhóm nhiệm vụ nào
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Task groups will appear here when available
+          Nhóm nhiệm vụ sẽ hiển thị tại đây khi có dữ liệu
         </div>
       </div>
     );
@@ -401,7 +407,7 @@ const TaskTableCpn = ({
           </div>
           <Input
             className="pl-8"
-            placeholder="Search task groups..."
+            placeholder="Tìm kiếm nhóm nhiệm vụ..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -456,7 +462,7 @@ const TaskTableCpn = ({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  Không có kết quả nào.
                 </TableCell>
               </TableRow>
             )}
@@ -466,13 +472,13 @@ const TaskTableCpn = ({
 
       <div className="flex items-center justify-between mt-5">
         <div>
-          <span className="text-sm">{`${totalCount} task group(s) found`}</span>
+          <span className="text-sm">{`${totalCount} nhóm nhiệm vụ được tìm thấy`}</span>
         </div>
 
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Items per page
+              Số dòng mỗi trang
             </span>
             <Select
               value={pageSize.toString()}
@@ -516,7 +522,7 @@ const TaskTableCpn = ({
         open={showTaskGroupModal}
         onOpenChange={setShowTaskGroupModal}
         taskGroup={selectedTaskGroup}
-        onTaskGroupUpdated={handleTaskGroupUpdated} // ✅ Add this callback
+        onTaskGroupUpdated={handleTaskGroupUpdated}
       />
     </div>
   );

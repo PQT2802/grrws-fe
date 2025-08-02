@@ -164,7 +164,7 @@ const TechnicalIssueTableCpn = ({
             )
           }
           onCheckedChange={(value) => handleSelectAll(!!value)}
-          aria-label="Select all"
+          aria-label="Chọn tất cả"
           disabled={selectableTechnicalIssues.length === 0}
         />
       ),
@@ -178,7 +178,7 @@ const TechnicalIssueTableCpn = ({
             onCheckedChange={(value) =>
               handleTechnicalIssueSelection(issue, !!value)
             }
-            aria-label="Select row"
+            aria-label="Chọn dòng"
             disabled={isAssigned}
             className={isAssigned ? "opacity-50" : ""}
           />
@@ -190,7 +190,7 @@ const TechnicalIssueTableCpn = ({
       accessorKey: "symptomCode",
       header: ({ column }) => (
         <span className="flex items-center gap-2">
-          Symptom Code <ArrowUpDown size={15} />
+          Mã triệu chứng <ArrowUpDown size={15} />
         </span>
       ),
       cell: (info) => {
@@ -205,7 +205,7 @@ const TechnicalIssueTableCpn = ({
     },
     {
       accessorKey: "name",
-      header: "Name",
+      header: "Tên sự cố kỹ thuật",
       cell: (info) => {
         const value = info.getValue();
         if (!value) return "---";
@@ -214,7 +214,7 @@ const TechnicalIssueTableCpn = ({
     },
     {
       accessorKey: "description",
-      header: "Description",
+      header: "Mô tả",
       cell: (info) => {
         const value = info.getValue() as string | null;
         if (!value) return "---";
@@ -228,20 +228,20 @@ const TechnicalIssueTableCpn = ({
     },
     {
       accessorKey: "isCommon",
-      header: "Type",
+      header: "Loại",
       cell: (info) => {
         const value = info.getValue() as boolean;
 
         return (
           <Badge variant={value ? "default" : "secondary"}>
-            {value ? "Common" : "Specific"}
+            {value ? "Phổ biến" : "Riêng biệt"}
           </Badge>
         );
       },
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Trạng thái",
       cell: (info) => {
         const value = info.getValue() as string;
         if (!value) return "---";
@@ -256,14 +256,18 @@ const TechnicalIssueTableCpn = ({
                 : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
             }`}
           >
-            {value}
+            {value === "Assigned"
+              ? "Đã giao"
+              : value === "Unassigned"
+              ? "Chưa giao"
+              : "Không xác định"}
           </span>
         );
       },
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Thao tác",
       cell: (info) => {
         const issue = info.row.original;
 
@@ -271,19 +275,19 @@ const TechnicalIssueTableCpn = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Mở menu</span>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => {
                   handleViewDetail(issue);
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Eye size={15} /> View detail
+                  <Eye size={15} /> Xem chi tiết
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -317,10 +321,10 @@ const TechnicalIssueTableCpn = ({
     return (
       <div className="text-center py-12">
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No technical issues found
+          Không tìm thấy sự cố kỹ thuật nào
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Technical issues will appear here when available
+          Sự cố kỹ thuật sẽ hiển thị tại đây khi có dữ liệu
         </div>
       </div>
     );
@@ -335,7 +339,7 @@ const TechnicalIssueTableCpn = ({
           </div>
           <Input
             className="pl-8"
-            placeholder="Search technical issues..."
+            placeholder="Tìm kiếm sự cố kỹ thuật..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -343,8 +347,7 @@ const TechnicalIssueTableCpn = ({
 
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">
-            {selectedTechnicalIssues.length} of{" "}
-            {selectableTechnicalIssues.length} selected
+            {selectedTechnicalIssues.length} / {selectableTechnicalIssues.length} đã chọn
           </span>
         </div>
       </div>
@@ -410,7 +413,7 @@ const TechnicalIssueTableCpn = ({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  Không có kết quả nào.
                 </TableCell>
               </TableRow>
             )}
@@ -420,13 +423,13 @@ const TechnicalIssueTableCpn = ({
 
       <div className="flex items-center justify-between mt-5">
         <div>
-          <span className="text-sm">{`${filteredData.length} technical issue(s) found`}</span>
+          <span className="text-sm">{`${filteredData.length} sự cố kỹ thuật được tìm thấy`}</span>
         </div>
 
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Items per page
+              Số dòng mỗi trang
             </span>
             <Select
               defaultValue={pageSize.toString()}

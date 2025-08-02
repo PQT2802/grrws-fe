@@ -94,7 +94,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
       accessorKey: "displayName",
       header: ({ column }) => (
         <span className="flex items-center gap-2">
-          Display Name <ArrowUpDown size={15} />
+          Tên sự cố <ArrowUpDown size={15} />
         </span>
       ),
       cell: (info) => {
@@ -105,7 +105,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Trạng thái",
       cell: (info) => {
         const value = info.getValue() as string;
         if (!value) return "---";
@@ -120,14 +120,18 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                 : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
             }`}
           >
-            {value}
+            {value === "Closed"
+              ? "Đã đóng"
+              : value === "In Progress"
+              ? "Đang xử lý"
+              : "Chờ xử lý"}
           </span>
         );
       },
     },
     {
       accessorKey: "images",
-      header: "Images",
+      header: "Hình ảnh",
       cell: (info) => {
         const images = info.getValue() as string[];
         const imageCount = images?.length || 0;
@@ -136,7 +140,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
           return (
             <div className="flex items-center gap-2 text-gray-400">
               <ImageIcon size={16} />
-              <span>No images</span>
+              <span>Không có hình ảnh</span>
             </div>
           );
         }
@@ -147,27 +151,22 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
               <div
                 className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
                 onClick={async () => {
-                  setImageLoading(true); // ✅ Show loading
+                  setImageLoading(true);
                   try {
-                    console.log("🔄 Processing Firebase images:", images);
-                    // ✅ Get proper Firebase URLs
                     const firebaseUrls = await getFirebaseImageUrls(images);
                     setSelectedImages(firebaseUrls);
                     setOpenImageModal(true);
                   } catch (error) {
-                    console.error("❌ Failed to load Firebase images:", error);
-                    // Fallback to original paths
                     setSelectedImages(images);
                     setOpenImageModal(true);
                   } finally {
-                    setImageLoading(false); // ✅ Hide loading
+                    setImageLoading(false);
                   }
                 }}
               >
                 <ImageIcon size={16} className="text-blue-500" />
-                <span>{imageCount} image(s)</span>
+                <span>{imageCount} hình ảnh</span>
                 <Eye size={14} className="text-gray-400" />
-                {/* ✅ Add loading indicator */}
                 {imageLoading && (
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin ml-2"></div>
                 )}
@@ -177,10 +176,10 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  Issue Images ({selectedImages.length})
+                  Hình ảnh sự cố ({selectedImages.length})
                 </DialogTitle>
                 <DialogDescription>
-                  Click on any image to view in full size
+                  Nhấn vào hình để xem kích thước đầy đủ
                 </DialogDescription>
               </DialogHeader>
 
@@ -191,7 +190,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                       <img
                         src={imageUrl}
-                        alt={`Issue image ${index + 1}`}
+                        alt={`Hình sự cố ${index + 1}`}
                         className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => window.open(imageUrl, "_blank")}
                         onError={(e) => {
@@ -219,7 +218,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Thao tác",
       cell: (info) => {
         const issue = info.row.original;
 
@@ -227,19 +226,19 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Mở menu</span>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => {
                   handleViewDetail(issue);
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <Eye size={15} /> View detail
+                  <Eye size={15} /> Xem chi tiết
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -269,10 +268,10 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
     return (
       <div className="text-center py-12">
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No issues found
+          Không tìm thấy sự cố nào
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Issues will appear here when available
+          Sự cố sẽ hiển thị tại đây khi có dữ liệu
         </div>
       </div>
     );
@@ -287,7 +286,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
           </div>
           <Input
             className="pl-8"
-            placeholder="Search issues..."
+            placeholder="Tìm kiếm sự cố..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -346,7 +345,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  Không có kết quả nào.
                 </TableCell>
               </TableRow>
             )}
@@ -356,13 +355,13 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
 
       <div className="flex items-center justify-between mt-5">
         <div>
-          <span className="text-sm">{`${filteredData.length} issue(s) found`}</span>
+          <span className="text-sm">{`${filteredData.length} sự cố được tìm thấy`}</span>
         </div>
 
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Items per page
+              Số dòng mỗi trang
             </span>
             <Select
               defaultValue={pageSize.toString()}
@@ -406,9 +405,9 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
       <Dialog open={openImageModal} onOpenChange={setOpenImageModal}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Issue Images ({selectedImages.length})</DialogTitle>
+            <DialogTitle>Hình ảnh sự cố ({selectedImages.length})</DialogTitle>
             <DialogDescription>
-              Click on any image to view in full size
+              Nhấn vào hình để xem kích thước đầy đủ
             </DialogDescription>
           </DialogHeader>
 
@@ -419,7 +418,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                 <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                   <img
                     src={imageUrl}
-                    alt={`Issue image ${index + 1}`}
+                    alt={`Hình sự cố ${index + 1}`}
                     className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => window.open(imageUrl, "_blank")}
                     onError={(e) => {

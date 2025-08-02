@@ -198,6 +198,28 @@ const AddErrorToRequestModal = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Selected errors section moved above the search input */}
+          {selectedErrors.length > 0 && (
+            <div className="border rounded-md p-3 bg-gray-50 dark:bg-gray-800">
+              <h3 className="font-medium text-sm mb-2">Lỗi đã chọn:</h3>
+              <div className="flex flex-wrap gap-2">
+                {selectedErrors.map((error) => (
+                  <Badge
+                    key={error.id}
+                    className="flex items-center gap-1 px-3 py-1.5"
+                    variant="secondary"
+                  >
+                    <span>{error.name}</span>
+                    <X
+                      className="h-3.5 w-3.5 cursor-pointer ml-1"
+                      onClick={() => handleRemoveError(error.id)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="relative">
             <Input
               ref={inputRef}
@@ -233,7 +255,7 @@ const AddErrorToRequestModal = ({
               <Command className="w-full rounded-md border shadow-md bg-white dark:bg-gray-800 max-h-[250px] overflow-auto">
                 <CommandEmpty className="py-6 text-center text-sm">
                   {searchQuery.length < 1
-                    ? "Gõ để tìm kiếm" // Update this message to be consistent
+                    ? "Gõ để tìm kiếm"
                     : loading
                     ? "Đang tìm kiếm..."
                     : "Không tìm thấy lỗi nào"}
@@ -272,28 +294,6 @@ const AddErrorToRequestModal = ({
                   </CommandGroup>
                 )}
               </Command>
-            </div>
-          )}
-
-          {/* Selected errors */}
-          {selectedErrors.length > 0 && (
-            <div className="border rounded-md p-3 bg-gray-50 dark:bg-gray-800">
-              <h3 className="font-medium text-sm mb-2">Lỗi đã chọn:</h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedErrors.map((error) => (
-                  <Badge
-                    key={error.id}
-                    className="flex items-center gap-1 px-3 py-1.5"
-                    variant="secondary"
-                  >
-                    <span>{error.name}</span>
-                    <X
-                      className="h-3.5 w-3.5 cursor-pointer ml-1"
-                      onClick={() => handleRemoveError(error.id)}
-                    />
-                  </Badge>
-                ))}
-              </div>
             </div>
           )}
         </div>

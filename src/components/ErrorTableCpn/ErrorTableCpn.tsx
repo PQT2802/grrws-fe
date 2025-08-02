@@ -138,7 +138,7 @@ const ErrorTableCpn = ({
             selectableErrors.every((error) => isErrorSelected(error))
           }
           onCheckedChange={(value) => handleSelectAll(!!value)}
-          aria-label="Select all selectable errors"
+          aria-label="Chọn tất cả lỗi có thể chọn"
         />
       ),
       cell: ({ row }) => {
@@ -149,10 +149,8 @@ const ErrorTableCpn = ({
           <Checkbox
             checked={isErrorSelected(error)}
             onCheckedChange={(value) => handleSelectError(error, !!value)}
-            disabled={isAssigned} // ✅ Disable checkbox for assigned errors
-            aria-label={
-              isAssigned ? "Cannot select assigned error" : "Select error"
-            }
+            disabled={isAssigned}
+            aria-label={isAssigned ? "Không thể chọn lỗi đã giao" : "Chọn lỗi"}
             className={isAssigned ? "opacity-50 cursor-not-allowed" : ""}
           />
         );
@@ -162,7 +160,7 @@ const ErrorTableCpn = ({
       accessorKey: "errorCode",
       header: ({ column }) => (
         <span className="flex items-center gap-2">
-          Error Code <ArrowUpDown size={15} />
+          Mã lỗi <ArrowUpDown size={15} />
         </span>
       ),
       cell: (info) => {
@@ -177,7 +175,7 @@ const ErrorTableCpn = ({
     },
     {
       accessorKey: "name",
-      header: "Name",
+      header: "Tên lỗi",
       cell: (info) => {
         const value = info.getValue();
         if (!value) return "---";
@@ -186,7 +184,7 @@ const ErrorTableCpn = ({
     },
     {
       accessorKey: "severity",
-      header: "Severity",
+      header: "Mức độ",
       cell: (info) => {
         const value = info.getValue() as string | null;
         if (!value) return "---";
@@ -203,14 +201,20 @@ const ErrorTableCpn = ({
                 : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
             }`}
           >
-            {value}
+            {value === "Critical"
+              ? "Nghiêm trọng"
+              : value === "High"
+              ? "Cao"
+              : value === "Medium"
+              ? "Trung bình"
+              : "Thấp"}
           </span>
         );
       },
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Trạng thái",
       cell: (info) => {
         const value = info.getValue() as string;
         if (!value) return "---";
@@ -229,7 +233,15 @@ const ErrorTableCpn = ({
                 : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
             }`}
           >
-            {value}
+            {value === "Resolved"
+              ? "Đã xử lý"
+              : value === "In Progress"
+              ? "Đang xử lý"
+              : value === "Pending"
+              ? "Chờ xử lý"
+              : value === "Assigned"
+              ? "Đã giao"
+              : "Không xác định"}
           </span>
         );
       },
@@ -260,10 +272,10 @@ const ErrorTableCpn = ({
     return (
       <div className="text-center py-12">
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No errors found
+          Không tìm thấy lỗi nào
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Errors will appear here when available
+          Lỗi sẽ hiển thị tại đây khi có dữ liệu
         </div>
       </div>
     );
@@ -278,7 +290,7 @@ const ErrorTableCpn = ({
           </div>
           <Input
             className="pl-8"
-            placeholder="Search errors..."
+            placeholder="Tìm kiếm lỗi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -287,7 +299,7 @@ const ErrorTableCpn = ({
         <div className="flex items-center gap-3">
           {selectedErrors.length > 0 && (
             <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-              {selectedErrors.length} error(s) selected
+              {selectedErrors.length} lỗi đã chọn
             </div>
           )}
 
@@ -302,7 +314,7 @@ const ErrorTableCpn = ({
             >
               <ButtonCpn
                 type="button"
-                title={`Create Task (${selectedErrors.length})`}
+                title={`Tạo nhiệm vụ (${selectedErrors.length})`}
                 icon={<Plus size={16} />}
                 onClick={() => setOpenCreateTaskModal(true)}
               />
@@ -351,7 +363,7 @@ const ErrorTableCpn = ({
                     key={row.id}
                     className={`rounded-none transition-colors ${
                       isAssigned
-                        ? "bg-gray-50 dark:bg-gray-800 opacity-60" // ✅ Visual indicator for assigned errors
+                        ? "bg-gray-50 dark:bg-gray-800 opacity-60"
                         : "hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                   >
@@ -372,7 +384,7 @@ const ErrorTableCpn = ({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  Không có kết quả nào.
                 </TableCell>
               </TableRow>
             )}
@@ -383,10 +395,10 @@ const ErrorTableCpn = ({
       <div className="flex items-center justify-between mt-5">
         <div>
           <span className="text-sm">
-            {`${selectedErrors.length} of ${selectableErrors.length} selectable error(s) selected`}
+            {`${selectedErrors.length} / ${selectableErrors.length} lỗi có thể chọn đã được chọn`}
             {filteredData.length !== selectableErrors.length && (
               <span className="text-gray-500 ml-1">
-                ({filteredData.length - selectableErrors.length} assigned)
+                ({filteredData.length - selectableErrors.length} lỗi đã giao)
               </span>
             )}
           </span>
@@ -395,7 +407,7 @@ const ErrorTableCpn = ({
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-3">
             <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Items per page
+              Số dòng mỗi trang
             </span>
             <Select
               defaultValue={pageSize.toString()}
