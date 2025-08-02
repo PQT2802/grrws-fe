@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
   ColumnDef,
   useReactTable,
@@ -53,51 +53,38 @@ import {
   MoreHorizontal,
   Search,
   Plus,
+  ChevronDown,
+  ChevronUp,
+  Wrench,
 } from "lucide-react";
 import requestService from "@/app/service/request.service";
 import ButtonCpn from "../ButtonCpn/ButtonCpn";
 
 interface TechnicalIssueTableCpnProps {
+  technicalIssues: TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[];
   requestId: string;
   selectedTechnicalIssues: TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[];
   onSelectionChange: (issues: TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]) => void;
   refreshTrigger?: number;
+  showToggle?: boolean;
+  showAll?: boolean;
+  onToggle?: () => void;
 }
 
 const TechnicalIssueTableCpn = ({
+  technicalIssues,
   requestId,
   selectedTechnicalIssues,
   onSelectionChange,
   refreshTrigger = 0,
+  showToggle,
+  showAll,
+  onToggle,
 }: TechnicalIssueTableCpnProps) => {
-  const [technicalIssues, setTechnicalIssues] = useState<
-    TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB[]
-  >([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(5);
   const [sorting, setSorting] = useState<SortingState>([]);
-
-  const fetchTechnicalIssues = async () => {
-    try {
-      setLoading(true);
-      const data = await requestService.getTechnicalIssuesByRequestId(
-        requestId
-      );
-      setTechnicalIssues(data);
-    } catch (error) {
-      console.error("Failed to fetch technical issues:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (requestId) {
-      fetchTechnicalIssues();
-    }
-  }, [requestId, refreshTrigger]);
 
   // Filter selectable technical issues (exclude assigned ones)
   const selectableTechnicalIssues = useMemo(() => {
@@ -264,37 +251,7 @@ const TechnicalIssueTableCpn = ({
           </span>
         );
       },
-    },
-    {
-      id: "actions",
-      header: "Thao tác",
-      cell: (info) => {
-        const issue = info.row.original;
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Mở menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  handleViewDetail(issue);
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Eye size={15} /> Xem chi tiết
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
+    }
   ];
 
   const table = useReactTable({
@@ -313,10 +270,6 @@ const TechnicalIssueTableCpn = ({
     onSortingChange: setSorting,
   });
 
-  if (loading) {
-    return <SkeletonCard />;
-  }
-
   if (technicalIssues.length === 0) {
     return (
       <div className="text-center py-12">
@@ -332,26 +285,28 @@ const TechnicalIssueTableCpn = ({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <div className="relative w-1/3">
-          <div className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground">
-            <Search className="h-4 w-4" />
-          </div>
-          <Input
-            className="pl-8"
-            placeholder="Tìm kiếm sự cố kỹ thuật..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">
-            {selectedTechnicalIssues.length} / {selectableTechnicalIssues.length} đã chọn
-          </span>
-        </div>
+      <div className="flex items-center gap-2 mb-2">
+        <Wrench className="h-4 w-4 text-blue-600" />
+        <span className="text-base font-semibold">Danh sách Sự cố kỹ thuật</span>
+        {showToggle && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto px-2 py-0 h-7"
+            onClick={onToggle}
+          >
+            {showAll ? (
+              <>
+                Thu gọn <ChevronUp size={16} />
+              </>
+            ) : (
+              <>
+                Xem tất cả <ChevronDown size={16} />
+              </>
+            )}
+          </Button>
+        )}
       </div>
-
       <Card className="rounded-none">
         <Table className="w-full">
           <TableHeader>
@@ -420,54 +375,6 @@ const TechnicalIssueTableCpn = ({
           </TableBody>
         </Table>
       </Card>
-
-      <div className="flex items-center justify-between mt-5">
-        <div>
-          <span className="text-sm">{`${filteredData.length} sự cố kỹ thuật được tìm thấy`}</span>
-        </div>
-
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Số dòng mỗi trang
-            </span>
-            <Select
-              defaultValue={pageSize.toString()}
-              onValueChange={(value: string) => {
-                setPageSize(Number(value));
-              }}
-            >
-              <SelectTrigger className="w-[80px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[3, 5, 10, 100].map((size) => {
-                  return (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <PaginationContent>
-            {Array.from({ length: table.getPageCount() }, (_, index) => (
-              <PaginationItem key={index} className="hover:cursor-pointer">
-                <PaginationLink
-                  isActive={index === pageIndex}
-                  onClick={() => {
-                    setPageIndex(index);
-                  }}
-                >
-                  {index + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-          </PaginationContent>
-        </div>
-      </div>
     </div>
   );
 };

@@ -241,6 +241,8 @@ const ErrorTableCpn = ({
               ? "Chờ xử lý"
               : value === "Assigned"
               ? "Đã giao"
+              : value === "Unassigned"
+              ? "Chưa giao"
               : "Không xác định"}
           </span>
         );

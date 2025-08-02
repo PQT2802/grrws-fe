@@ -221,7 +221,6 @@ export type TaskTabType = 'all' | 'warranty' | 'repair' | 'replace' | 'install_u
 
 export interface REPAIR_TASK_DETAIL {
   taskId: string;
-  deviceId: string;
   taskType: string;
   taskName: string;
   taskDescription: string;
@@ -234,7 +233,36 @@ export interface REPAIR_TASK_DETAIL {
   isInstall: boolean;
   isSigned: boolean;
   errorDetails: ErrorDetail[];
+  machineActionConfirmations: MachineActionConfirmation[];
 }
+export interface MachineActionConfirmation {
+  confirmationId: string;
+  confirmationCode: string;
+  startDate: string | null;
+  completedDate: string | null;
+  requestedById: string;
+  deviceId: string;
+  taskId: string;
+  status: string;
+  actionType: string;
+  reason: string;
+  verificationToken: string | null;
+  tokenExpiration: string | null;
+  signerId: string | null;
+  signerRole: string | null;
+  signatureBase64: string | null;
+  isSigned: boolean;
+  assigneeId: string | null;
+  mechanicConfirm: boolean;
+  approvedById: string | null;
+  approvedDate: string | null;
+  stockkeeperConfirm: boolean;
+  machineId: string;
+  notes: string;
+  deviceCondition: string | null;
+  sparePartUsages: SparePartUsage[];
+}
+
 
 export interface ErrorDetail {
   errorId: string;

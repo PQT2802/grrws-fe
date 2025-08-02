@@ -7,6 +7,11 @@ export interface AddError {
   ErrorId: string[]; // The ID of the request this error is associated with
   RequestId: string; // The ID of the error being created
 }
+export interface AddTaskErrorPayload {
+  TaskId: string;
+  AddErrors?: string[];
+  RemoveErrors?: string[];
+}
 export interface ErrorFixStep {
   id: string;
   stepDescription: string;

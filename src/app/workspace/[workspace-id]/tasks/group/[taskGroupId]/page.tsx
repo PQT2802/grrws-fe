@@ -100,6 +100,8 @@ import WarrantyTab from "@/components/TaskGroupTab/WarrantyTab";
 import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
 import useSignalRStore from "@/store/useSignalRStore";
 import RepairTab from "@/components/TaskGroupTab/RepairTab";
+import { config } from "zod/v4/core";
+import SingleDeviceCard from "@/components/TaskGroupTab/SingleDeviceCard";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -159,6 +161,8 @@ const GroupTaskDetailsPage = () => {
   const [deviceModalOpen, setDeviceModalOpen] = useState<boolean>(false);
   const [selectedDeviceForModal, setSelectedDeviceForModal] =
     useState<DEVICE_WEB | null>(null);
+  const [singleDevice, setSingleDevice] = useState<DEVICE_WEB | null>(null);
+  const [singleDeviceLoading, setSingleDeviceLoading] = useState(false);
   const [deviceModalTitle, setDeviceModalTitle] = useState<string>("");
   const [deviceTabNewDevice, setDeviceTabNewDevice] =
     useState<DEVICE_WEB | null>(null);
@@ -167,7 +171,14 @@ const GroupTaskDetailsPage = () => {
     string | null
   >(null);
 
-  const [, setShowReturnDialog] = useState(false);
+  // Get installation tasks for device tab using useEffect
+  const [installationTasks, setInstallationTasks] = useState<TASK_IN_GROUP[]>(
+    []
+  );
+
+  // Check if there are any suggested tasks
+  const [suggestedTasks, setSuggestedTasks] = useState<TASK_IN_GROUP[]>([]);
+  const hasSuggestedTasks = suggestedTasks.length > 0;
 
   // Fetch task group details and pre-fetch installation task details
   useEffect(() => {
@@ -283,6 +294,25 @@ const GroupTaskDetailsPage = () => {
       return () => disconnect();
     }
   }, [taskGroupId]); // Added selectedTask to dependencies
+
+  const refreshRepairTaskDetail = async () => {
+    if (repairTask) {
+      try {
+        const taskDetail = await apiClient.task.getRepairTaskDetail(
+          repairTask.taskId
+        );
+        if (taskDetail) {
+          setDropdownTaskDetails((prev) => ({
+            ...prev,
+            [repairTask.taskId]: taskDetail,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to refresh repair task detail:", error);
+        toast.error("Không thể tải lại chi tiết nhiệm vụ sửa chữa");
+      }
+    }
+  };
 
   // Pre-fetch installation task details
   const fetchInstallationTaskDetails = async (tasks: TASK_IN_GROUP[]) => {
@@ -568,12 +598,16 @@ const GroupTaskDetailsPage = () => {
     }
   };
 
-  // Check if there are any suggested tasks
-  const suggestedTasks =
-    taskGroup?.tasks.filter(
-      (task) => task.status.toLowerCase() === "suggested"
-    ) || [];
-  const hasSuggestedTasks = suggestedTasks.length > 0;
+  useEffect(() => {
+    if (taskGroup?.tasks) {
+      const filtered = taskGroup.tasks.filter(
+        (task) => task.status.toLowerCase() === "suggested"
+      );
+      setSuggestedTasks(filtered);
+    } else {
+      setSuggestedTasks([]);
+    }
+  }, [taskGroup]);
 
   const handleApplySuggestedTasks = async () => {
     try {
@@ -591,11 +625,40 @@ const GroupTaskDetailsPage = () => {
     }
   };
 
-  // Get installation tasks for device tab
-  const installationTasks =
-    taskGroup?.tasks.filter(
-      (task) => task.taskType.toLowerCase() === "installation"
-    ) || [];
+  useEffect(() => {
+    if (taskGroup?.tasks) {
+      const filtered = taskGroup.tasks.filter(
+        (task) => task.taskType.toLowerCase() === "installation"
+      );
+      setInstallationTasks(filtered);
+    } else {
+      setInstallationTasks([]);
+    }
+  }, [taskGroup]);
+
+  useEffect(() => {
+    const fetchSingleDevice = async () => {
+      if (
+        installationTasks.length === 0 &&
+        repairTaskDetail &&
+        repairTaskDetail.machineActionConfirmations.length > 0 &&
+        repairTaskDetail.machineActionConfirmations[0].deviceId
+      ) {
+        try {
+          const deviceObj = await apiClient.device.getDeviceById(
+            repairTaskDetail.machineActionConfirmations[0].deviceId
+          );
+          setSingleDevice(deviceObj);
+        } catch (error) {
+          setSingleDevice(null);
+        } finally {
+        }
+      } else {
+        setSingleDevice(null);
+      }
+    };
+    fetchSingleDevice();
+  }, [installationTasks, repairTaskDetail]);
 
   if (loading) {
     return <SkeletonCard />;
@@ -882,10 +945,18 @@ const GroupTaskDetailsPage = () => {
               Bảo hành
             </TabsTrigger>
           )}
-          <TabsTrigger value="device">
-            <Monitor className="h-4 w-4 mr-2" />
-            Thiết bị
-          </TabsTrigger>
+          {/* DeviceTab or SingleDeviceTab */}
+          {installationTasks.length > 0 ? (
+            <TabsTrigger value="device">
+              <Monitor className="h-4 w-4 mr-2" />
+              Thiết bị
+            </TabsTrigger>
+          ) : (
+            <TabsTrigger value="single-device">
+              <Monitor className="h-4 w-4 mr-2" />
+              Thiết bị
+            </TabsTrigger>
+          )}
           <TabsTrigger value="timeline">
             <Calendar className="h-4 w-4 mr-2" />
             Tiến trình
@@ -901,6 +972,7 @@ const GroupTaskDetailsPage = () => {
             <RepairTab
               repairTask={repairTask}
               repairTaskDetail={repairTaskDetail}
+              onErrorsAdded={refreshRepairTaskDetail}
             />
           </TabsContent>
         ) : (
@@ -912,17 +984,27 @@ const GroupTaskDetailsPage = () => {
           </TabsContent>
         )}
 
-        <TabsContent value="device" className="mt-6">
-          <DeviceTab
-            installationTasks={installationTasks}
-            selectedInstallationTaskId={selectedInstallationTaskId}
-            deviceTabLoading={deviceTabLoading}
-            deviceTabOldDevice={deviceTabOldDevice}
-            deviceTabNewDevice={deviceTabNewDevice}
-            onInstallationTaskSelect={setSelectedInstallationTaskId}
-            onDeviceClick={handleDeviceClick}
-          />
-        </TabsContent>
+        {installationTasks.length > 0 ? (
+          <TabsContent value="device" className="mt-6">
+            <DeviceTab
+              installationTasks={installationTasks}
+              selectedInstallationTaskId={selectedInstallationTaskId}
+              deviceTabLoading={deviceTabLoading}
+              deviceTabOldDevice={deviceTabOldDevice}
+              deviceTabNewDevice={deviceTabNewDevice}
+              onInstallationTaskSelect={setSelectedInstallationTaskId}
+              onDeviceClick={handleDeviceClick}
+            />
+          </TabsContent>
+        ) : (
+          <TabsContent value="single-device" className="mt-6">
+            <SingleDeviceCard
+              singleDevice={singleDevice}
+              singleDeviceLoading={singleDeviceLoading}
+              onDeviceClick={handleDeviceClick}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="timeline" className="mt-6">
           <TimelineTab
@@ -1023,15 +1105,16 @@ const GroupTaskDetailsPage = () => {
             )} */}
 
             {/* Add the CreateReinstallTaskButton when warrantyTaskDetailForFooter exists */}
-            {warrantyTaskDetailForFooter && warrantyReturnTask?.status == "Completed" && (
-              <CreateReinstallTaskButton
-                requestId={taskGroup.requestId}
-                taskGroupId={taskGroupId}
-                deviceId={warrantyTaskDetailForFooter.deviceId}
-                deviceName={"Thiết bị Bảo hành"}
-                onSuccess={refreshTaskData}
-              />
-            )}
+            {warrantyTaskDetailForFooter &&
+              warrantyReturnTask?.status == "Completed" && (
+                <CreateReinstallTaskButton
+                  requestId={taskGroup.requestId}
+                  taskGroupId={taskGroupId}
+                  deviceId={warrantyTaskDetailForFooter.deviceId}
+                  deviceName={"Thiết bị Bảo hành"}
+                  onSuccess={refreshTaskData}
+                />
+              )}
 
             {/* <Button variant="default">
               <Eye className="h-4 w-4 mr-2" />
