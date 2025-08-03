@@ -468,19 +468,18 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
     },
     {
       id: "actions",
-      header: "Thao tác",
+      header: "Hành động",
       cell: ({ row }) => {
         const request = row.original;
 
         return (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => handleViewDetail(request)}
-            className="h-8 w-8 p-0"
-            title="Xem chi tiết"
+            className="text-xs text-right"
           >
-            <Eye className="h-4 w-4" />
+            Xem chi tiết
           </Button>
         );
       },

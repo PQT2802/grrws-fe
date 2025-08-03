@@ -20,6 +20,7 @@ export interface PartType {
 export interface PartCardProps {
   part: PartType;
   onClick: (part: PartType) => void;
+  isViewOnlyMode?: boolean; 
 }
 export interface FilterBarProps {
   search: string;
@@ -42,6 +43,7 @@ export interface PartDetailModalProps {
   part: PartType | null; 
   onUpdate?: () => void; 
   partId?: string | undefined; 
+  isViewOnlyMode?: boolean;
 }
 
 //request  

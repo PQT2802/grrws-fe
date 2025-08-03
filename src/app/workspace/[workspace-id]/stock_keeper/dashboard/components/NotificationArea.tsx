@@ -95,7 +95,7 @@ export default function NotificationArea() {
   }, [router]);
 
   const handleViewAllRequests = useCallback(() => {
-    router.push('./requests?tab=spare-parts&status=Unconfirmed');
+    router.push('./requests?tab=spare-parts&status=Pending');
   }, [router]);
 
   const handleViewAllMachineRequests = useCallback(() => {
@@ -132,8 +132,8 @@ export default function NotificationArea() {
         }
       }
       
-      if (!areaInfo && req.title) {
-        const title = req.title;
+      if (!areaInfo && req.confirmationCode) {
+        const title = req.confirmationCode;
         
         const areaMatch = title.match(/Khu\s+[^-]+(?:\s*-\s*[^-]+)*(?:\s*-\s*\d+)?/i);
         if (areaMatch) {
@@ -141,8 +141,8 @@ export default function NotificationArea() {
         }
       }
       
-      if (!areaInfo && req.description) {
-        const desc = req.description;
+      if (!areaInfo && req.notes) {
+        const desc = req.notes;
         
         const areaMatch = desc.match(/Khu\s+[^-]+(?:\s*-\s*[^-]+)*(?:\s*-\s*\d+)?/i);
         if (areaMatch) {
@@ -151,7 +151,7 @@ export default function NotificationArea() {
       }
       
       if (!areaInfo) {
-        const fullText = `${req.title || ''} ${req.description || ''}`;
+        const fullText = `${req.confirmationCode || ''} ${req.notes || ''}`;
         
         const slashPattern = fullText.match(/[A-Za-z\u00C0-\u017F\s]+\/[A-Za-z\u00C0-\u017F\s]+(?:\/\d+)?/);
         if (slashPattern) {
@@ -171,8 +171,9 @@ export default function NotificationArea() {
   };
 
   const processRequests = useCallback((rawRequests: any[]) => {
+    // Filter for spare part requests with Pending status
     const allUnconfirmedRequests = rawRequests.filter((req: any) => 
-      req.status === 'Unconfirmed'
+      req.status === 'Pending' && req.actionType?.toLowerCase() === 'sparepartrequest'
     );
     
     const totalUnconfirmed = allUnconfirmedRequests.length;
@@ -181,11 +182,11 @@ export default function NotificationArea() {
     return {
       unconfirmedRequests: unconfirmedToDisplay.map((req: any) => ({
         id: req.id,
-        requestCode: req.requestCode,
-        assigneeName: req.assigneeName,
-        requestDate: new Date(req.requestDate).toLocaleDateString('vi-VN'),
+        requestCode: req.confirmationCode,
+        assigneeName: req.assigneeName || 'Chưa có người thực hiện',
+        requestDate: new Date(req.startDate).toLocaleDateString('vi-VN'),
         status: req.status,
-        itemCount: req.sparePartUsages?.length || 0
+        itemCount: 1 // Since each machine action confirmation represents one action
       })),
       totalUnconfirmedCount: totalUnconfirmed
     };
@@ -194,20 +195,17 @@ export default function NotificationArea() {
   const processMachineRequests = useCallback((rawRequests: any[]) => {
     console.log('Processing machine requests:', rawRequests);
     
+    // Filter for machine requests (non-spare part) with Pending status
     const allPendingMachineRequests = rawRequests.filter((req: any) => {
       const isPending = req.status === 'Pending';
-      const isMachineReplacement = req.title && (
-        req.title.toLowerCase().includes('yêu cầu thay thế thiết bị') ||
-        req.title.toLowerCase().includes('machine replacement') ||
-        req.title.toLowerCase().includes('thay thế thiết bị')
-      );
+      const isMachineRequest = req.actionType?.toLowerCase() !== 'sparepartrequest';
       
-      console.log(`Request ${req.id}: status=${req.status}, isPending=${isPending}, isMachineReplacement=${isMachineReplacement}, title=${req.title}`);
+      console.log(`Request ${req.id}: status=${req.status}, isPending=${isPending}, isMachineRequest=${isMachineRequest}, actionType=${req.actionType}`);
       
-      return isPending && isMachineReplacement;
+      return isPending && isMachineRequest;
     });
     
-    console.log(`Found ${allPendingMachineRequests.length} pending machine replacement requests out of ${rawRequests.length} total`);
+    console.log(`Found ${allPendingMachineRequests.length} pending machine requests out of ${rawRequests.length} total`);
     
     const totalPending = allPendingMachineRequests.length;
     const pendingToDisplay = allPendingMachineRequests.slice(0, 3);
@@ -215,9 +213,9 @@ export default function NotificationArea() {
     return {
       unconfirmedMachineRequests: pendingToDisplay.map((req: any) => ({
         id: req.id,
-        title: 'Yêu cầu thay thế thiết bị', 
-        description: req.description || '', 
-        requestDate: new Date(req.requestDate).toLocaleDateString('vi-VN'),
+        title: `Yêu cầu ${req.actionType || 'hành động'}`, 
+        description: req.notes || '', 
+        requestDate: new Date(req.startDate).toLocaleDateString('vi-VN'),
         status: req.status,
         areaPath: formatAreaPath(req) 
       })),
@@ -243,50 +241,35 @@ export default function NotificationArea() {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      
-      const [requestsResult, machineRequestsResult, inventoryResult] = await Promise.allSettled([
-        apiClient.sparePart.getRequests(1, 1000), 
-        apiClient.machine.getReplacementRequests(1, 1000), 
+      // Use the new unified API instead of separate API calls
+      const [machineActionResult, inventoryResult] = await Promise.allSettled([
+        apiClient.machineActionConfirmation.getAll(1, 1000, false), // Get large page, newest first
         apiClient.sparePart.getInventory(1, 1000)
       ]);
 
-      // Process spare part requests
+      // Process machine action confirmation data
       let processedRequests: { unconfirmedRequests: UnconfirmedRequest[]; totalUnconfirmedCount: number } = { unconfirmedRequests: [], totalUnconfirmedCount: 0 };
-      if (requestsResult.status === 'fulfilled') {
-        const requestsResponse = requestsResult.value;
-        let requests: any[] = [];
-        
-        if (requestsResponse?.data?.data) {
-          requests = requestsResponse.data.data;
-        } else if (requestsResponse?.data && Array.isArray(requestsResponse.data)) {
-          requests = requestsResponse.data;
-        } else if (Array.isArray(requestsResponse)) {
-          requests = requestsResponse;
-        }
-
-        console.log('Spare part requests:', requests);
-        processedRequests = processRequests(requests);
-      } else {
-        console.error('Failed to fetch requests:', requestsResult.reason);
-      }
-
       let processedMachineRequests: { unconfirmedMachineRequests: UnconfirmedMachineRequest[]; totalUnconfirmedMachineCount: number } = { unconfirmedMachineRequests: [], totalUnconfirmedMachineCount: 0 };
-      if (machineRequestsResult.status === 'fulfilled') {
-        const machineRequestsResponse = machineRequestsResult.value;
-        let machineRequests: any[] = [];
+
+      if (machineActionResult.status === 'fulfilled') {
+        const machineActionResponse = machineActionResult.value;
+        let machineActionData: any[] = [];
         
-        if (machineRequestsResponse?.data?.data) {
-          machineRequests = machineRequestsResponse.data.data;
-        } else if (machineRequestsResponse?.data && Array.isArray(machineRequestsResponse.data)) {
-          machineRequests = machineRequestsResponse.data;
-        } else if (Array.isArray(machineRequestsResponse)) {
-          machineRequests = machineRequestsResponse;
+        if (machineActionResponse?.data?.data && Array.isArray(machineActionResponse.data.data)) {
+          machineActionData = machineActionResponse.data.data;
+        } else if (Array.isArray(machineActionResponse?.data)) {
+          machineActionData = machineActionResponse.data;
+        } else if (Array.isArray(machineActionResponse)) {
+          machineActionData = machineActionResponse;
         }
 
-        console.log('Machine requests:', machineRequests);
-        processedMachineRequests = processMachineRequests(machineRequests);
+        console.log('Machine action confirmation data:', machineActionData);
+        
+        // Process both spare part and machine requests from the same data source
+        processedRequests = processRequests(machineActionData);
+        processedMachineRequests = processMachineRequests(machineActionData);
       } else {
-        console.error('Failed to fetch machine requests:', machineRequestsResult.reason);
+        console.error('Failed to fetch machine action confirmations:', machineActionResult.reason);
       }
 
       let processedInventory: { lowStockItems: LowStockItem[]; totalLowStockCount: number } = { lowStockItems: [], totalLowStockCount: 0 };

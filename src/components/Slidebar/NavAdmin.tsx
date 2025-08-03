@@ -14,7 +14,9 @@ import {
   FileText,
   Package,
   Users,
-  History
+  History,
+  MapPin,
+  PackageSearch // New icon for spare parts
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
@@ -64,6 +66,34 @@ export function NavAdmin() {
       url: `/workspace/${workspaceId}/admin/deviceList`,
       icon: Smartphone,
       items: []
+    },
+    {
+      title: "Spare Part",
+      url: `/workspace/${workspaceId}/admin/spare-parts`,
+      icon: PackageSearch,
+      items: []
+    },
+    {
+      title: "Location", 
+      url: "#",
+      icon: MapPin,
+      items: [
+        {
+          title: "Areas",
+          url: `/workspace/${workspaceId}/admin/location/areas`,
+          icon: MapPin,
+        },
+        {
+          title: "Zones",
+          url: `/workspace/${workspaceId}/admin/location/zones`,
+          icon: MapPin,
+        },
+        {
+          title: "Positions",
+          url: `/workspace/${workspaceId}/admin/location/positions`,
+          icon: MapPin,
+        },
+      ],
     },
     {
       title: "Request", 

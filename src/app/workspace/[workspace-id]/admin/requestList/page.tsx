@@ -413,9 +413,9 @@ export default function RequestListPage() {
 
   if (isLoading && allRequests.length === 0) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Request Management</h1>
+          <h1 className="text-2xl font-bold">Quản lý báo cáo sự cố</h1>
         </div>
         <Card>
           <CardContent className="flex items-center justify-center py-8">
@@ -429,9 +429,9 @@ export default function RequestListPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Request Management</h1>
+          <h1 className="text-2xl font-bold">Quản lý báo cáo sự cố</h1>
         </div>
         <Card>
           <CardContent className="flex items-center justify-center py-8 text-center">
@@ -454,9 +454,14 @@ export default function RequestListPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Request Management</h1>
+        <div>
+        <h1 className="text-2xl font-bold">Quản lý báo cáo sự cố</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Xem và quản lý tất cả các báo cáo sự cố được trưởng phòng may tạo
+          </p>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">

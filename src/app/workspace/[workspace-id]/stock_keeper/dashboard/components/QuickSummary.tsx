@@ -35,38 +35,35 @@ export default function QuickSummary() {
       
       console.log("🔍 Fetching stock keeper dashboard summary data...");
       
-      // Fetch all data concurrently
-      const [sparePartRequestsResponse, machineRequestsResponse, inventoryResponse] = await Promise.all([
-        apiClient.sparePart.getRequests(1, 1000), // Get large page to count all
-        apiClient.machine.getReplacementRequests(1, 1000), // Get large page to count all
+      // Fetch all data concurrently using the new unified API
+      const [machineActionResponse, inventoryResponse] = await Promise.all([
+        apiClient.machineActionConfirmation.getAll(1, 1000, false), // Get large page to count all, newest first
         apiClient.sparePart.getInventory(1, 1000) // Get large page to count all
       ]);
 
       console.log("🔍 Raw responses:", {
-        sparePartRequests: sparePartRequestsResponse,
-        machineRequests: machineRequestsResponse,
+        machineActionResponse,
         inventory: inventoryResponse
       });
 
-      // Process spare part requests
-      let sparePartRequests: any[] = [];
-      if (sparePartRequestsResponse?.data?.data) {
-        sparePartRequests = sparePartRequestsResponse.data.data;
-      } else if (sparePartRequestsResponse?.data && Array.isArray(sparePartRequestsResponse.data)) {
-        sparePartRequests = sparePartRequestsResponse.data;
-      } else if (Array.isArray(sparePartRequestsResponse)) {
-        sparePartRequests = sparePartRequestsResponse;
+      // Process machine action confirmation data
+      let machineActionData: any[] = [];
+      if (machineActionResponse?.data?.data && Array.isArray(machineActionResponse.data.data)) {
+        machineActionData = machineActionResponse.data.data;
+      } else if (Array.isArray(machineActionResponse?.data)) {
+        machineActionData = machineActionResponse.data;
+      } else if (Array.isArray(machineActionResponse)) {
+        machineActionData = machineActionResponse;
       }
 
-      // Process machine requests
-      let machineRequests: any[] = [];
-      if (machineRequestsResponse?.data?.data) {
-        machineRequests = machineRequestsResponse.data.data;
-      } else if (machineRequestsResponse?.data && Array.isArray(machineRequestsResponse.data)) {
-        machineRequests = machineRequestsResponse.data;
-      } else if (Array.isArray(machineRequestsResponse)) {
-        machineRequests = machineRequestsResponse;
-      }
+      // Separate spare part requests and machine requests
+      const sparePartRequests = machineActionData.filter(req => 
+        req.actionType?.toLowerCase() === 'sparepartrequest'
+      );
+
+      const machineRequests = machineActionData.filter(req => 
+        req.actionType?.toLowerCase() !== 'sparepartrequest'
+      );
 
       // Process inventory
       let inventory: any[] = [];
@@ -163,7 +160,7 @@ export default function QuickSummary() {
             <button
               key={item.label}
               onClick={item.action}
-              className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none ${item.color}`}
+              className={`p-4 rounded-lg border transition-all cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${item.color}`}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -179,7 +176,7 @@ export default function QuickSummary() {
         return (
           <div
             key={item.label}
-            className={`p-4 rounded-lg border transition-colors ${item.color.replace('hover:bg-', 'bg-').replace('hover:bg-blue-100', 'bg-blue-50').replace('hover:bg-purple-100', 'bg-purple-50').replace('hover:bg-green-100', 'bg-green-50').replace('hover:bg-orange-100', 'bg-orange-50')}`}
+            className={`p-4 rounded-lg border transition-colors ${item.color.replace(/hover:bg-\w+-\d+/g, '').trim()}`}
           >
             <div className="flex items-center justify-between">
               <div>

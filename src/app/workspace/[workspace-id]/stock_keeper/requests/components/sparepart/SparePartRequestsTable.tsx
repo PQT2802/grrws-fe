@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, Settings, Calendar, User, Clock, Package, Archive, Cog, RefreshCw } from 'lucide-react';
+import { Search, Filter, Package, Calendar, User, Clock, Wrench } from 'lucide-react';
 import { 
   Pagination, 
   PaginationContent, 
@@ -24,18 +24,17 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { UNIFIED_SKEEPER_REQUEST, MachineActionType } from '@/types/sparePart.type';
+import { UNIFIED_SKEEPER_REQUEST } from '@/types/sparePart.type';
 import { Skeleton } from '@/components/ui/skeleton';
 import { translateActionType, translateTaskStatus } from '@/utils/textTypeTask';
 import { useRouter } from 'next/navigation';
 
-export default function MachineRequestsTable() {
+export default function SparePartRequestsTable() {
   const router = useRouter();
   const [requests, setRequests] = useState<UNIFIED_SKEEPER_REQUEST[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [actionTypeFilter, setActionTypeFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   
@@ -73,15 +72,15 @@ export default function MachineRequestsTable() {
   const fetchRequests = async (page: number = 1, pageSize: number = 10) => {
     try {
       setIsLoading(true);
-      console.log(`Fetching machine requests for page ${page}, size ${pageSize}`);
+      console.log(`Fetching spare part requests for page ${page}, size ${pageSize}`);
       
-      // Fetch from unified API - exclude spare part requests
+      // Fetch from unified API with filter for spare part requests
       const response = await apiClient.machineActionConfirmation.getAll(
         page, 
         pageSize, 
         false, // newest first
         statusFilter !== 'all' ? statusFilter : undefined,
-        actionTypeFilter !== 'all' ? actionTypeFilter : undefined
+        'SparePartRequest' // Filter for spare part requests only
       );
 
       let machineActionData: any[] = [];
@@ -105,9 +104,9 @@ export default function MachineRequestsTable() {
         totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
       }
 
-      // Transform to unified format - exclude spare part requests
-      const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-        .filter(req => req.actionType?.toLowerCase() !== 'sparepartrequest')
+      // Transform to unified format - only spare part requests
+      const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
+        .filter(req => req.actionType?.toLowerCase() === 'sparepartrequest')
         .map(req => ({
           id: req.id,
           type: 'machineAction' as const,
@@ -123,19 +122,19 @@ export default function MachineRequestsTable() {
           originalData: req
         }));
 
-      console.log(`Processed machine data: ${machineRequests.length} items, ${totalItems} total, ${totalPages} pages`);
+      console.log(`Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`);
 
-      setRequests(machineRequests);
+      setRequests(sparePartRequests);
       setPagination({
         currentPage,
         pageSize,
-        totalItems: machineRequests.length,
-        totalPages: Math.max(1, Math.ceil(machineRequests.length / pageSize))
+        totalItems: sparePartRequests.length,
+        totalPages: Math.max(1, Math.ceil(sparePartRequests.length / pageSize))
       });
       
     } catch (error) {
-      console.error("Failed to fetch machine requests:", error);
-      toast.error("Không thể tải danh sách yêu cầu thiết bị");
+      console.error("Failed to fetch spare part requests:", error);
+      toast.error("Không thể tải danh sách yêu cầu linh kiện");
       
       setRequests([]);
       setPagination({
@@ -179,36 +178,12 @@ export default function MachineRequestsTable() {
     }
   };
 
-  const getActionTypeIcon = (actionType: MachineActionType) => {
-    switch (actionType.toLowerCase()) {
-      case 'stockout': return <Package className="h-4 w-4 text-red-500" />;
-      case 'stockin': return <Archive className="h-4 w-4 text-green-500" />;
-      case 'installation': return <Cog className="h-4 w-4 text-blue-500" />;
-      case 'warrantysubmission': return <RefreshCw className="h-4 w-4 text-orange-500" />;
-      default: return <Settings className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getActionTypeColor = (actionType: MachineActionType) => {
-    switch (actionType.toLowerCase()) {
-      case 'stockout': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      case 'stockin': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'installation': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'warrantysubmission': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
-    }
-  };
-
-  // Get unique statuses and action types for filter dropdown
+  // Get unique statuses for filter dropdown
   const availableStatuses = useMemo(() => {
     return [...new Set(requests.map(req => req.status))];
   }, [requests]);
 
-  const availableActionTypes = useMemo(() => {
-    return [...new Set(requests.map(req => req.actionType).filter(Boolean))];
-  }, [requests]);
-
-  // Filter requests based on search, status, action type, and date range
+  // Filter requests based on search, status, and date range
   const filteredRequests = useMemo(() => {
     return requests.filter(request => {
       const matchesSearch = searchTerm === '' || 
@@ -217,7 +192,6 @@ export default function MachineRequestsTable() {
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
-      const matchesActionType = actionTypeFilter === 'all' || request.actionType === actionTypeFilter;
       
       // Date range filtering
       let matchesDateRange = true;
@@ -234,9 +208,9 @@ export default function MachineRequestsTable() {
         }
       }
       
-      return matchesSearch && matchesStatus && matchesActionType && matchesDateRange;
+      return matchesSearch && matchesStatus && matchesDateRange;
     });
-  }, [requests, searchTerm, statusFilter, actionTypeFilter, fromDate, toDate]);
+  }, [requests, searchTerm, statusFilter, fromDate, toDate]);
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {
@@ -286,8 +260,8 @@ export default function MachineRequestsTable() {
 
   const handleViewRequest = async (request: UNIFIED_SKEEPER_REQUEST) => {
     try {
-      console.log(`Navigating to machine request detail with ID: ${request.id}`);
-      router.push(`./requests/${request.id}/machine?tab=machines`);
+      console.log(`Navigating to spare part request detail with ID: ${request.id}`);
+      router.push(`./requests/${request.id}/sparepart`);
     } catch (error) {
       console.error('Failed to navigate to request details:', error);
       toast.error('Không thể mở chi tiết yêu cầu');
@@ -307,7 +281,6 @@ export default function MachineRequestsTable() {
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
-    setActionTypeFilter('all');
     setFromDate('');
     setToDate('');
   };
@@ -315,12 +288,6 @@ export default function MachineRequestsTable() {
   // Update filter change handlers
   const handleStatusChange = (status: string) => {
     setStatusFilter(status);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-    fetchRequests(1, pagination.pageSize);
-  };
-
-  const handleActionTypeChange = (actionType: string) => {
-    setActionTypeFilter(actionType);
     setPagination(prev => ({ ...prev, currentPage: 1 }));
     fetchRequests(1, pagination.pageSize);
   };
@@ -341,24 +308,9 @@ export default function MachineRequestsTable() {
             />
           </div>
           
-          {/* Action Type Filter */}
-          <Select value={actionTypeFilter} onValueChange={handleActionTypeChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Loại" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả loại</SelectItem>
-              {availableActionTypes.filter(actionType => actionType).map(actionType => (
-                <SelectItem key={actionType} value={actionType!}>
-                  {safeTranslateActionType(actionType!)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-44">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
@@ -402,8 +354,8 @@ export default function MachineRequestsTable() {
       <Card className="border border-slate-200 dark:border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-blue-400" />
-            Danh sách yêu cầu thiết bị
+            <Wrench className="h-5 w-5 text-purple-400" />
+            Danh sách yêu cầu linh kiện
             <Badge variant="secondary">{filteredRequests.length}</Badge>
           </CardTitle>
         </CardHeader>
@@ -416,11 +368,11 @@ export default function MachineRequestsTable() {
             </div>
           ) : filteredRequests.length === 0 ? (
             <div className="text-center py-8">
-              <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">
-                Không có yêu cầu thiết bị nào
+                Không có yêu cầu linh kiện nào
               </p>
-              {(searchTerm || statusFilter !== 'all' || actionTypeFilter !== 'all' || fromDate || toDate) && (
+              {(searchTerm || statusFilter !== 'all' || fromDate || toDate) && (
                 <button
                   className="mt-2 text-primary underline text-sm"
                   onClick={clearFilters}
@@ -434,8 +386,7 @@ export default function MachineRequestsTable() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-200">
-                    <th className="px-4 py-3 text-left font-medium w-[400px]">Mã xác nhận</th>
-                    <th className="px-4 py-3 text-left font-medium">Loại hành động</th>
+                    <th className="px-4 py-3 text-left font-medium">Mã xác nhận</th>
                     <th className="px-4 py-3 text-left font-medium">Ngày yêu cầu</th>
                     <th className="px-4 py-3 text-left font-medium">Người thực hiện</th>
                     <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
@@ -456,14 +407,6 @@ export default function MachineRequestsTable() {
                         <td className="px-4 py-3">
                           {/* REMOVED: Small description text under confirmation code */}
                           <div className="font-medium">{request.title}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {request.actionType && getActionTypeIcon(request.actionType)}
-                            <Badge className={request.actionType ? getActionTypeColor(request.actionType) : 'bg-gray-100 text-gray-800'}>
-                              {request.actionType ? safeTranslateActionType(request.actionType) : 'N/A'}
-                            </Badge>
-                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">

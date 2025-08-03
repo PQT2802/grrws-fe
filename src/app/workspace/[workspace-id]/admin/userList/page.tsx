@@ -334,7 +334,7 @@ export default function UserList() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-2">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Users Management</h1>
         <Button onClick={handleCreateUser} className="bg-blue-600 hover:bg-blue-700">

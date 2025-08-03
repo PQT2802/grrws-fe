@@ -118,7 +118,7 @@ export default function RequestReportsPage() {
         <div>
           <h1 className="text-2xl font-bold">Quản lý báo cáo yêu cầu</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Xem và quản lý tất cả các báo cáo yêu cầu đã được HOT tạo
+            Xem và quản lý tất cả các báo cáo yêu cầu đã được trưởng phòng kĩ thuật tạo
           </p>
         </div>
         

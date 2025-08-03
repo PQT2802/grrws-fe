@@ -134,7 +134,7 @@ export default function AdminQuickSummary() {
             <button
               key={item.label}
               onClick={item.action}
-              className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none ${item.color}`}
+              className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${item.color}`}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -147,20 +147,20 @@ export default function AdminQuickSummary() {
           );
         }
 
-        // return (
-        //   <div
-        //     key={item.label}
-        //     className={`p-4 rounded-lg border transition-colors ${item.color.replace('hover:bg-', 'bg-').replace('hover:bg-blue-100', 'bg-blue-50').replace('hover:bg-green-100', 'bg-green-50').replace('hover:bg-purple-100', 'bg-purple-50').replace('hover:bg-orange-100', 'bg-orange-50')}`}
-        //   >
-        //     <div className="flex items-center justify-between">
-        //       <div>
-        //         <p className="text-sm font-medium opacity-75">{item.label}</p>
-        //         <p className="text-2xl font-bold">{item.value}</p>
-        //       </div>
-        //       <IconComponent className="w-8 h-8 opacity-75" />
-        //     </div>
-        //   </div>
-        // );
+        return (
+          <div
+            key={item.label}
+            className={`p-4 rounded-lg border transition-colors ${item.color.replace(/hover:bg-\w+-\d+/g, '').trim()}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium opacity-75">{item.label}</p>
+                <p className="text-2xl font-bold">{item.value}</p>
+              </div>
+              <IconComponent className="w-8 h-8 opacity-75" />
+            </div>
+          </div>
+        );
       })}
     </div>
   );

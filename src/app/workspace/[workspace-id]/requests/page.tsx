@@ -86,7 +86,6 @@ const RequestsPage = () => {
             icon={<RotateCcw />}
             loading={isRefreshing}
             onClick={handleRefresh}
-            variant="outline"
           />
           
           <ButtonCpn

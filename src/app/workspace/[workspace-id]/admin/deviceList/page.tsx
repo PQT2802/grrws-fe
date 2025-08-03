@@ -131,7 +131,7 @@ export default function DeviceListPage() {
     }, [closeDeleteDialog])
 
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-6 p-2">
             <DeviceListCpn 
                 ref={deviceListRef}
                 onEditDevice={handleEditDevice}
