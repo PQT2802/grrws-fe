@@ -60,9 +60,9 @@ const WarrantiesModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Device Warranties</DialogTitle>
+          <DialogTitle>Bảo hành thiết bị</DialogTitle>
           <DialogDescription>
-            Active warranties for device: {deviceName}
+            Các bảo hành đang áp dụng cho thiết bị: {deviceName}
           </DialogDescription>
         </DialogHeader>
 
@@ -72,19 +72,19 @@ const WarrantiesModal = ({
           <div className="mt-4">
             {warranties.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No warranties found for this device.
+                Không tìm thấy bảo hành nào cho thiết bị này.
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Warranty Code</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Under Warranty</TableHead>
+                    <TableHead>Mã bảo hành</TableHead>
+                    <TableHead>Loại</TableHead>
+                    <TableHead>Nhà cung cấp</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Ngày bắt đầu</TableHead>
+                    <TableHead>Ngày kết thúc</TableHead>
+                    <TableHead>Bảo hành</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -105,7 +105,11 @@ const WarrantiesModal = ({
                               : "outline"
                           }
                         >
-                          {warranty.warrantyStatus}
+                          {warranty.warrantyStatus === "InUsed"
+                            ? "Đang sử dụng"
+                            : warranty.warrantyStatus === "Completed"
+                            ? "Đã hoàn thành"
+                            : "Chưa sử dụng"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -123,7 +127,7 @@ const WarrantiesModal = ({
                             warranty.isUnderWarranty ? "default" : "destructive"
                           }
                         >
-                          {warranty.isUnderWarranty ? "Yes" : "No"}
+                          {warranty.isUnderWarranty ? "Còn bảo hành" : "Hết bảo hành"}
                         </Badge>
                       </TableCell>
                     </TableRow>

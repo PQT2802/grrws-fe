@@ -20,27 +20,30 @@ import {
 import { X, Check, Loader2, Search, AlertCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
-import { AddError } from "@/types/error.type";
+import { AddTaskErrorPayload } from "@/types/error.type";
 import {
   SUGGEST_OBJECT_REQUEST,
   SUGGEST_OBJECT_RESPONSE,
 } from "@/types/comon.type";
+import { ErrorDetail } from "@/types/task.type";
 
 type ErrorSuggestion = SUGGEST_OBJECT_RESPONSE;
 
-interface AddErrorToRequestModalProps {
+interface AddErrorToTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  requestId: string;
+  taskId: string;
+  listError: ErrorDetail[]; // List of errors already associated with the task
   onErrorsAdded: () => void;
 }
 
-const AddErrorToRequestModal = ({
+const AddErrorToTaskModal = ({
   open,
   onOpenChange,
-  requestId,
+  listError,
+  taskId,
   onErrorsAdded,
-}: AddErrorToRequestModalProps) => {
+}: AddErrorToTaskModalProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<ErrorSuggestion[]>([]);
   // Persist selectedErrors across modal toggles
@@ -58,7 +61,7 @@ const AddErrorToRequestModal = ({
     selectedErrorsRef.current = selectedErrors;
   }, [selectedErrors]);
 
-  // Fetch suggestions when query changes
+  // Fetch suggestions when query changes (with debounce)
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (!searchQuery || searchQuery.length < 1) {
@@ -73,14 +76,12 @@ const AddErrorToRequestModal = ({
           maxResults: 5,
         };
         const response = await apiClient.error.getSuggestedErrors(request);
-        const listError = await apiClient.request.getErrorOfRequest(requestId);
-        // Filter out errors that are already selected or already in listError
+        // Filter out errors that are already selected or already in the task
         const filteredSuggestions = response.filter(
           (suggestion) =>
             !selectedErrors.some((selected) => selected.id === suggestion.id) &&
-            !listError.some((err: { errorId: string }) => err.errorId === suggestion.id)
+            !listError.some((err) => err.errorId === suggestion.id)
         );
-
         setSuggestions(filteredSuggestions);
       } catch (error) {
         console.error("Failed to fetch error suggestions:", error);
@@ -98,9 +99,9 @@ const AddErrorToRequestModal = ({
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery, selectedErrors, open, requestId]);
+  }, [searchQuery, selectedErrors, open, listError]);
 
-  // Handle adding errors to request
+  // Handle adding errors to task
   const handleAddErrors = async () => {
     if (selectedErrors.length === 0) {
       toast.error("Vui lòng chọn ít nhất một lỗi để thêm");
@@ -112,21 +113,23 @@ const AddErrorToRequestModal = ({
 
       const errorIds = selectedErrors.map((error) => error.id);
 
-      const data: AddError = {
-        ErrorId: errorIds,
-        RequestId: requestId,
+      const payload: AddTaskErrorPayload = {
+        TaskId: taskId,
+        AddErrors: errorIds,
       };
-      await apiClient.error.addError(data);
+      console.log(payload);
 
-      toast.success(`Đã thêm ${errorIds.length} lỗi vào yêu cầu`);
+      await apiClient.error.addTaskErrors(payload);
+
+      toast.success(`Đã thêm ${errorIds.length} lỗi vào nhiệm vụ`);
       onErrorsAdded();
       setSelectedErrors([]);
       selectedErrorsRef.current = [];
       setSearchQuery("");
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to add errors:", error);
-      toast.error("Không thể thêm lỗi vào yêu cầu");
+      console.error("Failed to add errors to task:", error);
+      toast.error("Không thể thêm lỗi vào nhiệm vụ");
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +196,7 @@ const AddErrorToRequestModal = ({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Thêm Lỗi vào Yêu cầu</DialogTitle>
+          <DialogTitle>Thêm Lỗi vào Nhiệm vụ</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -324,9 +327,11 @@ const AddErrorToRequestModal = ({
             </div>
           )}
         </div>
+
+       
       </DialogContent>
     </Dialog>
   );
 };
 
-export default AddErrorToRequestModal;
+export default AddErrorToTaskModal;

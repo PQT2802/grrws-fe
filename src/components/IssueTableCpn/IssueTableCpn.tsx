@@ -51,6 +51,9 @@ import {
   MoreHorizontal,
   Search,
   Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -64,9 +67,18 @@ import {
 interface IssueTableCpnProps {
   issues: ISSUE_FOR_REQUEST_DETAIL_WEB[];
   loading: boolean;
+  showToggle?: boolean;
+  showAll?: boolean;
+  onToggle?: () => void;
 }
 
-const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
+const IssueTableCpn = ({
+  issues,
+  loading,
+  showToggle,
+  showAll,
+  onToggle,
+}: IssueTableCpnProps) => {
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(5);
@@ -94,7 +106,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
       accessorKey: "displayName",
       header: ({ column }) => (
         <span className="flex items-center gap-2">
-          Display Name <ArrowUpDown size={15} />
+          Tên sự cố <ArrowUpDown size={15} />
         </span>
       ),
       cell: (info) => {
@@ -104,30 +116,8 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
       },
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: (info) => {
-        const value = info.getValue() as string;
-        if (!value) return "---";
-
-        return (
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              value === "Closed"
-                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : value === "In Progress"
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-            }`}
-          >
-            {value}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "images",
-      header: "Images",
+      header: "Hình ảnh",
       cell: (info) => {
         const images = info.getValue() as string[];
         const imageCount = images?.length || 0;
@@ -136,7 +126,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
           return (
             <div className="flex items-center gap-2 text-gray-400">
               <ImageIcon size={16} />
-              <span>No images</span>
+              <span>Không có hình ảnh</span>
             </div>
           );
         }
@@ -147,27 +137,22 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
               <div
                 className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
                 onClick={async () => {
-                  setImageLoading(true); // ✅ Show loading
+                  setImageLoading(true);
                   try {
-                    console.log("🔄 Processing Firebase images:", images);
-                    // ✅ Get proper Firebase URLs
                     const firebaseUrls = await getFirebaseImageUrls(images);
                     setSelectedImages(firebaseUrls);
                     setOpenImageModal(true);
                   } catch (error) {
-                    console.error("❌ Failed to load Firebase images:", error);
-                    // Fallback to original paths
                     setSelectedImages(images);
                     setOpenImageModal(true);
                   } finally {
-                    setImageLoading(false); // ✅ Hide loading
+                    setImageLoading(false);
                   }
                 }}
               >
                 <ImageIcon size={16} className="text-blue-500" />
-                <span>{imageCount} image(s)</span>
+                <span>{imageCount} hình ảnh</span>
                 <Eye size={14} className="text-gray-400" />
-                {/* ✅ Add loading indicator */}
                 {imageLoading && (
                   <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin ml-2"></div>
                 )}
@@ -177,10 +162,10 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  Issue Images ({selectedImages.length})
+                  Hình ảnh sự cố ({selectedImages.length})
                 </DialogTitle>
                 <DialogDescription>
-                  Click on any image to view in full size
+                  Nhấn vào hình để xem kích thước đầy đủ
                 </DialogDescription>
               </DialogHeader>
 
@@ -191,7 +176,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                       <img
                         src={imageUrl}
-                        alt={`Issue image ${index + 1}`}
+                        alt={`Hình sự cố ${index + 1}`}
                         className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => window.open(imageUrl, "_blank")}
                         onError={(e) => {
@@ -217,36 +202,36 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
         );
       },
     },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: (info) => {
-        const issue = info.row.original;
+    // {
+    //   id: "actions",
+    //   header: "Thao tác",
+    //   cell: (info) => {
+    //     const issue = info.row.original;
 
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  handleViewDetail(issue);
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <Eye size={15} /> View detail
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
+    //     return (
+    //       <DropdownMenu>
+    //         <DropdownMenuTrigger asChild>
+    //           <Button variant="ghost" className="h-8 w-8 p-0">
+    //             <span className="sr-only">Mở menu</span>
+    //             <MoreHorizontal />
+    //           </Button>
+    //         </DropdownMenuTrigger>
+    //         <DropdownMenuContent align="end">
+    //           <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+    //           <DropdownMenuItem
+    //             onClick={() => {
+    //               handleViewDetail(issue);
+    //             }}
+    //           >
+    //             <div className="flex items-center gap-3">
+    //               <Eye size={15} /> Xem chi tiết
+    //             </div>
+    //           </DropdownMenuItem>
+    //         </DropdownMenuContent>
+    //       </DropdownMenu>
+    //     );
+    //   },
+    // },
   ];
 
   const table = useReactTable({
@@ -269,10 +254,10 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
     return (
       <div className="text-center py-12">
         <div className="text-gray-500 dark:text-gray-400 text-lg">
-          No issues found
+          Không tìm thấy sự cố nào
         </div>
         <div className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-          Issues will appear here when available
+          Sự cố sẽ hiển thị tại đây khi có dữ liệu
         </div>
       </div>
     );
@@ -280,21 +265,29 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
 
   return (
     <div>
-      <div className="flex justify-between items-center">
-        <div className="relative w-1/3">
-          <div className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground">
-            <Search className="h-4 w-4" />
-          </div>
-          <Input
-            className="pl-8"
-            placeholder="Search issues..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="flex items-center gap-2 mb-2">
+        <AlertCircle className="h-4 w-4 text-orange-600" />
+        <span className="text-base font-semibold">Danh sách Sự cố</span>
+        {showToggle && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto px-2 py-0 h-7"
+            onClick={onToggle}
+          >
+            {showAll ? (
+              <>
+                Thu gọn <ChevronUp size={16} />
+              </>
+            ) : (
+              <>
+                Xem tất cả <ChevronDown size={16} />
+              </>
+            )}
+          </Button>
+        )}
       </div>
-
-      <Card className="mt-8 rounded-none">
+      <Card className="rounded-none">
         <Table className="w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -346,7 +339,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  Không có kết quả nào.
                 </TableCell>
               </TableRow>
             )}
@@ -354,61 +347,13 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
         </Table>
       </Card>
 
-      <div className="flex items-center justify-between mt-5">
-        <div>
-          <span className="text-sm">{`${filteredData.length} issue(s) found`}</span>
-        </div>
-
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <span className="text-[0.8rem] text-gray-500 dark:text-gray-400">
-              Items per page
-            </span>
-            <Select
-              defaultValue={pageSize.toString()}
-              onValueChange={(value: string) => {
-                setPageSize(Number(value));
-              }}
-            >
-              <SelectTrigger className="w-[80px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[3, 5, 10, 100].map((size) => {
-                  return (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <PaginationContent>
-            {Array.from({ length: table.getPageCount() }, (_, index) => (
-              <PaginationItem key={index} className="hover:cursor-pointer">
-                <PaginationLink
-                  isActive={index === pageIndex}
-                  onClick={() => {
-                    setPageIndex(index);
-                  }}
-                >
-                  {index + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-          </PaginationContent>
-        </div>
-      </div>
-
       {/* Image Gallery Modal */}
       <Dialog open={openImageModal} onOpenChange={setOpenImageModal}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Issue Images ({selectedImages.length})</DialogTitle>
+            <DialogTitle>Hình ảnh sự cố ({selectedImages.length})</DialogTitle>
             <DialogDescription>
-              Click on any image to view in full size
+              Nhấn vào hình để xem kích thước đầy đủ
             </DialogDescription>
           </DialogHeader>
 
@@ -419,7 +364,7 @@ const IssueTableCpn = ({ issues, loading }: IssueTableCpnProps) => {
                 <div className="relative w-full h-48 rounded-lg overflow-hidden border">
                   <img
                     src={imageUrl}
-                    alt={`Issue image ${index + 1}`}
+                    alt={`Hình sự cố ${index + 1}`}
                     className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => window.open(imageUrl, "_blank")}
                     onError={(e) => {

@@ -60,9 +60,9 @@ const WarrantyHistoryModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Warranty History</DialogTitle>
+          <DialogTitle>Lịch sử bảo hành</DialogTitle>
           <DialogDescription>
-            Warranty history for device: {deviceName}
+            Lịch sử bảo hành cho thiết bị: {deviceName}
           </DialogDescription>
         </DialogHeader>
 
@@ -72,18 +72,18 @@ const WarrantyHistoryModal = ({
           <div className="mt-4">
             {history.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No warranty history found for this device.
+                Không tìm thấy lịch sử bảo hành cho thiết bị này.
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Send Date</TableHead>
-                    <TableHead>Receive Date</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Note</TableHead>
+                    <TableHead>Mô tả thiết bị</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Ngày gửi</TableHead>
+                    <TableHead>Ngày nhận</TableHead>
+                    <TableHead>Nhà cung cấp</TableHead>
+                    <TableHead>Ghi chú</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -92,7 +92,7 @@ const WarrantyHistoryModal = ({
                       <TableCell>{item.deviceDescription}</TableCell>
                       <TableCell>
                         <Badge variant={item.status ? "default" : "secondary"}>
-                          {item.status ? "Active" : "Inactive"}
+                          {item.status ? "Đang hoạt động" : "Không hoạt động"}
                         </Badge>
                       </TableCell>
                       <TableCell>

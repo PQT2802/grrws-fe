@@ -7,6 +7,7 @@ import {
 import { DEVICE_WEB, MACHINE_WEB } from "@/types/device.type";
 import {
   AddError,
+  AddTaskErrorPayload,
   CREATE_ERROR_DETAIL,
   ErrorGuideline,
 } from "@/types/error.type";
@@ -323,6 +324,9 @@ class APIClient {
     },
     addError: (errors: AddError): Promise<any> => {
       return http.post("/api/ErrorDetail", errors);
+    },
+    addTaskErrors: (payload: AddTaskErrorPayload): Promise<any> => {
+      return http.put("/api/ErrorDetail/error-detail/task", payload);
     },
     // createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
     //   return http.post("/api/Error/create-error-detail", errorDetail);

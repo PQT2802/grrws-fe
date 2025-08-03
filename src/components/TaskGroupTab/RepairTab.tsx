@@ -3,15 +3,42 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench, Loader2, Package } from "lucide-react";
+import { Wrench, Loader2, Package, Plus, Trash2 } from "lucide-react";
 import { REPAIR_TASK_DETAIL, TASK_IN_GROUP } from "@/types/task.type";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import AddErrorToTaskModal from "@/components/ErrorTableCpn/AddErrorToTaskModal";
+import { apiClient } from "@/lib/api-client";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface RepairTabProps {
   repairTask: TASK_IN_GROUP | null;
   repairTaskDetail: REPAIR_TASK_DETAIL | null;
+  onErrorsAdded?: () => void; // Add this prop
 }
 
-const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
+const RepairTab = ({
+  repairTask,
+  repairTaskDetail,
+  onErrorsAdded,
+}: RepairTabProps) => {
+  // State for AddErrorToTaskModal
+  const [showAddErrorModal, setShowAddErrorModal] = useState(false);
+  const [refreshFlag, setRefreshFlag] = useState(0);
+  const [expandedErrors, setExpandedErrors] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [errorToDelete, setErrorToDelete] = useState<string | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   if (!repairTask) {
     return (
       <Card>
@@ -37,13 +64,6 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
       </Card>
     );
   }
-  // At the beginning of your component
-  console.log("repairTaskDetail:", repairTaskDetail);
-  console.log("errorDetails:", repairTaskDetail?.errorDetails);
-  console.log(
-    "spareParts example:",
-    repairTaskDetail?.errorDetails?.[0]?.spareParts
-  );
   if (!repairTaskDetail) {
     return (
       <Card>
@@ -65,6 +85,51 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
     );
   }
 
+  // Toggle expand/collapse for error spare parts
+  const handleToggleExpandError = (errorId: string) => {
+    setExpandedErrors((prev) => ({
+      ...prev,
+      [errorId]: !prev[errorId],
+    }));
+  };
+
+  // Delete a single error
+  const handleDeleteError = async () => {
+    if (!errorToDelete || !repairTask?.taskId) return;
+    setDeleting(true);
+    try {
+      await apiClient.error.addTaskErrors({
+        TaskId: repairTask.taskId,
+        RemoveErrors: [errorToDelete],
+      });
+      setShowDeleteDialog(false);
+      setErrorToDelete(null);
+      setRefreshFlag((prev) => prev + 1);
+    } catch (error) {
+      // Optionally show error toast
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Delete all errors
+  const handleDeleteAllErrors = async () => {
+    if (!repairTask?.taskId || !repairTaskDetail?.errorDetails?.length) return;
+    setDeleting(true);
+    try {
+      await apiClient.error.addTaskErrors({
+        TaskId: repairTask.taskId,
+        RemoveErrors: repairTaskDetail.errorDetails.map((err) => err.errorId),
+      });
+      setShowDeleteAllDialog(false);
+      setRefreshFlag((prev) => prev + 1);
+    } catch (error) {
+      // Optionally show error toast
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Define colors for timelines and spare parts borders based on error index
   const groupColors = [
     "border-green-500 bg-green-50 dark:bg-green-950/30",
@@ -79,6 +144,31 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
           <Wrench className="h-5 w-5 text-orange-600" />
           Thông tin Sửa chữa
         </CardTitle>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteAllDialog(true)}
+            disabled={
+              !repairTaskDetail?.errorDetails?.length ||
+              deleting ||
+              !repairTask?.taskId
+            }
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Xóa tất cả lỗi
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowAddErrorModal(true)}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={!repairTask?.taskId}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Chuẩn đoán lỗi
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -153,9 +243,9 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
               <TabsTrigger value="spareparts">Linh kiện</TabsTrigger>
             </TabsList>
 
-            {/* Errors Tab */}
+            {/* Errors Tab with expandable spare parts */}
             <TabsContent value="errors">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[200px] overflow-auto">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[300px] overflow-auto">
                 {repairTaskDetail.errorDetails &&
                 repairTaskDetail.errorDetails.length > 0 ? (
                   <div className="space-y-3">
@@ -164,16 +254,83 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
                         key={error.errorId}
                         className="border-b border-gray-200 dark:border-gray-600 pb-2 last:border-b-0"
                       >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {/* Make the entire error row clickable */}
+                        <div
+                          className="flex items-start justify-between cursor-pointer group"
+                          onClick={() => handleToggleExpandError(error.errorId)}
+                          tabIndex={0}
+                          role="button"
+                          aria-expanded={!!expandedErrors[error.errorId]}
+                        >
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:underline">
                               {error.errorName}
                             </h4>
+                            <Badge variant="outline" className="text-xs">
+                              #{index + 1}
+                            </Badge>
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            #{index + 1}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {error.spareParts &&
+                              error.spareParts.length > 0 && (
+                                <span className="text-xs text-gray-400">
+                                  {expandedErrors[error.errorId]
+                                    ? "Thu nhỏ"
+                                    : "Mở rộng"}
+                                </span>
+                              )}
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setErrorToDelete(error.errorId);
+                                setShowDeleteDialog(true);
+                              }}
+                              aria-label="Xóa lỗi"
+                              disabled={deleting}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
+                        {/* Expandable spare parts section */}
+                        {expandedErrors[error.errorId] &&
+                          error.spareParts &&
+                          error.spareParts.length > 0 && (
+                            <div
+                              className={`mt-2 border-l-4 ${
+                                groupColors[index % groupColors.length]
+                              } rounded-md p-3`}
+                            >
+                              <div className="font-semibold text-xs mb-2 text-gray-700 dark:text-gray-300">
+                                Các linh kiện cần:
+                              </div>
+                              {error.spareParts.map((sparePart) => (
+                                <div
+                                  key={sparePart.sparepartId}
+                                  className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Package
+                                      className={`h-4 w-4 ${
+                                        iconColors[index % iconColors.length]
+                                      }`}
+                                    />
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        {sparePart.sparepartName}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        Số lượng: {sparePart.quantityNeeded}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                       </div>
                     ))}
                   </div>
@@ -185,55 +342,50 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
               </div>
             </TabsContent>
 
-            {/* Spare Parts Tab */}
+            {/* Spare Parts Tab - flat list of all spare parts */}
             <TabsContent value="spareparts">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[200px] overflow-auto">
-                {repairTaskDetail.errorDetails?.some(
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-100 dark:border-gray-700 p-3 max-h-[300px] overflow-auto">
+                {repairTaskDetail.errorDetails &&
+                repairTaskDetail.errorDetails.some(
                   (error) => error.spareParts && error.spareParts.length > 0
                 ) ? (
                   <div className="flex flex-col gap-4">
-                    {repairTaskDetail.errorDetails.map((error, errorIndex) => {
-                      if (!error.spareParts || error.spareParts.length === 0) {
-                        return null;
-                      }
-
-                      return (
-                        <div key={error.errorId} className="space-y-2">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {error.errorName}
-                          </h4>
-                          <div
-                            className={`border-l-4 ${
-                              groupColors[errorIndex % groupColors.length]
-                            } rounded-md p-3`}
-                          >
-                            {error.spareParts.map((sparePart) => (
-                              <div
-                                key={sparePart.sparepartId}
-                                className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Package
-                                    className={`h-4 w-4 ${
-                                      iconColors[errorIndex % iconColors.length]
-                                    }`}
-                                  />
-                                  <div>
-                                    <div className="text-sm font-medium">
-                                      {sparePart.sparepartName}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      Số lượng: {sparePart.quantityNeeded}
-                                    </div>
-                                  </div>
-                                </div>
-                                {/* Remove stock quantity badge as it's not in the interface */}
+                    {repairTaskDetail.errorDetails
+                      .flatMap((error, errorIndex) =>
+                        (error.spareParts || []).map((sparePart) => ({
+                          ...sparePart,
+                          errorName: error.errorName,
+                          errorIndex,
+                        }))
+                      )
+                      .map((sparePart, idx) => (
+                        <div
+                          key={sparePart.sparepartId + "-" + idx}
+                          className={`border-l-4 ${
+                            groupColors[
+                              sparePart.errorIndex % groupColors.length
+                            ]
+                          } rounded-md p-3 flex items-center justify-between`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Package
+                              className={`h-4 w-4 ${
+                                iconColors[
+                                  sparePart.errorIndex % iconColors.length
+                                ]
+                              }`}
+                            />
+                            <div>
+                              <div className="text-sm font-medium">
+                                {sparePart.sparepartName}
                               </div>
-                            ))}
+                              <div className="text-xs text-gray-500">
+                                Số lượng: {sparePart.quantityNeeded}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic text-center py-4">
@@ -245,6 +397,83 @@ const RepairTab = ({ repairTask, repairTaskDetail }: RepairTabProps) => {
           </Tabs>
         </div>
       </CardContent>
+      {/* AddErrorToTaskModal */}
+      <AddErrorToTaskModal
+        open={showAddErrorModal}
+        onOpenChange={setShowAddErrorModal}
+        taskId={repairTask?.taskId || ""}
+        listError={repairTaskDetail?.errorDetails || []}
+        onErrorsAdded={() => {
+          setRefreshFlag((prev) => prev + 1);
+          setShowAddErrorModal(false);
+          // Call the parent's callback to refresh the repair task details
+          onErrorsAdded?.();
+        }}
+      />
+      {/* Delete single error confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa lỗi</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            Bạn có chắc chắn muốn xóa lỗi này khỏi nhiệm vụ sửa chữa?
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteError}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Delete all errors confirmation dialog */}
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa tất cả lỗi</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            Bạn có chắc chắn muốn xóa tất cả lỗi khỏi nhiệm vụ sửa chữa?
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllDialog(false)}
+              disabled={deleting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAllErrors}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Xóa tất cả
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
