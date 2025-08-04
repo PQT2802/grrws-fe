@@ -115,7 +115,8 @@ const AddErrorToTaskModal = ({
 
       const payload: AddTaskErrorPayload = {
         TaskId: taskId,
-        AddErrors: errorIds,
+        ErrorIds: errorIds,
+        Action: "Add", 
       };
       console.log(payload);
 

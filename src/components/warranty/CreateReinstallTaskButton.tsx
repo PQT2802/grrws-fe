@@ -114,7 +114,9 @@ const CreateReinstallTaskButton = ({
         AssigneeId: null, // Will be assigned later
         TaskGroupId: taskGroupId,
         NewDeviceId: deviceId, // Use the old device ID
+        IsReintstall: true,
       };
+      console.log(data)
 
       await apiClient.task.createInstallTask(data);
 

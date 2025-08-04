@@ -19,7 +19,7 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
-import { WARRANTY_TASK_DETAIL } from "@/types/task.type";
+import { TASK_IN_GROUP, WARRANTY_TASK_DETAIL } from "@/types/task.type";
 import {
   ArrowRight,
   Calendar,
@@ -71,6 +71,7 @@ interface CreateWarrantyReturnButtonProps {
   onOpenChange?: (open: boolean) => void;
   isReinstall?: boolean;
   isFailed?: boolean;
+  taskReturnWarranty?: TASK_IN_GROUP | null; // Optional prop for existing return task
 }
 
 const CreateWarrantyReturnButton = ({
@@ -79,6 +80,7 @@ const CreateWarrantyReturnButton = ({
   open,
   onOpenChange,
   isReinstall,
+  taskReturnWarranty,
   isFailed,
 }: CreateWarrantyReturnButtonProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +88,12 @@ const CreateWarrantyReturnButton = ({
   const [loading, setLoading] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("schedule");
+
+  useEffect(() => {
+    if (taskReturnWarranty) {
+      console.log("taskReturnWarranty:", taskReturnWarranty);
+    }
+  }, [taskReturnWarranty]);
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split("T")[0];
@@ -188,21 +196,37 @@ const CreateWarrantyReturnButton = ({
         const expectedDate = new Date(taskDetail.expectedReturnDate);
         isEarlyReturn = !isBefore(combinedDateTime, expectedDate);
       }
-
-      const submitData = {
-        WarrantyClaimId: taskDetail.warrantyClaimId,
-        AssigneeId:
-          values.mode === "auto" && mechanics && mechanics.length > 0
-            ? mechanics[0].id
-            : values.mechanicId!,
-        ActualReturnDate: combinedDateTime.toISOString(),
-        IsEarlyReturn: isEarlyReturn,
-        WarrantyNotes: values.warrantyNotes || "",
-        IsWarrantyFailed: false,
-        IsReInstallOldDevice: false, // Default to true if not provided
-      };
-
-      await apiClient.task.createWarrantyReturnTask(submitData);
+      let submitData;
+      if (taskReturnWarranty?.status === "Delayed") {
+        submitData = {
+          WarrantyClaimId: taskDetail.warrantyClaimId,
+          AssigneeId:
+            values.mode === "auto" && mechanics && mechanics.length > 0
+              ? mechanics[0].id
+              : values.mechanicId!,
+          ActualReturnDate: combinedDateTime.toISOString(),
+          IsEarlyReturn: isEarlyReturn,
+          WarrantyNotes: values.warrantyNotes || "",
+          IsWarrantyFailed: false,
+        };
+        console.log("Trường hợp delayed: ",submitData)
+        await apiClient.task.createWarrantyReturnTaskAfterDelayed(submitData);
+      } else {
+        submitData = {
+          WarrantyClaimId: taskDetail.warrantyClaimId,
+          AssigneeId:
+            values.mode === "auto" && mechanics && mechanics.length > 0
+              ? mechanics[0].id
+              : values.mechanicId!,
+          ActualReturnDate: combinedDateTime.toISOString(),
+          IsEarlyReturn: isEarlyReturn,
+          WarrantyNotes: values.warrantyNotes || "",
+          IsWarrantyFailed: false,
+          IsReInstallOldDevice: false, // Default to true if not provided
+        };
+         console.log("Trường hợp bình thường: ",submitData)
+        await apiClient.task.createWarrantyReturnTask(submitData);
+      }
 
       toast.success("Warranty return task created successfully", {
         description: `Return date: ${format(combinedDateTime, "PPp")}`,

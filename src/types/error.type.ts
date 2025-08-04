@@ -9,9 +9,10 @@ export interface AddError {
 }
 export interface AddTaskErrorPayload {
   TaskId: string;
-  AddErrors?: string[];
-  RemoveErrors?: string[];
+  ErrorIds: string[];
+  Action: "Add" | "Remove" | "Unassigned";
 }
+
 export interface ErrorFixStep {
   id: string;
   stepDescription: string;

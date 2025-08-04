@@ -100,11 +100,13 @@ const RepairTab = ({
     try {
       await apiClient.error.addTaskErrors({
         TaskId: repairTask.taskId,
-        RemoveErrors: [errorToDelete],
+        ErrorIds: [errorToDelete],
+        Action: "Remove",
       });
       setShowDeleteDialog(false);
       setErrorToDelete(null);
       setRefreshFlag((prev) => prev + 1);
+      onErrorsAdded?.();
     } catch (error) {
       // Optionally show error toast
     } finally {
@@ -119,10 +121,12 @@ const RepairTab = ({
     try {
       await apiClient.error.addTaskErrors({
         TaskId: repairTask.taskId,
-        RemoveErrors: repairTaskDetail.errorDetails.map((err) => err.errorId),
+        ErrorIds: repairTaskDetail.errorDetails.map((err) => err.errorId),
+        Action: "Remove",
       });
       setShowDeleteAllDialog(false);
       setRefreshFlag((prev) => prev + 1);
+      onErrorsAdded?.();
     } catch (error) {
       // Optionally show error toast
     } finally {
@@ -140,35 +144,41 @@ const RepairTab = ({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Wrench className="h-5 w-5 text-orange-600" />
-          Thông tin Sửa chữa
+        <CardTitle className="flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-orange-600" />
+            Thông tin Sửa chữa
+          </div>
+          <div className="mt-2 flex justify-end gap-2">
+            {repairTask.status === "Pending" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  disabled={
+                    !repairTaskDetail?.errorDetails?.length ||
+                    deleting ||
+                    !repairTask?.taskId
+                  }
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa tất cả lỗi
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowAddErrorModal(true)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  disabled={!repairTask?.taskId}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Chẩn đoán lỗi
+                </Button>
+              </div>
+            )}
+          </div>
         </CardTitle>
-        <div className="mt-2 flex justify-end gap-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteAllDialog(true)}
-            disabled={
-              !repairTaskDetail?.errorDetails?.length ||
-              deleting ||
-              !repairTask?.taskId
-            }
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Xóa tất cả lỗi
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setShowAddErrorModal(true)}
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-            disabled={!repairTask?.taskId}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Chuẩn đoán lỗi
-          </Button>
-        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

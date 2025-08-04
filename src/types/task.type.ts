@@ -31,7 +31,8 @@ export interface CREATE_INSTALL_TASK {
   StartDate: string; // ISO string format
   AssigneeId?: string | null; // User ID of the assignee, can be null if not assigned yet
   TaskGroupId?: string; // Task group ID for installation
-  NewDeviceId: string; // New device ID to be installed
+  NewDeviceId: string; // New device ID to be installed\
+  IsReintstall?: boolean; // Indicates if this is a reinstallation task
 }
 
 export interface TASK_GROUP_WEB {
@@ -172,6 +173,14 @@ export interface CreateWarrantyReturn {
   WarrantyNotes: string;
   IsWarrantyFailed: boolean; // Indicates if the warranty claim failed
   IsReInstallOldDevice: boolean; // Indicates if the old device needs to be reinstalled
+}
+export interface CreateWarrantyReturnAfterDelayed {
+  WarrantyClaimId: string;
+  AssigneeId: string;
+  ActualReturnDate: string; // ISO date string
+  IsEarlyReturn: boolean;
+  WarrantyNotes: string;
+  IsWarrantyFailed: boolean; // Indicates if the warranty claim failed
 }
 
 export interface STAFF_TASK {
