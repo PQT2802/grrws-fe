@@ -174,23 +174,6 @@ const TechnicalIssueTableCpn = ({
       enableSorting: false,
     },
     {
-      accessorKey: "symptomCode",
-      header: ({ column }) => (
-        <span className="flex items-center gap-2">
-          Mã triệu chứng <ArrowUpDown size={15} />
-        </span>
-      ),
-      cell: (info) => {
-        const value = info.getValue();
-        if (!value) return "---";
-        return (
-          <span className="font-medium text-blue-600 dark:text-blue-400">
-            {String(value)}
-          </span>
-        );
-      },
-    },
-    {
       accessorKey: "name",
       header: "Tên sự cố kỹ thuật",
       cell: (info) => {
@@ -202,27 +185,15 @@ const TechnicalIssueTableCpn = ({
     {
       accessorKey: "description",
       header: "Mô tả",
+      
       cell: (info) => {
         const value = info.getValue() as string | null;
         if (!value) return "---";
 
         return (
-          <span className="max-w-xs truncate block" title={value}>
+          <span className="max-w-xs  block" title={value}>
             {value}
           </span>
-        );
-      },
-    },
-    {
-      accessorKey: "isCommon",
-      header: "Loại",
-      cell: (info) => {
-        const value = info.getValue() as boolean;
-
-        return (
-          <Badge variant={value ? "default" : "secondary"}>
-            {value ? "Phổ biến" : "Riêng biệt"}
-          </Badge>
         );
       },
     },
@@ -352,7 +323,9 @@ const TechnicalIssueTableCpn = ({
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

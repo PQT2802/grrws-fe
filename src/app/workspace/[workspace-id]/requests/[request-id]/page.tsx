@@ -277,20 +277,18 @@ const RequestDetailPage = () => {
           {/* Compact Summary Section */}
           <Card className="mb-3">
             <div className="flex flex-col sm:flex-row items-center sm:items-stretch">
-              <div className="flex-1 flex flex-wrap gap-10 p-3">
+              <div className="flex-1 flex flex-wrap gap-4 p-3">
                 {summaryItems.map((item) => (
                   <div
                     key={item.label}
-                    className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded  px-10 py-2 min-w-[140px]"
+                    className="flex flex-col justify-center items-start gap-1 bg-white dark:bg-gray-900 rounded px-4 py-2 min-w-[140px] flex-grow"
                   >
-                    <div>
-                      <div className="text-xs flex gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                        {item.icon}
-                        {item.label}
-                      </div>
-                      <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 ">
-                        {item.value}
-                      </div>
+                    <div className="text-xs flex gap-2 text-gray-600 dark:text-gray-400 mb-1 items-center">
+                      {item.icon}
+                      {item.label}
+                    </div>
+                    <div className="font-semibold text-sm text-gray-900 dark:text-gray-100 break-words">
+                      {item.value}
                     </div>
                   </div>
                 ))}

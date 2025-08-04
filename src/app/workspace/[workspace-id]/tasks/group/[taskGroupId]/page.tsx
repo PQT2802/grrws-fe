@@ -115,6 +115,11 @@ const GroupTaskDetailsPage = () => {
   const [applyingTasks, setApplyingTasks] = useState<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<TASK_IN_GROUP | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [repairTask, setRepairTask] = useState<TASK_IN_GROUP | null>(null);
+  const [warrantyReturnTask, setWarrantyReturnTask] =
+    useState<TASK_IN_GROUP | null>(null);
+  const [warrantySubmissionTask, setWarrantySubmissionTask] =
+    useState<TASK_IN_GROUP | null>(null);
   const [dropdownTaskDetails, setDropdownTaskDetails] = useState<
     Record<
       string,
@@ -125,15 +130,24 @@ const GroupTaskDetailsPage = () => {
     WARRANTY_TASK_DETAIL | INSTALL_TASK_DETAIL | REPAIR_TASK_DETAIL | null
   >(null);
   const [showCreateInstallModal, setShowCreateInstallModal] = useState(false);
-  const warrantySubmissionTask =
-    taskGroup?.tasks.find((task) => task.taskType === "WarrantySubmission") ||
-    null;
-  const warrantyReturnTask =
-    taskGroup?.tasks.find((task) => task.taskType === "WarrantyReturn") || null;
 
-  // Add this
-  const repairTask =
-    taskGroup?.tasks.find((task) => task.taskType === "Repair") || null;
+  useEffect(() => {
+    // This effect will run when repairTask changes (e.g. after refresh)
+    if (taskGroup) {
+      const repairTask =
+        taskGroup?.tasks.find((task) => task.taskType === "Repair") || null;
+      const warrantyReturnTask =
+        taskGroup?.tasks.find((task) => task.taskType === "WarrantyReturn") ||
+        null;
+      const warrantySubmissionTask =
+        taskGroup?.tasks.find(
+          (task) => task.taskType === "WarrantySubmission"
+        ) || null;
+      setRepairTask(repairTask);
+      setWarrantyReturnTask(warrantyReturnTask);
+      setWarrantySubmissionTask(warrantySubmissionTask);
+    }
+  }, [taskGroup]);
 
   // Get warranty task detail for footer button
   const warrantyTaskDetailForFooter = warrantySubmissionTask
@@ -513,6 +527,45 @@ const GroupTaskDetailsPage = () => {
       });
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const refreshTaskDetail = async (taskId: string) => {
+    if (!taskId) return;
+    try {
+      // Find the task type
+      const task = taskGroup?.tasks.find((t) => t.taskId === taskId);
+      if (!task) return;
+
+      let detail = null;
+      switch (task.taskType.toLowerCase()) {
+        case "repair":
+          detail = await apiClient.task.getRepairTaskDetail(taskId);
+          break;
+        case "warrantysubmission":
+          detail = await apiClient.task.getWarrantyTaskDetail(taskId);
+          break;
+        case "installation":
+          detail = await apiClient.task.getInstallTaskDetail(taskId);
+          break;
+        // Add other cases if needed
+        default:
+          break;
+      }
+
+      if (detail) {
+        setDropdownTaskDetails((prev) => ({
+          ...prev,
+          [taskId]: detail,
+        }));
+        // If this is the currently selected task, update selectedTaskDetail
+        if (selectedTask?.taskId === taskId) {
+          setSelectedTaskDetail(detail);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh task detail:", error);
+      toast.error("Không thể tải lại chi tiết nhiệm vụ");
     }
   };
 
@@ -1026,6 +1079,7 @@ const GroupTaskDetailsPage = () => {
         taskDetail={selectedTaskDetail}
         oldDevice={null} // Remove device props since they're managed in Device tab
         newDevice={null}
+        onRefreshTaskDetail={refreshTaskDetail}
       />
 
       {/* Fixed Footer with Action Buttons */}
@@ -1068,6 +1122,7 @@ const GroupTaskDetailsPage = () => {
               (warrantyTaskDetailForFooter ? (
                 <CreateWarrantyReturnButton
                   taskDetail={warrantyTaskDetailForFooter}
+                  taskReturnWarranty={warrantyReturnTask}
                   onSuccess={async () => {
                     await refreshTaskData();
                     await fetchWarrantyTaskDetailForFooter();
