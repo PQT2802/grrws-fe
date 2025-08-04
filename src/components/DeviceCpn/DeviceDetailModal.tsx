@@ -1,47 +1,52 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import React, { useState, useEffect } from "react";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    Calendar,
-    Tag,
-    Clock,
-    Factory,
-    Settings,
-    Image as ImageIcon,
-    DollarSign,
-    Shield,
-    ShieldCheck,
-    AlertTriangle,
-    FileText,
-    ChevronDown,
-    ChevronUp,
-    ExternalLink,
-    Loader2,
-    History,
-    Send,
-    Download,
-    User,
-    StickyNote,
-    Truck,
-    QrCode
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Calendar,
+  Tag,
+  Clock,
+  Factory,
+  Settings,
+  Image as ImageIcon,
+  DollarSign,
+  Shield,
+  ShieldCheck,
+  AlertTriangle,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Loader2,
+  History,
+  Send,
+  Download,
+  User,
+  StickyNote,
+  Truck,
+  QrCode
 } from "lucide-react"
 import { DEVICE_WEB } from "@/types/device.type"
 import { WarrantyInfo, WARRANTY_HISTORY_LIST } from "@/types/warranty.type"
 import { apiClient } from "@/lib/api-client"
 import QRCodeSection from "@/components/QRCodeCpn/QRCodeSection"
+import { translateTaskStatus } from "@/utils/textTypeTask"
 
 interface DeviceDetailModalProps {
     open: boolean
@@ -63,7 +68,6 @@ export default function DeviceDetailModal({
     // Clean up any potential body style issues when component unmounts
     useEffect(() => {
         return () => {
-            // Cleanup function to ensure body pointer events are restored
             if (typeof document !== 'undefined') {
                 document.body.style.pointerEvents = 'auto'
                 document.body.style.overflow = 'auto'
@@ -74,7 +78,6 @@ export default function DeviceDetailModal({
     // Additional cleanup when modal closes
     useEffect(() => {
         if (!open && typeof document !== 'undefined') {
-            // Small delay to let the dialog component handle its cleanup first
             const timeoutId = setTimeout(() => {
                 document.body.style.pointerEvents = 'auto'
                 document.body.style.overflow = 'auto'
@@ -98,12 +101,12 @@ export default function DeviceDetailModal({
     const fetchWarranties = async (deviceId: string) => {
         setIsLoadingWarranties(true)
         try {
-            console.log(`🔄 Fetching warranties for device: ${deviceId}`)
+            console.log(`🔄 Đang tải bảo hành cho thiết bị: ${deviceId}`)
             const response = await apiClient.warranty.getDeviceWarranties(deviceId)
-            console.log("📋 Warranties response:", response)
+            console.log("📋 Phản hồi bảo hành:", response)
             setWarranties(response || [])
         } catch (error) {
-            console.error("❌ Error fetching warranties:", error)
+            console.error("❌ Lỗi khi tải bảo hành:", error)
             setWarranties([])
         } finally {
             setIsLoadingWarranties(false)
@@ -113,9 +116,9 @@ export default function DeviceDetailModal({
     const fetchWarrantyHistory = async (deviceId: string) => {
         setIsLoadingWarrantyHistory(true)
         try {
-            console.log(`🔄 Fetching warranty history for device: ${deviceId}`)
+            console.log(`🔄 Đang tải lịch sử bảo hành cho thiết bị: ${deviceId}`)
             const response = await apiClient.warranty.getWarrantyHistory(deviceId)
-            console.log("📋 Warranty history response:", response)
+            console.log("📋 Phản hồi lịch sử bảo hành:", response)
 
             // Sort by sendDate descending (latest first)
             const sortedHistory = (response || []).sort((a, b) => {
@@ -127,7 +130,7 @@ export default function DeviceDetailModal({
 
             setWarrantyHistory(sortedHistory)
         } catch (error) {
-            console.error("❌ Error fetching warranty history:", error)
+            console.error("❌ Lỗi khi tải lịch sử bảo hành:", error)
             setWarrantyHistory([])
         } finally {
             setIsLoadingWarrantyHistory(false)
@@ -162,6 +165,26 @@ export default function DeviceDetailModal({
             style: 'currency',
             currency: 'VND'
         }).format(amount).replace(/\s/g, '') 
+    }
+
+    // ✅ Vietnamese status translations using textTypeTask pattern
+    const getStatusDisplayText = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "active":
+                return "Hoạt động"
+            case "inactive":
+                return "Không hoạt động"
+            case "inuse":
+                return "Đang sử dụng"
+            case "inrepair":
+                return "Đang sửa chữa"
+            case "inwarranty":
+                return "Đang bảo hành"
+            case "decommissioned":
+                return "Ngừng sử dụng"
+            default:
+                return status
+        }
     }
 
     const getStatusBadgeVariant = (status: string) => {
@@ -235,7 +258,6 @@ export default function DeviceDetailModal({
     const handleOpenChange = (newOpen: boolean) => {
         onOpenChange(newOpen)
 
-        // Immediate cleanup if closing
         if (!newOpen && typeof document !== 'undefined') {
             document.body.style.pointerEvents = 'auto'
             document.body.style.overflow = 'auto'
@@ -260,9 +282,9 @@ export default function DeviceDetailModal({
                 onPointerDownOutside={() => handleOpenChange(false)}
             >
                 <DialogHeader>
-                    <DialogTitle>Device Details</DialogTitle>
+                    <DialogTitle>Thông tin chi tiết thiết bị</DialogTitle>
                     <DialogDescription>
-                        View device information, specifications, warranty details, QR code, and service history
+                        Xem thông tin thiết bị, thông số kỹ thuật, chi tiết bảo hành, mã QR và lịch sử dịch vụ
                     </DialogDescription>
                 </DialogHeader>
 
@@ -271,79 +293,54 @@ export default function DeviceDetailModal({
                         <h3 className="text-xl font-semibold">{device.deviceName}</h3>
                         <div className="flex gap-2">
                             <Badge variant="outline" className={`${getStatusBadgeVariant(device.status)} border-0`}>
-                                {device.status}
+                                {getStatusDisplayText(device.status)}
                             </Badge>
                             <Badge variant="outline" className={`${getWarrantyBadgeVariant(device.isUnderWarranty)} border-0`}>
-                                {device.isUnderWarranty ? "Under Warranty" : "No Warranty"}
+                                {device.isUnderWarranty ? "Còn bảo hành" : "Hết bảo hành"}
                             </Badge>
                         </div>
                     </div>
 
                     <Tabs defaultValue="details">
                         <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="details">Device Details</TabsTrigger>
-                            <TabsTrigger value="qrcode">QR Code</TabsTrigger>
-                            <TabsTrigger value="warranty">Device Warranty</TabsTrigger>
-                            <TabsTrigger value="history">Warranty History</TabsTrigger>
+                            <TabsTrigger value="details">Thông tin thiết bị</TabsTrigger>
+                            <TabsTrigger value="qrcode">Mã QR</TabsTrigger>
+                            <TabsTrigger value="warranty">Phiếu bảo hành</TabsTrigger>
+                            <TabsTrigger value="history">Lịch sử bảo hành</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="details" className="space-y-4">
-                            {/* Device Photo */}
-                            {/* {device.photoUrl && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2 text-base">
-                                            <ImageIcon className="h-4 w-4 text-indigo-600" />
-                                            Device Photo
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex justify-center">
-                                            <img
-                                                src={device.photoUrl}
-                                                alt={device.deviceName}
-                                                className="max-w-full h-48 object-cover rounded-lg border"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    target.style.display = "none";
-                                                }}
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )} */}
-
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Device Code</Label>
+                                    <Label className="text-muted-foreground">Mã thiết bị</Label>
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.deviceCode}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Serial Number</Label>
+                                    <Label className="text-muted-foreground">Số seri</Label>
                                     <div className="flex items-center gap-2">
                                         <Tag className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.serialNumber || "N/A"}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Model</Label>
+                                    <Label className="text-muted-foreground">Mẫu</Label>
                                     <div className="flex items-center gap-2">
                                         <Settings className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.model || "N/A"}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Manufacturer</Label>
+                                    <Label className="text-muted-foreground">Nhà sản xuất</Label>
                                     <div className="flex items-center gap-2">
                                         <Factory className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.manufacturer || "N/A"}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Purchase Price</Label>
+                                    <Label className="text-muted-foreground">Giá mua</Label>
                                     <div className="flex items-center gap-2">
                                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                                         <span>
@@ -354,34 +351,22 @@ export default function DeviceDetailModal({
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Supplier</Label>
+                                    <Label className="text-muted-foreground">Nhà cung cấp</Label>
                                     <div className="flex items-center gap-2">
                                         <Truck className="h-4 w-4 text-muted-foreground" />
                                         <span>{device.supplier || "N/A"}</span>
                                     </div>
                                 </div>
 
-                                {/* <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Area</Label>
-                                    <div className="text-sm">
-                                        {device.areaName || "N/A"}
-                                    </div>
-                                </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Zone</Label>
-                                    <div className="text-sm">
-                                        {device.zoneName || "N/A"}
-                                    </div>
-                                </div> */}
-                                <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Manufacture Date</Label>
+                                    <Label className="text-muted-foreground">Ngày sản xuất</Label>
                                     <div className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4 text-muted-foreground" />
                                         <span>{formatDate(device.manufactureDate)}</span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Installation Date</Label>
+                                    <Label className="text-muted-foreground">Ngày lắp đặt</Label>
                                     <div className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4 text-muted-foreground" />
                                         <span>{formatDate(device.installationDate)}</span>
@@ -391,7 +376,7 @@ export default function DeviceDetailModal({
 
                             {/* Description */}
                             <div className="space-y-1">
-                                <Label className="text-muted-foreground">Description</Label>
+                                <Label className="text-muted-foreground">Mô tả</Label>
                                 <div className="text-sm font-medium mt-1">
                                     {device.description || "N/A"}
                                 </div>
@@ -399,7 +384,7 @@ export default function DeviceDetailModal({
 
                             {/* Specifications */}
                             <div className="space-y-1">
-                                <Label className="text-muted-foreground">Specifications</Label>
+                                <Label className="text-muted-foreground">Thông số kỹ thuật</Label>
                                 <div className="text-sm font-medium mt-1">
                                     {device.specifications || "N/A"}
                                 </div>
@@ -408,7 +393,7 @@ export default function DeviceDetailModal({
                             {/* Photo URL */}
                             {device.photoUrl && (
                                 <div className="space-y-1">
-                                    <Label className="text-muted-foreground">Photo URL</Label>
+                                    <Label className="text-muted-foreground">URL ảnh</Label>
                                     <div className="flex items-center gap-2">
                                         <ImageIcon className="h-4 w-4 text-muted-foreground" />
                                         <a
@@ -442,46 +427,46 @@ export default function DeviceDetailModal({
                                 <CardHeader>
                                     <CardTitle className="text-base flex items-center gap-2">
                                         <QrCode className="h-4 w-4 text-blue-600" />
-                                        QR Code Information
+                                        Thông tin mã QR
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <Label className="text-xs text-muted-foreground">QR Content Type</Label>
-                                            <p className="text-sm font-medium">Device ID (GUID)</p>
+                                            <Label className="text-xs text-muted-foreground">Loại nội dung QR</Label>
+                                            <p className="text-sm font-medium">ID thiết bị (GUID)</p>
                                         </div>
                                         <div>
-                                            <Label className="text-xs text-muted-foreground">Error Correction Level</Label>
-                                            <p className="text-sm font-medium">Medium (M)</p>
+                                            <Label className="text-xs text-muted-foreground">Cấp độ sửa lỗi</Label>
+                                            <p className="text-sm font-medium">Trung bình (M)</p>
                                         </div>
                                         <div>
-                                            <Label className="text-xs text-muted-foreground">Usage</Label>
-                                            <p className="text-sm font-medium">Device Identification & Tracking</p>
+                                            <Label className="text-xs text-muted-foreground">Mục đích</Label>
+                                            <p className="text-sm font-medium">Nhận diện & Theo dõi thiết bị</p>
                                         </div>
                                         <div>
-                                            <Label className="text-xs text-muted-foreground">Format</Label>
-                                            <p className="text-sm font-medium">PNG (Downloadable)</p>
+                                            <Label className="text-xs text-muted-foreground">Định dạng</Label>
+                                            <p className="text-sm font-medium">PNG (Có thể tải xuống)</p>
                                         </div>
                                     </div>
                                     
                                     <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
                                         <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                            <strong>Tip:</strong> Use this QR code for inventory management, device lookup, or linking to device details. 
-                                            The QR code contains the unique Device ID which can be scanned to quickly identify and access this device's information.
+                                            <strong>Mẹo:</strong> Sử dụng mã QR này cho quản lý hàng tồn kho, tìm kiếm thiết bị, hoặc liên kết đến chi tiết thiết bị. 
+                                            Mã QR chứa ID thiết bị duy nhất có thể quét để nhanh chóng nhận diện và truy cập thông tin thiết bị này.
                                         </p>
                                     </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
-                        {/* EXISTING WARRANTY AND HISTORY TABS REMAIN THE SAME */}
+                        {/* WARRANTY TAB */}
                         <TabsContent value="warranty" className="space-y-4">
                             {isLoadingWarranties ? (
                                 <Card>
                                     <CardContent className="flex items-center justify-center py-8">
                                         <Loader2 className="h-8 w-8 animate-spin" />
-                                        <span className="ml-2">Loading warranties...</span>
+                                        <span className="ml-2">Đang tải bảo hành...</span>
                                     </CardContent>
                                 </Card>
                             ) : warranties.length === 0 ? (
@@ -489,10 +474,10 @@ export default function DeviceDetailModal({
                                     <CardContent className="flex flex-col items-center justify-center py-8 text-center">
                                         <Shield className="h-12 w-12 text-muted-foreground mb-4" />
                                         <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                                            No Warranty Information
+                                            Không có thông tin bảo hành
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            This device currently has no warranty records on file.
+                                            Thiết bị này hiện không có hồ sơ bảo hành nào.
                                         </p>
                                     </CardContent>
                                 </Card>
@@ -503,7 +488,7 @@ export default function DeviceDetailModal({
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <ShieldCheck className="h-5 w-5 text-blue-600" />
-                                                <h4 className="text-lg font-semibold">Primary Device Warranty</h4>
+                                                <h4 className="text-lg font-semibold">Phiếu bảo hành thiết bị</h4>
                                             </div>
                                             {manufacturerWarranties.map((warranty) => (
                                                 <Card key={warranty.id} className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10">
@@ -522,19 +507,19 @@ export default function DeviceDetailModal({
                                                             </div>
                                                             <div className="flex flex-col gap-2 items-end">
                                                                 <Badge className={getWarrantyStatusBadgeVariant(warranty.warrantyStatus)}>
-                                                                    {warranty.warrantyStatus}
+                                                                    {translateTaskStatus(warranty.warrantyStatus)}
                                                                 </Badge>
                                                                 {warranty.daysRemaining >= 0 && (
                                                                     <Badge className={getDaysRemainingVariant(warranty.daysRemaining, warranty.lowDayWarning)}>
-                                                                        {warranty.daysRemaining === 0 ? "Expires today" :
-                                                                            warranty.daysRemaining === 1 ? "1 day left" :
-                                                                                `${warranty.daysRemaining} days left`}
+                                                                        {warranty.daysRemaining === 0 ? "Hết hạn hôm nay" :
+                                                                            warranty.daysRemaining === 1 ? "Còn 1 ngày" :
+                                                                                `Còn ${warranty.daysRemaining} ngày`}
                                                                     </Badge>
                                                                 )}
                                                                 {warranty.lowDayWarning && (
                                                                     <div className="flex items-center gap-1 text-red-600">
                                                                         <AlertTriangle className="h-4 w-4" />
-                                                                        <span className="text-xs">Expiring soon</span>
+                                                                        <span className="text-xs">Sắp hết hạn</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -544,26 +529,26 @@ export default function DeviceDetailModal({
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
                                                                 <div>
-                                                                    <Label className="text-xs text-muted-foreground">Provider</Label>
+                                                                    <Label className="text-xs text-muted-foreground">Nhà cung cấp</Label>
                                                                     <p className="text-sm font-medium">{warranty.provider}</p>
                                                                 </div>
                                                                 <div>
-                                                                    <Label className="text-xs text-muted-foreground">Start Date</Label>
+                                                                    <Label className="text-xs text-muted-foreground">Ngày bắt đầu</Label>
                                                                     <p className="text-sm">{formatDate(warranty.warrantyStartDate)}</p>
                                                                 </div>
                                                                 <div>
-                                                                    <Label className="text-xs text-muted-foreground">End Date</Label>
+                                                                    <Label className="text-xs text-muted-foreground">Ngày kết thúc</Label>
                                                                     <p className="text-sm">{formatDate(warranty.warrantyEndDate)}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <div>
-                                                                    <Label className="text-xs text-muted-foreground">Cost</Label>
+                                                                    <Label className="text-xs text-muted-foreground">Chi phí</Label>
                                                                     <p className="text-sm font-medium">{formatCurrency(warranty.cost)}</p>
                                                                 </div>
                                                                 {warranty.documentUrl && (
                                                                     <div>
-                                                                        <Label className="text-xs text-muted-foreground">Document</Label>
+                                                                        <Label className="text-xs text-muted-foreground">Tài liệu</Label>
                                                                         <div className="flex items-center gap-1">
                                                                             <Button
                                                                                 variant="link"
@@ -572,7 +557,7 @@ export default function DeviceDetailModal({
                                                                                 onClick={() => window.open(warranty.documentUrl, '_blank')}
                                                                             >
                                                                                 <FileText className="h-3 w-3 mr-1" />
-                                                                                View Document
+                                                                                Xem tài liệu
                                                                                 <ExternalLink className="h-3 w-3 ml-1" />
                                                                             </Button>
                                                                         </div>
@@ -582,7 +567,7 @@ export default function DeviceDetailModal({
                                                         </div>
                                                         {warranty.notes && (
                                                             <div className="mt-3 pt-3 border-t">
-                                                                <Label className="text-xs text-muted-foreground">Notes</Label>
+                                                                <Label className="text-xs text-muted-foreground">Ghi chú</Label>
                                                                 <p className="text-sm mt-1">{warranty.notes}</p>
                                                             </div>
                                                         )}
@@ -599,7 +584,7 @@ export default function DeviceDetailModal({
                                                 <Button variant="outline" className="w-full justify-between">
                                                     <span className="flex items-center gap-2">
                                                         <Shield className="h-4 w-4" />
-                                                        Additional Warranties ({otherWarranties.length})
+                                                        Bảo hành bổ sung ({otherWarranties.length})
                                                     </span>
                                                     {showOtherWarranties ? (
                                                         <ChevronUp className="h-4 w-4" />
@@ -626,13 +611,13 @@ export default function DeviceDetailModal({
                                                                 </div>
                                                                 <div className="flex flex-col gap-2 items-end">
                                                                     <Badge className={getWarrantyStatusBadgeVariant(warranty.warrantyStatus)}>
-                                                                        {warranty.warrantyStatus}
+                                                                        {translateTaskStatus(warranty.warrantyStatus)}
                                                                     </Badge>
                                                                     {warranty.daysRemaining >= 0 && (
                                                                         <Badge className={getDaysRemainingVariant(warranty.daysRemaining, warranty.lowDayWarning)}>
-                                                                            {warranty.daysRemaining === 0 ? "Expires today" :
-                                                                                warranty.daysRemaining === 1 ? "1 day left" :
-                                                                                    `${warranty.daysRemaining} days left`}
+                                                                            {warranty.daysRemaining === 0 ? "Hết hạn hôm nay" :
+                                                                                warranty.daysRemaining === 1 ? "Còn 1 ngày" :
+                                                                                    `Còn ${warranty.daysRemaining} ngày`}
                                                                         </Badge>
                                                                     )}
                                                                 </div>
@@ -642,26 +627,26 @@ export default function DeviceDetailModal({
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <div className="space-y-2">
                                                                     <div>
-                                                                        <Label className="text-xs text-muted-foreground">Provider</Label>
+                                                                        <Label className="text-xs text-muted-foreground">Nhà cung cấp</Label>
                                                                         <p className="text-sm font-medium">{warranty.provider}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <Label className="text-xs text-muted-foreground">Start Date</Label>
+                                                                        <Label className="text-xs text-muted-foreground">Ngày bắt đầu</Label>
                                                                         <p className="text-sm">{formatDate(warranty.warrantyStartDate)}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <Label className="text-xs text-muted-foreground">End Date</Label>
+                                                                        <Label className="text-xs text-muted-foreground">Ngày kết thúc</Label>
                                                                         <p className="text-sm">{formatDate(warranty.warrantyEndDate)}</p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <div>
-                                                                        <Label className="text-xs text-muted-foreground">Cost</Label>
+                                                                        <Label className="text-xs text-muted-foreground">Chi phí</Label>
                                                                         <p className="text-sm font-medium">{formatCurrency(warranty.cost)}</p>
                                                                     </div>
                                                                     {warranty.documentUrl && (
                                                                         <div>
-                                                                            <Label className="text-xs text-muted-foreground">Document</Label>
+                                                                            <Label className="text-xs text-muted-foreground">Tài liệu</Label>
                                                                             <div className="flex items-center gap-1">
                                                                                 <Button
                                                                                     variant="link"
@@ -670,7 +655,7 @@ export default function DeviceDetailModal({
                                                                                     onClick={() => window.open(warranty.documentUrl, '_blank')}
                                                                                 >
                                                                                     <FileText className="h-3 w-3 mr-1" />
-                                                                                    View Document
+                                                                                    Xem tài liệu
                                                                                     <ExternalLink className="h-3 w-3 ml-1" />
                                                                                 </Button>
                                                                             </div>
@@ -680,7 +665,7 @@ export default function DeviceDetailModal({
                                                             </div>
                                                             {warranty.notes && (
                                                                 <div className="mt-3 pt-3 border-t">
-                                                                    <Label className="text-xs text-muted-foreground">Notes</Label>
+                                                                    <Label className="text-xs text-muted-foreground">Ghi chú</Label>
                                                                     <p className="text-sm mt-1">{warranty.notes}</p>
                                                                 </div>
                                                             )}
@@ -694,12 +679,14 @@ export default function DeviceDetailModal({
                             )}
                         </TabsContent>
 
+                        {/* WARRANTY HISTORY TAB */}
+                        
                         <TabsContent value="history" className="space-y-4">
                             {isLoadingWarrantyHistory ? (
                                 <Card>
                                     <CardContent className="flex items-center justify-center py-8">
                                         <Loader2 className="h-8 w-8 animate-spin" />
-                                        <span className="ml-2">Loading warranty history...</span>
+                                        <span className="ml-2">Đang tải lịch sử bảo hành...</span>
                                     </CardContent>
                                 </Card>
                             ) : warrantyHistory.length === 0 ? (
@@ -707,10 +694,10 @@ export default function DeviceDetailModal({
                                     <CardContent className="flex flex-col items-center justify-center py-8 text-center">
                                         <History className="h-12 w-12 text-muted-foreground mb-4" />
                                         <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                                            No Warranty History
+                                            Không có lịch sử bảo hành
                                         </h3>
                                         <p className="text-sm text-muted-foreground">
-                                            This device has no warranty history.
+                                            Thiết bị này không có lịch sử bảo hành.
                                         </p>
                                     </CardContent>
                                 </Card>
@@ -718,9 +705,9 @@ export default function DeviceDetailModal({
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2 mb-4">
                                         <History className="h-5 w-5 text-blue-600" />
-                                        <h4 className="text-lg font-semibold">Warranty Service History</h4>
+                                        <h4 className="text-lg font-semibold">Lịch sử dịch vụ bảo hành</h4>
                                         <Badge variant="secondary" className="ml-2">
-                                            {warrantyHistory.length} record{warrantyHistory.length !== 1 ? 's' : ''}
+                                            {warrantyHistory.length} bản ghi
                                         </Badge>
                                     </div>
 
@@ -733,7 +720,7 @@ export default function DeviceDetailModal({
                                                             {/* <span>Service Record #{index + 1}</span> */}
                                                             <span>Ghi nhận bảo hành</span>
                                                             <Badge className={getHistoryStatusBadgeVariant(historyItem.status)}>
-                                                                {historyItem.status ? "Completed" : "In Progress"}
+                                                                {historyItem.status ? "Hoàn thành" : "Đang tiến hành"}
                                                             </Badge>
                                                         </CardTitle>
                                                         {historyItem.deviceDescription && (

@@ -173,7 +173,7 @@ export default function RequestSummaryAdmin() {
         type: 'machineAction' as const,
         title: req.confirmationCode,
         description: `${safeTranslateActionType(req.actionType)} - ${req.notes || 'Không có ghi chú'}`,
-        requestDate: req.startDate,
+        requestDate: req.startDate || req.createdDate,
         status: req.status,
         assigneeName: req.assigneeName,
         actionType: req.actionType,
@@ -570,13 +570,13 @@ export default function RequestSummaryAdmin() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-200">
-                    <th className="px-4 py-3 text-left font-medium">Mã xác nhận</th>
+                    <th className="px-4 py-3 text-left font-medium w-[350px]">Mã xác nhận</th>
                     <th className="px-4 py-3 text-left font-medium">Loại hành động</th>
                     <th className="px-4 py-3 text-left font-medium">Ngày bắt đầu</th>
                     <th className="px-4 py-3 text-left font-medium">Người thực hiện</th>
-                    <th className="px-4 py-3 text-left font-medium">Xác nhận</th>
-                    <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
-                    <th className="px-4 py-3 text-center font-medium">Thao tác</th>
+                    <th className="px-4 py-3 text-left font-medium w-[120px]">Xác nhận</th>
+                    <th className="px-4 py-3 text-left font-medium w-[160px]">Trạng thái</th>
+                    <th className="px-4 py-3 text-center font-medium w-[90px]">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

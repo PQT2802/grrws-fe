@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Box, FileText, ClipboardList, Settings } from "lucide-react";
+import { Home, Box, FileText, ClipboardList, Settings, Smartphone, WashingMachine } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import {
@@ -27,7 +27,17 @@ export function NavSKeeper() {
       icon: ClipboardList
     },
     {
-      title: "Parts Inventory",
+      title: "Device",
+      url: `/workspace/${workspaceId}/stock_keeper/devices`,
+      icon: Smartphone
+    },
+    {
+      title: "Machine",
+      url: `/workspace/${workspaceId}/stock_keeper/machines`,
+      icon: WashingMachine
+    },
+    {
+      title: "Spare Part",
       url: `/workspace/${workspaceId}/stock_keeper/inventory`,
       icon: Box
     },

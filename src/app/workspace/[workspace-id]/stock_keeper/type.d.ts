@@ -17,11 +17,12 @@ export interface PartType {
   unitPrice?: number;
   expectedAvailabilityDate?: string; 
 }
+
 export interface PartCardProps {
   part: PartType;
   onClick: (part: PartType) => void;
-  isViewOnlyMode?: boolean; 
 }
+
 export interface FilterBarProps {
   search: string;
   setSearch: (v: string) => void;
@@ -43,7 +44,6 @@ export interface PartDetailModalProps {
   part: PartType | null; 
   onUpdate?: () => void; 
   partId?: string | undefined; 
-  isViewOnlyMode?: boolean;
 }
 
 //request  

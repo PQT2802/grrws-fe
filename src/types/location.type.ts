@@ -1,58 +1,95 @@
 export interface Area {
   id: string;
-  areaCode: string;
+  areaCode: string;      // Added missing field
   areaName: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdDate: string;
+  modifiedDate: string;
   zoneCount?: number;
 }
 
 export interface Zone {
   id: string;
-  zoneCode: string;
+  zoneCode: string;      // Added missing field
   zoneName: string;
-  description?: string;
   areaId: string;
+  areaCode?: string;     // Added missing field
   areaName?: string;
-  areaCode?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdDate: string;
+  modifiedDate: string;
   positionCount?: number;
 }
 
 export interface Position {
   id: string;
-  positionCode: string;
-  positionName: string;
-  description?: string;
+  positionCode: string;  // Added missing field
+  positionName: string;  // Added missing field  
+  index: number;
   zoneId: string;
+  zoneCode?: string;     // Added missing field
   zoneName?: string;
-  zoneCode?: string;
+  areaCode?: string;     // Added missing field
   areaName?: string;
-  areaCode?: string;
-  createdAt: string;
-  updatedAt: string;
-  deviceCount?: number;
+  description?: string;  // Added missing field
+  deviceId?: string;
+  deviceCount?: number;  // Added missing field
+  createdDate: string;   // Changed from createdAt
+  modifiedDate: string;  // Changed from modifiedAt
+  device?: {
+    id: string;
+    deviceName: string;
+    deviceCode: string;
+    serialNumber: string;
+    model: string;
+    manufacturer: string;
+    manufactureDate: string;
+    installationDate: string;
+    description: string;
+    photoUrl: string;
+    status: string;
+    isUnderWarranty: boolean;
+    specifications: string;
+    purchasePrice: number;
+    supplier: string;
+    positionId: string;
+    createdDate: string;
+    modifiedDate: string;
+  };
+}
+
+export interface PositionWithDeviceAndRequest {
+  positionId: string;
+  positionName: string;
+  currentDevice?: {
+    deviceId: string;
+    deviceName: string;
+    deviceCode: string;
+    serialNumber: string;
+    model: string;
+    status: string;
+    isUnderWarranty: boolean;
+  };
+  originalDevice?: any;
+  currentRequest?: {
+    requestId: string;
+    requestTitle: string;
+    description: string;
+    status: string;
+    priority: string;
+    dueDate: string;
+  };
 }
 
 export interface CreateAreaRequest {
-  areaCode: string;
   areaName: string;
-  description?: string;
 }
 
 export interface CreateZoneRequest {
-  zoneCode: string;
   zoneName: string;
-  description?: string;
   areaId: string;
 }
 
 export interface CreatePositionRequest {
-  positionCode: string;
-  positionName: string;
-  description?: string;
+  index: number;
   zoneId: string;
 }
 

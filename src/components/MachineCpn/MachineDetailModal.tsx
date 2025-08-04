@@ -74,11 +74,23 @@ export const MachineDetailModal = ({
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "N/A"
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "long",
       day: "2-digit",
     })
+  }
+
+  // ✅ Vietnamese status translation
+  const getStatusDisplayText = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "active":
+        return "Hoạt động"
+      case "discontinued":
+        return "Ngừng sản xuất"
+      default:
+        return status
+    }
   }
 
   const getStatusBadgeVariant = (status: string) => {
@@ -99,8 +111,8 @@ export const MachineDetailModal = ({
         // Initialize with loading state
         const initialInfos: DeviceDisplayInfo[] = machine.deviceIds.map((deviceId, index) => ({
           id: deviceId,
-          deviceName: `Loading...`,
-          deviceCode: `Loading...`,
+          deviceName: `Đang tải...`,
+          deviceCode: `Đang tải...`,
           isLoading: true
         }));
         setDeviceDisplayInfos(initialInfos);
@@ -109,25 +121,25 @@ export const MachineDetailModal = ({
         const updatedInfos = await Promise.all(
           machine.deviceIds.map(async (deviceId, index) => {
             try {
-              console.log(`🔄 Fetching device details for ID: ${deviceId}`);
+              console.log(`🔄 Đang tải thông tin thiết bị với ID: ${deviceId}`);
               const deviceDetail = await apiClient.device.getDeviceById(deviceId);
-              console.log(`✅ Device details fetched:`, deviceDetail);
+              console.log(`✅ Đã tải thông tin thiết bị:`, deviceDetail);
 
               return {
                 id: deviceId,
-                deviceName: deviceDetail.deviceName || `Device #${index + 1}`,
+                deviceName: deviceDetail.deviceName || `Thiết bị #${index + 1}`,
                 deviceCode: deviceDetail.deviceCode || 'N/A',
                 fullDevice: deviceDetail,
                 isLoading: false
               };
             } catch (error) {
-              console.error(`❌ Error fetching device ${deviceId}:`, error);
+              console.error(`❌ Lỗi khi tải thiết bị ${deviceId}:`, error);
               return {
                 id: deviceId,
-                deviceName: `Device #${index + 1}`,
-                deviceCode: 'Failed to load',
+                deviceName: `Thiết bị #${index + 1}`,
+                deviceCode: 'Không thể tải',
                 isLoading: false,
-                error: 'Failed to load device details'
+                error: 'Không thể tải thông tin thiết bị'
               };
             }
           })
@@ -144,21 +156,21 @@ export const MachineDetailModal = ({
 
   const handleViewDevice = (deviceInfo: DeviceDisplayInfo) => {
     if (deviceInfo.fullDevice) {
-      console.log("🔄 Opening device modal for:", deviceInfo.deviceName);
+      console.log("🔄 Mở modal thiết bị cho:", deviceInfo.deviceName);
       setSelectedDevice(deviceInfo.fullDevice);
       setShowDeviceModal(true);
     }
   };
 
   const handleDeviceModalClose = (newOpen: boolean) => {
-    console.log("🔄 Device modal close event:", newOpen);
+    console.log("🔄 Sự kiện đóng modal thiết bị:", newOpen);
     setShowDeviceModal(newOpen);
 
     if (!newOpen) {
       // Clear selected device after modal closes
       setTimeout(() => {
         setSelectedDevice(null);
-        console.log("✅ Device modal cleanup completed");
+        console.log("✅ Hoàn tất dọn dẹp modal thiết bị");
       }, 100);
     }
   };
@@ -188,9 +200,9 @@ export const MachineDetailModal = ({
           onInteractOutside={handleInteractOutside}
         >
           <DialogHeader>
-            <DialogTitle>Machine Details</DialogTitle>
+            <DialogTitle>Thông tin chi tiết máy</DialogTitle>
             <DialogDescription>
-              View comprehensive information about this machine
+              Xem thông tin toàn diện về máy này
             </DialogDescription>
           </DialogHeader>
 
@@ -200,7 +212,7 @@ export const MachineDetailModal = ({
                 <h3 className="text-xl font-semibold">{machine.machineName}</h3>
                 <div className="flex gap-2">
                   <Badge variant="outline" className={getStatusBadgeVariant(machine.status)}>
-                    {machine.status}
+                    {getStatusDisplayText(machine.status)}
                   </Badge>
               </div>
             </div>
@@ -208,9 +220,9 @@ export const MachineDetailModal = ({
             {/* Tabbed Content */}
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="details">Machine Details</TabsTrigger>
+                <TabsTrigger value="details">Thông tin máy</TabsTrigger>
                 <TabsTrigger value="devices">
-                  Linked Devices ({machine.deviceIds?.length || 0})
+                  Thiết bị liên kết ({machine.deviceIds?.length || 0})
                 </TabsTrigger>
               </TabsList>
 
@@ -218,14 +230,14 @@ export const MachineDetailModal = ({
               <TabsContent value="details" className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Machine Name</Label>
+                    <Label className="text-muted-foreground">Tên máy</Label>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{machine.machineName}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Machine Code</Label>
+                    <Label className="text-muted-foreground">Mã máy</Label>
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-muted-foreground" />
                       <span className="font-mono">{machine.machineCode}</span>
@@ -233,7 +245,7 @@ export const MachineDetailModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Manufacturer</Label>
+                    <Label className="text-muted-foreground">Nhà sản xuất</Label>
                     <div className="flex items-center gap-2">
                       <Factory className="h-4 w-4 text-muted-foreground" />
                       <span>{machine.manufacturer}</span>
@@ -241,7 +253,7 @@ export const MachineDetailModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Model</Label>
+                    <Label className="text-muted-foreground">Mẫu</Label>
                     <div className="flex items-center gap-2">
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       <span>{machine.model}</span>
@@ -249,7 +261,7 @@ export const MachineDetailModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Release Date</Label>
+                    <Label className="text-muted-foreground">Ngày phát hành</Label>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>{formatDate(machine.releaseDate)}</span>
@@ -257,25 +269,25 @@ export const MachineDetailModal = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Linked Devices</Label>
+                    <Label className="text-muted-foreground">Thiết bị liên kết</Label>
                     <div className="flex items-center gap-2">
                       <Monitor className="h-4 w-4 text-muted-foreground" />
                       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {machine.deviceIds?.length || 0} devices
+                        {machine.deviceIds?.length || 0} thiết bị
                       </Badge>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Description</Label>
+                  <Label className="text-muted-foreground">Mô tả</Label>
                   <div className="text-sm font-medium mt-1">
                     {machine.description || "N/A"}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Specifications</Label>
+                  <Label className="text-muted-foreground">Thông số kỹ thuật</Label>
                   <div className="text-sm font-medium mt-1">
                     {machine.specifications || "N/A"}
                   </div>
@@ -283,7 +295,7 @@ export const MachineDetailModal = ({
 
                 {machine.photoUrl && (
                   <div className="space-y-2">
-                    <Label className="text-muted-foreground">Photo URL</Label>
+                    <Label className="text-muted-foreground">URL ảnh</Label>
                     <div className="flex items-center gap-2">
                       <ImageIcon className="h-4 w-4 text-muted-foreground" />
                       <a
@@ -304,7 +316,7 @@ export const MachineDetailModal = ({
                 {deviceDisplayInfos.length > 0 ? (
                   <div className="space-y-3">
                     <div className="text-sm text-muted-foreground">
-                      This machine type has {deviceDisplayInfos.length} device{deviceDisplayInfos.length !== 1 ? 's' : ''} of this type:
+                      Loại máy này có {deviceDisplayInfos.length} thiết bị thuộc loại này:
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">
@@ -317,18 +329,18 @@ export const MachineDetailModal = ({
                             <Monitor className="h-5 w-5 text-blue-600" />
                             <div className="flex-1">
                               <div className="font-medium text-base flex items-center gap-2">
-                                Device #{index + 1}:
+                                Thiết bị #{index + 1}:
                                 {deviceInfo.isLoading ? (
                                   <div className="flex items-center gap-2">
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="text-muted-foreground">Loading...</span>
+                                    <span className="text-muted-foreground">Đang tải...</span>
                                   </div>
                                 ) : (
                                   <span className="text-blue-700">{deviceInfo.deviceName}</span>
                                 )}
                               </div>
                               <div className="text-sm text-muted-foreground font-mono mt-1">
-                                {deviceInfo.isLoading ? 'Loading...' : deviceInfo.deviceCode}
+                                {deviceInfo.isLoading ? 'Đang tải...' : deviceInfo.deviceCode}
                               </div>
                               {deviceInfo.error && (
                                 <div className="text-xs text-red-500 mt-1">
@@ -355,15 +367,15 @@ export const MachineDetailModal = ({
                     </div>
 
                     <div className="text-xs text-muted-foreground mt-3">
-                      * Click the eye icon to view detailed device information
+                      * Nhấp vào biểu tượng mắt để xem thông tin chi tiết thiết bị
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <Monitor className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No devices of this machine type found</p>
+                    <p className="text-gray-500">Không tìm thấy thiết bị thuộc loại máy này</p>
                     <p className="text-sm text-muted-foreground mt-2">
-                      Devices can be configured to use this machine type during device creation or editing
+                      Thiết bị có thể được cấu hình để sử dụng loại máy này trong quá trình tạo hoặc chỉnh sửa thiết bị
                     </p>
                   </div>
                 )}

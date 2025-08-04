@@ -786,6 +786,40 @@ class APIClient {
       );
     },
   };
+    location = {
+    // Area APIs
+    getAreas: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Fetching areas (page ${pageNumber}, size ${pageSize})`);
+      return http.get(`/api/Area/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    // Zone APIs
+    getZones: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Fetching zones (page ${pageNumber}, size ${pageSize})`);
+      return http.get(`/api/Zone/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    getZonesByAreaId: (areaId: string, pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Fetching zones for area ${areaId} (page ${pageNumber}, size ${pageSize})`);
+      return http.get(`/api/Area/${areaId}/zones?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    // Position APIs
+    getPositions: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Fetching positions (page ${pageNumber}, size ${pageSize})`);
+      return http.get(`/api/Position/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    getPositionsByZoneId: (zoneId: string, pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+      console.log(`Fetching positions for zone ${zoneId} (page ${pageNumber}, size ${pageSize})`);
+      return http.get(`/api/Zone/${zoneId}/positions-and-devices?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    getPositionsByAreaId: (areaId: string): Promise<any> => {
+      console.log(`Fetching positions for area ${areaId}`);
+      return http.get(`/api/Position/by-area/${areaId}`);
+    },
+  };
 }
 
 export const apiClient = new APIClient();

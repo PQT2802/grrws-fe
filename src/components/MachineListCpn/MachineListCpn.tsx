@@ -26,6 +26,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { apiClient } from "@/lib/api-client"
 import { MACHINE_WEB } from "@/types/device.type"
 import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { USER_ROLES } from "@/types/auth.type"
 
 interface MachineListCpnProps {
     onEditMachine?: (machine: MACHINE_WEB) => void
@@ -43,6 +45,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
     onDeleteMachine,
     onViewMachine
 }, ref) => {
+    const { user } = useAuth()
     const [machines, setMachines] = useState<MACHINE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
@@ -57,14 +60,29 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
+    // ✅ Check if user has access - Both Admin and Stock Keeper can access
+    const hasFullAccess = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER
+
     const formatDate = (dateString: string | null | undefined) => {
         if (!dateString) return "N/A"
         const date = new Date(dateString)
-        return date.toLocaleDateString("en-US", {
+        return date.toLocaleDateString("vi-VN", {
             year: "numeric",
             month: "short",
             day: "2-digit",
         })
+    }
+
+    // ✅ Vietnamese status translations
+    const getStatusDisplayText = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "active":
+                return "Hoạt động"
+            case "discontinued":
+                return "Ngừng sản xuất"
+            default:
+                return status
+        }
     }
 
     // Status badge colors for machine status
@@ -97,10 +115,10 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
         try {
             setIsLoading(true)
             setError(null)
-            console.log(`🔄 Fetching machines (page ${page}, size ${pageSize})...`)
+            console.log(`🔄 Đang tải máy (trang ${page}, kích thước ${pageSize})...`)
 
             const response = await apiClient.machine.getMachines(page, pageSize)
-            console.log("📦 Machines API response:", response)
+            console.log("📦 Phản hồi API máy:", response)
 
             // Handle different response structures
             let machinesData: MACHINE_WEB[] = []
@@ -121,14 +139,14 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                     total = (response as any).data.totalCount || (response as any).data.data.length
                 }
                 else {
-                    console.error("❌ Unexpected response structure:", response)
-                    throw new Error("Unexpected API response structure")
+                    console.error("❌ Cấu trúc phản hồi không mong đợi:", response)
+                    throw new Error("Cấu trúc phản hồi API không mong đợi")
                 }
             } else {
-                throw new Error("Invalid API response")
+                throw new Error("Phản hồi API không hợp lệ")
             }
 
-            console.log(`📊 Extracted: ${machinesData.length} machines, total: ${total}`)
+            console.log(`📊 Đã trích xuất: ${machinesData.length} máy, tổng: ${total}`)
 
             // Apply client-side filtering if needed
             let filteredMachines = machinesData
@@ -153,10 +171,10 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
 
             setMachines(filteredMachines)
             setTotalCount(total)
-            console.log("✅ Machines processed successfully")
+            console.log("✅ Máy đã được xử lý thành công")
         } catch (error: any) {
-            console.error("❌ Error fetching machines:", error)
-            setError(`Failed to load machines: ${error.message || 'Unknown error'}`)
+            console.error("❌ Lỗi khi tải máy:", error)
+            setError(`Không thể tải máy: ${error.message || 'Lỗi không xác định'}`)
             setMachines([])
             setTotalCount(0)
         } finally {
@@ -185,10 +203,14 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
         setPage(1)
     }, [pageSize])
 
-    // Handle import modal
+    // ✅ Import handler - Available for both Admin and Stock Keeper
     const handleImportClick = useCallback(() => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền nhập máy")
+            return
+        }
         setShowImportModal(true)
-    }, [])
+    }, [hasFullAccess])
 
     const handleImportModalClose = useCallback(() => {
         setShowImportModal(false)
@@ -196,41 +218,54 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
 
     // Handle file import
     const handleFileImport = useCallback(async (file: File) => {
+        if (!hasFullAccess) {
+            toast.error("Bạn không có quyền nhập máy")
+            return
+        }
+
         const formData = new FormData()
         formData.append('file', file)
 
-        console.log(`📂 Importing machine file: ${file.name}`)
+        console.log(`📂 Đang nhập tệp máy: ${file.name}`)
         
         await apiClient.machine.importMachine(formData)
         
         // Refresh the machine list
         await fetchMachines()
         
-    }, [fetchMachines])
+    }, [fetchMachines, hasFullAccess])
 
     const handleViewMachine = useCallback((machine: MACHINE_WEB) => {
         if (onViewMachine) {
             onViewMachine(machine)
         } else {
-            toast.info("View functionality will be implemented when needed.")
+            toast.info("Chức năng xem sẽ được triển khai khi cần thiết.")
         }
     }, [onViewMachine])
 
     const handleEditMachine = useCallback((machine: MACHINE_WEB) => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền chỉnh sửa máy")
+            return
+        }
         if (onEditMachine) {
             onEditMachine(machine)
         } else {
-            toast.info("Edit functionality will be implemented when the API is available.")
+            toast.info("Chức năng chỉnh sửa sẽ được triển khai khi API có sẵn.")
         }
-    }, [onEditMachine])
+    }, [onEditMachine, hasFullAccess])
 
     const handleDeleteMachine = useCallback((machine: MACHINE_WEB) => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền xóa máy")
+            return
+        }
         if (onDeleteMachine) {
             onDeleteMachine(machine)
         } else {
-            toast.info("Delete functionality will be implemented when the API is available.")
+            toast.info("Chức năng xóa sẽ được triển khai khi API có sẵn.")
         }
-    }, [onDeleteMachine])
+    }, [onDeleteMachine, hasFullAccess])
 
     const handlePageSizeChange = useCallback((newPageSize: string) => {
         setPageSize(Number(newPageSize))
@@ -244,7 +279,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
             <Card>
                 <CardContent className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <span className="ml-2">Loading machines...</span>
+                    <span className="ml-2">Đang tải máy...</span>
                 </CardContent>
             </Card>
         )
@@ -258,13 +293,13 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                     <div>
                         <p className="text-red-500 mb-2">{error}</p>
                         <p className="text-sm text-gray-500 mb-4">
-                            Check the browser console for detailed error information.
+                            Kiểm tra bảng điều khiển trình duyệt để biết thông tin lỗi chi tiết.
                         </p>
                         <button 
                             onClick={() => fetchMachines()} 
                             className="text-blue-500 underline text-sm"
                         >
-                            Retry
+                            Thử lại
                         </button>
                     </div>
                 </CardContent>
@@ -276,16 +311,18 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold">Machine Management</h1>
-                <div className="flex items-center gap-2">
-                    <Button 
-                        onClick={handleImportClick}
-                        className="bg-green-600 hover:bg-green-700"
-                    >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import Machine
-                    </Button>
-                </div>
+                <h1 className="text-2xl font-semibold">Quản lý máy</h1>
+                {hasFullAccess && (
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            onClick={handleImportClick}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Nhập máy
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Filters */}
@@ -294,24 +331,24 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                     <div className="relative w-1/3">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search by name, code, model, or manufacturer..."
+                            placeholder="Tìm kiếm theo tên, mã, mẫu hoặc nhà sản xuất..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9"
                         />
                         {searchTerm && searchTerm !== debouncedSearchTerm && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">Searching...</span>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">Đang tìm...</span>
                         )}
                     </div>
 
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                         <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Status" />
+                            <SelectValue placeholder="Trạng thái" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="discontinued">Discontinued</SelectItem>
+                            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                            <SelectItem value="active">Hoạt động</SelectItem>
+                            <SelectItem value="discontinued">Ngừng sản xuất</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -323,12 +360,12 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                     <table className="w-full">
                         <thead>
                             <tr className="border-b bg-muted/50">
-                                <th className="px-4 py-3 text-left">Machine Name</th>
-                                <th className="px-4 py-3 text-left">Model & Manufacturer</th>
-                                <th className="px-4 py-3 text-left">Associated Devices</th>
-                                <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Release Date</th>
-                                <th className="w-[80px] px-4 py-3 text-right">Actions</th>
+                                <th className="px-4 py-3 text-left">Tên máy</th>
+                                <th className="px-4 py-3 text-left">Mẫu & Nhà sản xuất</th>
+                                <th className="px-4 py-3 text-left">Thiết bị liên kết</th>
+                                <th className="px-4 py-3 text-left">Trạng thái</th>
+                                <th className="px-4 py-3 text-left">Ngày phát hành</th>
+                                <th className="w-[100px] px-4 py-3 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -358,7 +395,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                             ) : machines.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                                        No machines found
+                                        Không tìm thấy máy
                                     </td>
                                 </tr>
                             ) : (
@@ -379,7 +416,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                                                     </div>
                                                     <div className="text-sm text-muted-foreground flex items-center gap-1">
                                                         <Factory className="h-3 w-3" />
-                                                        {machine.manufacturer || "Unknown"}
+                                                        {machine.manufacturer || "Không rõ"}
                                                     </div>
                                                 </div>
                                             </div>
@@ -389,12 +426,12 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                                                 variant="outline" 
                                                 className={`${getDeviceCountBadgeVariant(machine.deviceIds?.length || 0)} border-0`}
                                             >
-                                                {machine.deviceIds?.length || 0} devices
+                                                {machine.deviceIds?.length || 0} thiết bị
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3">
                                             <Badge variant="outline" className={`${getStatusBadgeVariant(machine.status)} border-0`}>
-                                                {machine.status}
+                                                {getStatusDisplayText(machine.status)}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
@@ -413,16 +450,20 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => handleViewMachine(machine)}>
                                                         <Eye className="mr-2 h-4 w-4" />
-                                                        View Details
+                                                        Xem chi tiết
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleEditMachine(machine)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Machine
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleDeleteMachine(machine)} className="text-red-600">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Machine
-                                                    </DropdownMenuItem>
+                                                    {hasFullAccess && (
+                                                        <>
+                                                            <DropdownMenuItem onClick={() => handleEditMachine(machine)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Sửa máy
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDeleteMachine(machine)} className="text-red-600">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Xóa máy
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </td>
@@ -437,7 +478,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                 <div className="flex items-center justify-between px-4 py-3 border-t">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">Show:</span>
+                            <span className="text-sm text-gray-500">Hiển thị:</span>
                             <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                                 <SelectTrigger className="w-[70px] h-8">
                                     <SelectValue />
@@ -453,16 +494,16 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                         <div className="text-sm text-gray-500">
                             {totalCount > 0 ? (
                                 <>
-                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount} machines
+                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} trong số {totalCount} máy
                                 </>
                             ) : (
-                                "No machines"
+                                "Không có máy"
                             )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">
-                            Page {page} of {totalPages}
+                            Trang {page} trong số {totalPages}
                         </span>
                         <Button
                             variant="outline"
@@ -486,14 +527,16 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(({
                 </div>
             </div>
 
-            {/* Import Modal */}
-            <ExcelImportModal
-                isOpen={showImportModal}
-                onClose={handleImportModalClose}
-                onImport={handleFileImport}
-                title="Nhập máy từ Excel"
-                successMessage="Nhập máy thành công"
-            />
+            {/* ✅ Import Modal - Available for both Admin and Stock Keeper */}
+            {hasFullAccess && (
+                <ExcelImportModal
+                    isOpen={showImportModal}
+                    onClose={handleImportModalClose}
+                    onImport={handleFileImport}
+                    title="Nhập máy từ Excel"
+                    successMessage="Nhập máy thành công"
+                />
+            )}
         </div>
     )
 })

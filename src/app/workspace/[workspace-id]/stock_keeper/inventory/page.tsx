@@ -51,7 +51,7 @@ export default function InventoryPage() {
   
   // State for data
   const [inventory, setInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
-  const [fullInventory, setFullInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]); // ✅ Store full inventory for summary
+  const [fullInventory, setFullInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,12 +64,13 @@ export default function InventoryPage() {
   // State for handling direct part access from notifications
   const [directPartId, setDirectPartId] = useState<string | undefined>(undefined);
 
-  // ✅ Special filter states for Low Stock and Out of Stock
+  // Special filter states for Low Stock and Out of Stock
   const [specialFilter, setSpecialFilter] = useState<string | null>(null);
 
-  // Determine user permissions
-  const isViewOnlyMode = user?.role === USER_ROLES.ADMIN;
+  // ✅ REMOVED: View-only mode restrictions - Both Admin and Stock Keeper have full access
   const isStockKeeper = user?.role === USER_ROLES.STOCK_KEEPER;
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
+  const hasFullAccess = isStockKeeper || isAdmin; // ✅ Both roles now have full access
 
   // Initialize pagination from URL params
   useEffect(() => {
@@ -144,11 +145,11 @@ export default function InventoryPage() {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  // ✅ Fetch full inventory for summary calculations
+  // Fetch full inventory for summary calculations
   const fetchFullInventory = async () => {
     try {
       console.log('🔍 Fetching full inventory for summary calculations');
-      const response = await apiClient.sparePart.getInventory(1, 1000); // Get large page for summary
+      const response = await apiClient.sparePart.getInventory(1, 1000);
       
       let inventoryData: SPAREPART_INVENTORY_ITEM[] = [];
       
@@ -228,7 +229,6 @@ export default function InventoryPage() {
   // Fetch data when pagination changes
   useEffect(() => {
     fetchInventory();
-    // ✅ Fetch full inventory once for summary calculations
     if (!fullInventory.length) {
       fetchFullInventory();
     }
@@ -255,15 +255,15 @@ export default function InventoryPage() {
   // Handle category filter changes
   const handleCategoryFilterChange = (category: string) => {
     setCategoryFilter(category);
-    setSpecialFilter(null); // Clear special filter when changing category
+    setSpecialFilter(null);
     updateURL(pageIndex, pageSize, category, null);
   };
 
-  // ✅ Handle special filter clicks (Low Stock, Out of Stock)
+  // Handle special filter clicks (Low Stock, Out of Stock)
   const handleSpecialFilterClick = (filterType: 'lowstock' | 'outofstock') => {
     setSpecialFilter(filterType);
-    setCategoryFilter("All"); // Reset category filter
-    setPageIndex(0); // Reset to first page
+    setCategoryFilter("All");
+    setPageIndex(0);
     updateURL(0, pageSize, "All", filterType);
   };
 
@@ -322,7 +322,7 @@ export default function InventoryPage() {
       filteredParts = filteredParts.filter(part => part.category === categoryFilter);
     }
 
-    // ✅ Apply special filters
+    // Apply special filters
     if (specialFilter === 'lowstock') {
       filteredParts = filteredParts.filter(part => part.quantity > 0 && part.quantity < 10);
     } else if (specialFilter === 'outofstock') {
@@ -351,7 +351,7 @@ export default function InventoryPage() {
     return filteredParts;
   }, [inventory, search, machineFilter, categoryFilter, sortBy, sortDirection, specialFilter]);
 
-  // ✅ Calculate summary statistics from full inventory
+  // Calculate summary statistics from full inventory
   const totalParts = fullInventory?.length || 0;
   const totalInventory = useMemo(
     () => fullInventory?.reduce((sum, item) => sum + item.stockQuantity, 0) || 0,
@@ -379,7 +379,7 @@ export default function InventoryPage() {
       try {
         console.log(`Refreshing selected part: ${selectedPart.id}`);
         await fetchInventory();
-        await fetchFullInventory(); // ✅ Also refresh full inventory
+        await fetchFullInventory();
         
         const updatedPart = processedInventory.find(p => p.id === selectedPart.id);
         if (updatedPart) {
@@ -403,9 +403,9 @@ export default function InventoryPage() {
     setDirectPartId(undefined);
   };
 
-  // Handle Excel import - Only for Stock Keeper
+  // ✅ Handle Excel import - Available for both Admin and Stock Keeper
   const handleImportClick = () => {
-    if (isViewOnlyMode) {
+    if (!hasFullAccess) {
       toast.warning("Bạn không có quyền nhập linh kiện");
       return;
     }
@@ -417,7 +417,7 @@ export default function InventoryPage() {
   };
 
   const handleFileImport = async (file: File) => {
-    if (isViewOnlyMode) {
+    if (!hasFullAccess) {
       toast.error("Bạn không có quyền nhập linh kiện");
       return;
     }
@@ -538,15 +538,14 @@ export default function InventoryPage() {
   return (
     <>
       <div className="space-y-6 bg-background min-h-screen p-2">
-        {/* ✅ Updated Header with Admin-style summary cards - No borders */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <PackageSearch className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               <h1 className="text-xl font-bold text-foreground">Kho Linh Kiện</h1>
             </div>
-            {/* Only show Import button for Stock Keeper */}
-            {isStockKeeper && (
+            {/* ✅ Show Import button for both Admin and Stock Keeper */}
+            {hasFullAccess && (
               <Button
                 onClick={handleImportClick}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
@@ -557,7 +556,7 @@ export default function InventoryPage() {
             )}
           </div>
           
-          {/* ✅ Admin-style summary cards */}
+          {/* Admin-style summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="p-4 rounded-lg border transition-colors bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
               <div className="flex items-center justify-between">
@@ -579,7 +578,7 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            {/* ✅ Clickable Low Stock card */}
+            {/* Clickable Low Stock card */}
             <button
               onClick={() => handleSpecialFilterClick('lowstock')}
               className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${
@@ -597,7 +596,7 @@ export default function InventoryPage() {
               </div>
             </button>
 
-            {/* ✅ Clickable Out of Stock card */}
+            {/* Clickable Out of Stock card */}
             <button
               onClick={() => handleSpecialFilterClick('outofstock')}
               className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${
@@ -617,7 +616,7 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* ✅ Search and Filter Bar - No borders */}
+        {/* Search and Filter Bar */}
         <FilterBar
           search={search}
           setSearch={setSearch}
@@ -638,7 +637,7 @@ export default function InventoryPage() {
           }}
         />
 
-        <div className=" rounded-xl border bg-card text-card-foreground shadow p-6">
+        <div className="rounded-xl border bg-card text-card-foreground shadow p-6">
           {loading ? (
             <SkeletonCard />
           ) : processedInventory.length > 0 ? (
@@ -690,8 +689,8 @@ export default function InventoryPage() {
           )}
         </div>
 
-        {/* Excel Import Modal - Only for Stock Keeper */}
-        {isStockKeeper && (
+        {/* ✅ Excel Import Modal - Available for both Admin and Stock Keeper */}
+        {hasFullAccess && (
           <ExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
@@ -702,14 +701,14 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* ✅ Modal with backdrop dimming */}
+      {/* ✅ Modal - Full access for both roles */}
       <PartDetailModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
         part={selectedPart}
         partId={directPartId}
         onUpdate={refreshSelectedPart}
-        isViewOnlyMode={isViewOnlyMode}
+        isViewOnlyMode={false} // ✅ Remove view-only mode
       />
     </>
   );

@@ -26,6 +26,8 @@ import { DEVICE_WEB } from "@/types/device.type"
 import OperationStatsCpn from "../ChartCpn/OperationStatsCpn"
 import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal"
 import DeviceExportModal from '@/components/DeviceCpn/DeviceExportModal'
+import { useAuth } from "@/components/providers/AuthProvider"
+import { USER_ROLES } from "@/types/auth.type"
 
 // Updated device status mapping based on backend enum
 type DeviceStatus = "Active" | "Inactive" | "InUse" | "InRepair" | "InWarranty" | "Decommissioned"
@@ -48,6 +50,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
     onDeleteDevice,
     onViewDevice
 }, ref) => {
+    const { user } = useAuth()
     const [devices, setDevices] = useState<DEVICE_WEB[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [isLoading, setIsLoading] = useState(true)
@@ -64,14 +67,37 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000)
 
+    // ✅ Check if user has access - Both Admin and Stock Keeper can access
+    const hasFullAccess = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER
+
     const formatDate = (dateString: string | null | undefined) => {
         if (!dateString) return "N/A"
         const date = new Date(dateString)
-        return date.toLocaleDateString("en-US", {
+        return date.toLocaleDateString("vi-VN", {
             year: "numeric",
             month: "short",
             day: "2-digit",
         })
+    }
+
+    // ✅ Vietnamese status translations using textTypeTask patterns
+    const getStatusDisplayText = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "active":
+                return "Hoạt động"
+            case "inactive": 
+                return "Không hoạt động"
+            case "inuse":
+                return "Đang sử dụng"
+            case "inrepair":
+                return "Đang sửa chữa"
+            case "inwarranty":
+                return "Đang bảo hành"
+            case "decommissioned":
+                return "Ngừng sử dụng"
+            default:
+                return status
+        }
     }
 
     // Updated status badge colors based on new device status enum
@@ -105,10 +131,10 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
         try {
             setIsLoading(true)
             setError(null)
-            console.log(`🔄 Fetching devices (page ${page}, size ${pageSize})...`)
+            console.log(`🔄 Đang tải thiết bị (trang ${page}, kích thước ${pageSize})...`)
 
             const response = await apiClient.device.getDevices(page, pageSize)
-            console.log("📦 Devices API response:", response)
+            console.log("📦 Phản hồi API thiết bị:", response)
 
             // Handle different response structures
             let devicesData: DEVICE_WEB[] = []
@@ -129,14 +155,14 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                     total = (response as any).data.totalCount || (response as any).data.data.length
                 }
                 else {
-                    console.error("❌ Unexpected response structure:", response)
-                    throw new Error("Unexpected API response structure")
+                    console.error("❌ Cấu trúc phản hồi không mong đợi:", response)
+                    throw new Error("Cấu trúc phản hồi API không mong đợi")
                 }
             } else {
-                throw new Error("Invalid API response")
+                throw new Error("Phản hồi API không hợp lệ")
             }
 
-            console.log(`📊 Extracted: ${devicesData.length} devices, total: ${total}`)
+            console.log(`📊 Đã trích xuất: ${devicesData.length} thiết bị, tổng: ${total}`)
 
             // Apply client-side filtering if needed
             let filteredDevices = devicesData
@@ -160,10 +186,10 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
 
             setDevices(filteredDevices)
             setTotalCount(total)
-            console.log("✅ Devices processed successfully")
+            console.log("✅ Thiết bị đã được xử lý thành công")
         } catch (error: any) {
-            console.error("❌ Error fetching devices:", error)
-            setError(`Failed to load devices: ${error.message || 'Unknown error'}`)
+            console.error("❌ Lỗi khi tải thiết bị:", error)
+            setError(`Không thể tải thiết bị: ${error.message || 'Lỗi không xác định'}`)
             setDevices([])
             setTotalCount(0)
         } finally {
@@ -192,10 +218,14 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
         setPage(1)
     }, [pageSize])
 
-    // Handle import modal
+    // ✅ Import/Export handlers - Available for both Admin and Stock Keeper
     const handleImportClick = useCallback(() => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền nhập thiết bị")
+            return
+        }
         setShowImportModal(true)
-    }, [])
+    }, [hasFullAccess])
 
     const handleImportModalClose = useCallback(() => {
         setShowImportModal(false)
@@ -203,22 +233,31 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
 
     // Handle file import
     const handleFileImport = useCallback(async (file: File) => {
+        if (!hasFullAccess) {
+            toast.error("Bạn không có quyền nhập thiết bị")
+            return
+        }
+
         const formData = new FormData()
         formData.append('file', file)
 
-        console.log(`📂 Importing device file: ${file.name}`)
+        console.log(`📂 Đang nhập tệp thiết bị: ${file.name}`)
         
         await apiClient.device.importDevice(formData)
         
         // Refresh the device list
         await fetchDevices()
         
-    }, [fetchDevices])
+    }, [fetchDevices, hasFullAccess])
 
     // Export handler
     const handleExportClick = useCallback(() => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền xuất thiết bị")
+            return
+        }
         setShowExportModal(true);
-    }, []);
+    }, [hasFullAccess]);
 
     const handleExportModalClose = useCallback(() => {
         setShowExportModal(false);
@@ -228,33 +267,45 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
         if (onViewDevice) {
             onViewDevice(device)
         } else {
-            toast.info("View functionality will be implemented when needed.")
+            toast.info("Chức năng xem sẽ được triển khai khi cần thiết.")
         }
     }, [onViewDevice])
 
     const handleEditDevice = useCallback((device: DEVICE_WEB) => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền chỉnh sửa thiết bị")
+            return
+        }
         if (onEditDevice) {
             onEditDevice(device)
         } else {
-            toast.info("Edit functionality will be implemented when the API is available.")
+            toast.info("Chức năng chỉnh sửa sẽ được triển khai khi API có sẵn.")
         }
-    }, [onEditDevice])
+    }, [onEditDevice, hasFullAccess])
 
     const handleCreateDevice = useCallback(() => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền tạo thiết bị")
+            return
+        }
         if (onCreateDevice) {
             onCreateDevice()
         } else {
-            toast.info("Create functionality will be implemented when the API is available.")
+            toast.info("Chức năng tạo sẽ được triển khai khi API có sẵn.")
         }
-    }, [onCreateDevice])
+    }, [onCreateDevice, hasFullAccess])
 
     const handleDeleteDevice = useCallback((device: DEVICE_WEB) => {
+        if (!hasFullAccess) {
+            toast.warning("Bạn không có quyền xóa thiết bị")
+            return
+        }
         if (onDeleteDevice) {
             onDeleteDevice(device)
         } else {
-            toast.info("Delete functionality will be implemented when the API is available.")
+            toast.info("Chức năng xóa sẽ được triển khai khi API có sẵn.")
         }
-    }, [onDeleteDevice])
+    }, [onDeleteDevice, hasFullAccess])
 
     const handlePageSizeChange = useCallback((newPageSize: string) => {
         setPageSize(Number(newPageSize))
@@ -268,7 +319,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
             <Card>
                 <CardContent className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <span className="ml-2">Loading devices...</span>
+                    <span className="ml-2">Đang tải thiết bị...</span>
                 </CardContent>
             </Card>
         )
@@ -282,13 +333,13 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                     <div>
                         <p className="text-red-500 mb-2">{error}</p>
                         <p className="text-sm text-gray-500 mb-4">
-                            Check the browser console for detailed error information.
+                            Kiểm tra bảng điều khiển trình duyệt để biết thông tin lỗi chi tiết.
                         </p>
                         <button 
                             onClick={() => fetchDevices()} 
                             className="text-blue-500 underline text-sm"
                         >
-                            Retry
+                            Thử lại
                         </button>
                     </div>
                 </CardContent>
@@ -300,24 +351,26 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold">Device Management</h1>
-                <div className="flex items-center gap-2">
-                    <Button 
-                        onClick={handleExportClick}
-                        variant="outline"
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                    >
-                        <Download className="mr-2 h-4 w-4" />
-                        Export Devices
-                    </Button>
-                    <Button 
-                        onClick={handleImportClick}
-                        className="bg-green-600 hover:bg-green-700"
-                    >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import Device
-                    </Button>
-                </div>
+                <h1 className="text-2xl font-semibold">Quản lý thiết bị</h1>
+                {hasFullAccess && (
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            onClick={handleExportClick}
+                            variant="outline"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Xuất thiết bị
+                        </Button>
+                        <Button 
+                            onClick={handleImportClick}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Nhập thiết bị
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <OperationStatsCpn/>
@@ -328,28 +381,28 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                     <div className="relative w-1/3">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search by name, code, or serial..."
+                            placeholder="Tìm kiếm theo tên, mã hoặc số seri..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9"
                         />
                         {searchTerm && searchTerm !== debouncedSearchTerm && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">Searching...</span>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">Đang tìm...</span>
                         )}
                     </div>
 
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                         <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Status" />
+                            <SelectValue placeholder="Trạng thái" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="inuse">In Use</SelectItem>
-                            <SelectItem value="inrepair">In Repair</SelectItem>
-                            <SelectItem value="inwarranty">In Warranty</SelectItem>
-                            <SelectItem value="decommissioned">Decommissioned</SelectItem>
+                            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                            <SelectItem value="active">Hoạt động</SelectItem>
+                            <SelectItem value="inactive">Không hoạt động</SelectItem>
+                            <SelectItem value="inuse">Đang sử dụng</SelectItem>
+                            <SelectItem value="inrepair">Đang sửa chữa</SelectItem>
+                            <SelectItem value="inwarranty">Đang bảo hành</SelectItem>
+                            <SelectItem value="decommissioned">Ngừng sử dụng</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -361,13 +414,13 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                     <table className="w-full">
                         <thead>
                             <tr className="border-b bg-muted/50">
-                                <th className="px-4 py-3 text-left">Serial Number</th>
-                                <th className="px-4 py-3 text-left">Device Name</th>
-                                <th className="px-4 py-3 text-left">Model</th>
-                                <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Warranty</th>
-                                <th className="px-4 py-3 text-left">Installed</th>
-                                <th className="w-[80px] px-4 py-3 text-right">Actions</th>
+                                <th className="px-4 py-3 text-left">Số seri</th>
+                                <th className="px-4 py-3 text-left">Tên thiết bị</th>
+                                <th className="px-4 py-3 text-left">Mẫu mã</th>
+                                <th className="px-4 py-3 text-left">Trạng thái</th>
+                                <th className="px-4 py-3 text-left">Bảo hành</th>
+                                <th className="px-4 py-3 text-left">Ngày lắp đặt</th>
+                                <th className="w-[100px] px-4 py-3 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -400,7 +453,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                             ) : devices.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                        No devices found
+                                        Không tìm thấy thiết bị
                                     </td>
                                 </tr>
                             ) : (
@@ -420,17 +473,17 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                                                 {device.model || "N/A"}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
-                                                {device.manufacturer || "Unknown"}
+                                                {device.manufacturer || "Không rõ"}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3">
                                             <Badge variant="outline" className={`${getStatusBadgeVariant(device.status)} border-0`}>
-                                                {device.status}
+                                                {getStatusDisplayText(device.status)}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3">
                                             <Badge variant="outline" className={`${getWarrantyBadgeVariant(device.isUnderWarranty)} border-0`}>
-                                                {device.isUnderWarranty ? "Yes" : "No"}
+                                                {device.isUnderWarranty ? "Còn bảo hành" : "Hết bảo hành"}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 text-muted-foreground">
@@ -446,16 +499,20 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => handleViewDevice(device)}>
                                                         <Eye className="mr-2 h-4 w-4" />
-                                                        View Details
+                                                        Xem chi tiết
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleEditDevice(device)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Device
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-red-600">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Device
-                                                    </DropdownMenuItem>
+                                                    {hasFullAccess && (
+                                                        <>
+                                                            <DropdownMenuItem onClick={() => handleEditDevice(device)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Sửa thiết bị
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDeleteDevice(device)} className="text-red-600">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Xóa thiết bị
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </td>
@@ -470,7 +527,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                 <div className="flex items-center justify-between px-4 py-3 border-t">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">Show:</span>
+                            <span className="text-sm text-gray-500">Hiển thị:</span>
                             <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                                 <SelectTrigger className="w-[70px] h-8">
                                     <SelectValue />
@@ -486,16 +543,16 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                         <div className="text-sm text-gray-500">
                             {totalCount > 0 ? (
                                 <>
-                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount} devices
+                                    {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} trong số {totalCount} thiết bị
                                 </>
                             ) : (
-                                "No devices"
+                                "Không có thiết bị"
                             )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">
-                            Page {page} of {totalPages}
+                            Trang {page} trong số {totalPages}
                         </span>
                         <Button
                             variant="outline"
@@ -519,21 +576,25 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(({
                 </div>
             </div>
 
-            {/* Import Modal */}
-            <ExcelImportModal
-                isOpen={showImportModal}
-                onClose={handleImportModalClose}
-                onImport={handleFileImport}
-                title="Nhập thiết bị từ Excel"
-                successMessage="Nhập thiết bị thành công"
-            />
+            {/* ✅ Import Modal - Available for both Admin and Stock Keeper */}
+            {hasFullAccess && (
+                <ExcelImportModal
+                    isOpen={showImportModal}
+                    onClose={handleImportModalClose}
+                    onImport={handleFileImport}
+                    title="Nhập thiết bị từ Excel"
+                    successMessage="Nhập thiết bị thành công"
+                />
+            )}
 
-            {/* Export Modal */}
-            <DeviceExportModal
-                isOpen={showExportModal}
-                onClose={handleExportModalClose}
-                devices={devices}
-            />
+            {/* ✅ Export Modal - Available for both Admin and Stock Keeper */}
+            {hasFullAccess && (
+                <DeviceExportModal
+                    isOpen={showExportModal}
+                    onClose={handleExportModalClose}
+                    devices={devices}
+                />
+            )}
         </div>
     )
 })

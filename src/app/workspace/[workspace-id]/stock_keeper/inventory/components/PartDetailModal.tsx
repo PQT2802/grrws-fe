@@ -11,9 +11,7 @@ import {
   Truck,
   DollarSign,
   FileText,
-  Wrench,
-  Eye,
-  Shield
+  Wrench
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PartDetailModalProps, PartType } from "../../type";
@@ -22,9 +20,11 @@ import UpdateSparePartModal from "./UpdateSparePartModal";
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { USER_ROLES } from "@/types/auth.type";
 
 interface PartDetailModalPropsExtended extends PartDetailModalProps {
-  isViewOnlyMode?: boolean; // ✅ Add view-only mode prop
+  isViewOnlyMode?: boolean;
 }
 
 export default function PartDetailModal({ 
@@ -33,15 +33,20 @@ export default function PartDetailModal({
   part, 
   onUpdate, 
   partId,
-  isViewOnlyMode = false // ✅ Default to false for backward compatibility
+  isViewOnlyMode = false
 }: PartDetailModalPropsExtended) {
+  const { user } = useAuth();
   const [currentPart, setCurrentPart] = useState<PartType | null>(part || null);
   const [isLowStock, setIsLowStock] = useState(false);
+  const [isOutOfStock, setIsOutOfStock] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showUpdateSpModal, setShowUpdateSpModal] = useState(false);
   const [originalData, setOriginalData] = useState<SPAREPART_INVENTORY_ITEM | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false); // ✅ Add refresh state
+
+  const hasFullAccess = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER;
 
   // Load part data when partId is provided (for direct access)
   useEffect(() => {
@@ -55,15 +60,17 @@ export default function PartDetailModal({
   useEffect(() => {
     if (part) {
       setCurrentPart(part);
-      setIsLowStock(part.quantity < part.minThreshold);
+      setIsLowStock(part.quantity > 0 && part.quantity < part.minThreshold);
+      setIsOutOfStock(part.quantity === 0);
       console.log("PartDetailModal: Part updated:", part);
     }
   }, [part]);
 
-  // Update low stock status when currentPart changes
+  // Update stock status when currentPart changes
   useEffect(() => {
     if (currentPart) {
-      setIsLowStock(currentPart.quantity < currentPart.minThreshold);
+      setIsLowStock(currentPart.quantity > 0 && currentPart.quantity < currentPart.minThreshold);
+      setIsOutOfStock(currentPart.quantity === 0);
     }
   }, [currentPart]);
 
@@ -77,7 +84,6 @@ export default function PartDetailModal({
       const response = await apiClient.sparePart.getPartById(id);
       console.log("API response for part by ID:", response);
       
-      // Handle different response structures
       let partData;
       if (response?.data?.data) {
         partData = response.data.data;
@@ -90,7 +96,6 @@ export default function PartDetailModal({
       }
 
       if (partData && partData.id) {
-        // Convert API response to PartType format
         const convertedPart: PartType = {
           id: partData.id,
           name: partData.sparepartName,
@@ -119,19 +124,89 @@ export default function PartDetailModal({
       }
     } catch (error: any) {
       console.error("Error fetching part data:", error);
-      console.error("Full error object:", JSON.stringify(error, null, 2));
-      setError(error?.message || "Failed to load part data");
+      setError(error?.message || "Không thể tải dữ liệu linh kiện");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch original data for the update modal if needed - Only for Stock Keeper
+  // ✅ Enhanced refresh function for modal data
+  const refreshModalData = async (showLoadingState: boolean = true) => {
+    if (!currentPart?.id) {
+      console.warn("No part ID available for refreshing modal data");
+      return;
+    }
+
+    try {
+      if (showLoadingState) {
+        setIsRefreshing(true);
+      }
+      
+      console.log(`🔄 Refreshing modal data for part ID: ${currentPart.id}`);
+
+      const response = await apiClient.sparePart.getPartById(currentPart.id);
+      console.log("📊 Refreshed part data:", response);
+
+      let partData;
+      if (response?.data?.data) {
+        partData = response.data.data;
+      } else if (response?.data) {
+        partData = response.data;
+      } else if (response) {
+        partData = response;
+      } else {
+        throw new Error("No data returned from refresh API");
+      }
+
+      if (partData && partData.id) {
+        // ✅ Convert fresh API data to PartType
+        const refreshedPart: PartType = {
+          id: partData.id,
+          name: partData.sparepartName,
+          machineType: partData.machineNames?.length > 0 ? partData.machineNames[0] : "Khác",
+          category: partData.category || "Others",
+          quantity: partData.stockQuantity,
+          minThreshold: 10,
+          description: partData.description || "",
+          image: partData.imgUrl || "/placeholder-part.png",
+          importedDate: new Date().toISOString().split("T")[0],
+          unit: partData.unit || "Cái",
+          specification: partData.specification || "",
+          supplier: partData.supplierName || "",
+          supplierId: partData.supplierId || "",
+          unitPrice: partData.unitPrice || 0,
+          expectedAvailabilityDate: partData.expectedAvailabilityDate 
+            ? new Date(partData.expectedAvailabilityDate).toISOString().split('T')[0]
+            : ""
+        };
+
+        // ✅ Update modal state with fresh data
+        setCurrentPart(refreshedPart);
+        setOriginalData(partData);
+        
+        console.log("✅ Modal data refreshed successfully:", refreshedPart);
+        
+        // ✅ Also notify parent component to refresh page-level data
+        onUpdate?.();
+      } else {
+        throw new Error("Invalid refreshed part data structure");
+      }
+    } catch (error: any) {
+      console.error("❌ Error refreshing modal data:", error);
+      toast.error("Không thể làm mới dữ liệu linh kiện");
+    } finally {
+      if (showLoadingState) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  // Fetch original data for both Admin and Stock Keeper
   useEffect(() => {
-    if (isOpen && currentPart?.id && !originalData && !isViewOnlyMode) {
+    if (isOpen && currentPart?.id && !originalData && hasFullAccess) {
       fetchOriginalData();
     }
-  }, [isOpen, currentPart?.id, isViewOnlyMode]);
+  }, [isOpen, currentPart?.id, hasFullAccess]);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -140,15 +215,16 @@ export default function PartDetailModal({
       setShowUpdateModal(false);
       setShowUpdateSpModal(false);
       setError(null);
+      setIsRefreshing(false); // ✅ Reset refresh state
       if (partId && !part) {
-        setCurrentPart(null); // Reset when closing direct access modal
+        setCurrentPart(null);
       }
     }
   }, [isOpen, partId, part]);
 
   const fetchOriginalData = async () => {
-    if (!currentPart?.id || isViewOnlyMode) {
-      console.warn("PartDetailModal: No part ID available or view-only mode, skipping original data fetch");
+    if (!currentPart?.id || !hasFullAccess) {
+      console.warn("PartDetailModal: No part ID available or insufficient permissions");
       return;
     }
 
@@ -166,9 +242,6 @@ export default function PartDetailModal({
       }
     } catch (error: any) {
       console.error("Error fetching part details:", error);
-      if (error?.status !== 404) {
-        // Only show error if it's not a 404
-      }
     } finally {
       setIsLoading(false);
     }
@@ -197,10 +270,10 @@ export default function PartDetailModal({
     };
   }, [isOpen]);
 
-  // ✅ Handle form submission for quantity update - Only for Stock Keeper
+  // ✅ Enhanced quantity update with immediate modal refresh
   const handleUpdateQuantitySubmit = async (data: { date: string; qty: number; method: string }) => {
-    if (isViewOnlyMode) {
-      toast.error("You don't have permission to update stock quantities");
+    if (!hasFullAccess) {
+      toast.error("Bạn không có quyền cập nhật số lượng tồn kho");
       return;
     }
 
@@ -210,12 +283,11 @@ export default function PartDetailModal({
     }
 
     try {
-      console.log("Updating quantity:", {
+      console.log("🔄 Updating quantity:", {
         partId: currentPart.id,
         ...data
       });
       
-      // Call the API directly to update quantity
       const response = await apiClient.sparePart.updateStockQuantity(
         currentPart.id, 
         data.method === 'Adjustment' ? data.qty : (
@@ -223,63 +295,46 @@ export default function PartDetailModal({
         )
       );
       
-      // Update the current part state with new quantity
-      let newQuantity = currentPart.quantity;
-      if (data.method === 'Export') {
-        newQuantity = Math.max(0, currentPart.quantity - data.qty);
-      } else if (data.method === 'Import') {
-        newQuantity = currentPart.quantity + data.qty;
-      } else if (data.method === 'Adjustment') {
-        newQuantity = data.qty;
-      }
+      toast.success(`Đã cập nhật số lượng ${currentPart.name} thành công`);
       
-      const updatedPart = {
-        ...currentPart,
-        quantity: newQuantity
-      };
-      setCurrentPart(updatedPart);
+      // ✅ Refresh modal data immediately after quantity update
+      await refreshModalData(false); // Don't show loading state for quick refresh
       
-      toast.success(`Updated ${currentPart.name} quantity by ${data.qty} units`);
-      
-      // Reload the original data to ensure we're showing the latest data
-      setOriginalData(undefined);
-      fetchOriginalData();
-      
-      // Trigger parent refresh
-      onUpdate?.();
     } catch (error) {
       console.error("Error updating quantity:", error);
-      toast.error("Failed to update quantity");
+      toast.error("Cập nhật số lượng thất bại");
     }
   };
 
-  // ✅ Handle success for Spare Part update - Only for Stock Keeper
-  const handleUpdateSuccess = () => {
-    if (isViewOnlyMode) {
-      toast.error("You don't have permission to update spare part details");
+  // ✅ Enhanced general update success handler with immediate modal refresh
+  const handleUpdateSuccess = async () => {
+    if (!hasFullAccess) {
+      toast.error("Bạn không có quyền cập nhật thông tin linh kiện");
       return;
     }
 
-    console.log("Part updated successfully");
+    console.log("🎉 Part updated successfully, refreshing modal...");
     setShowUpdateSpModal(false);
-    setOriginalData(undefined);
-    fetchOriginalData();
-    onUpdate?.();
+    
+    // ✅ Refresh modal data immediately after general update
+    await refreshModalData(true); // Show loading state for this refresh
+    
+    toast.success("Thông tin linh kiện đã được cập nhật");
   };
 
-  // ✅ Handle Update Stock button click
+  // Handle Update Stock button click
   const handleUpdateStockClick = () => {
-    if (isViewOnlyMode) {
-      toast.warning("You don't have permission to update stock quantities");
+    if (!hasFullAccess) {
+      toast.warning("Bạn không có quyền cập nhật số lượng tồn kho");
       return;
     }
     setShowUpdateModal(true);
   };
 
-  // ✅ Handle Edit Details button click
+  // Handle Edit Details button click
   const handleEditDetailsClick = () => {
-    if (isViewOnlyMode) {
-      toast.warning("You don't have permission to edit spare part details");
+    if (!hasFullAccess) {
+      toast.warning("Bạn không có quyền chỉnh sửa thông tin linh kiện");
       return;
     }
     setShowUpdateSpModal(true);
@@ -290,11 +345,11 @@ export default function PartDetailModal({
   // Show loading state
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-card rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-4 text-lg text-foreground">Loading part details...</span>
+            <span className="ml-4 text-lg text-foreground">Đang tải thông tin linh kiện...</span>
           </div>
         </div>
       </div>
@@ -304,10 +359,10 @@ export default function PartDetailModal({
   // Show error state
   if (error && !currentPart) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-card rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-red-600">Error</h2>
+            <h2 className="text-xl font-semibold text-red-600">Lỗi</h2>
             <button
               onClick={onClose}
               className="text-muted-foreground hover:text-foreground"
@@ -320,7 +375,7 @@ export default function PartDetailModal({
             onClick={onClose}
             className="w-full px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
           >
-            Close
+            Đóng
           </button>
         </div>
       </div>
@@ -330,7 +385,7 @@ export default function PartDetailModal({
   if (!currentPart) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-border">
@@ -338,11 +393,11 @@ export default function PartDetailModal({
             <h2 className="text-xl font-semibold text-foreground">
               {currentPart.name}
             </h2>
-            {/* ✅ View-Only Mode Indicator */}
-            {isViewOnlyMode && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 rounded-full text-sm">
-                <Shield className="h-3 w-3" />
-                <span>View Only</span>
+            {/* ✅ Show refresh indicator when updating */}
+            {isRefreshing && (
+              <div className="flex items-center gap-2 text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                <span className="text-sm">Đang cập nhật...</span>
               </div>
             )}
           </div>
@@ -376,19 +431,26 @@ export default function PartDetailModal({
             <div className="flex-1 space-y-4">
               {/* Stock Status */}
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                isLowStock 
-                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" 
+                isOutOfStock
+                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                  : isLowStock 
+                  ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" 
                   : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
               }`}>
-                {isLowStock ? (
+                {isOutOfStock ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1" />
-                    Low Stock
+                    Hết hàng
+                  </>
+                ) : isLowStock ? (
+                  <>
+                    <AlertTriangle className="w-4 h-4 mr-1" />
+                    Sắp hết hàng
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4 mr-1" />
-                    In Stock
+                    Còn hàng
                   </>
                 )}
               </div>
@@ -397,7 +459,7 @@ export default function PartDetailModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground">
-                    Current Stock
+                    Tồn kho hiện tại
                   </label>
                   <p className="text-lg font-semibold text-foreground">
                     {currentPart.quantity} {currentPart.unit}
@@ -405,7 +467,7 @@ export default function PartDetailModal({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground">
-                    Min Threshold
+                    Ngưỡng tối thiểu
                   </label>
                   <p className="text-lg font-semibold text-foreground">
                     {currentPart.minThreshold} {currentPart.unit}
@@ -413,31 +475,25 @@ export default function PartDetailModal({
                 </div>
               </div>
 
-              {/* ✅ Action Buttons - Only for Stock Keeper */}
-              {!isViewOnlyMode && (
+              {/* Action Buttons */}
+              {hasFullAccess && (
                 <div className="flex gap-3">
                   <button
                     onClick={handleUpdateStockClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={isRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Package className="w-4 h-4" />
-                    Update Stock
+                    Cập nhật tồn kho
                   </button>
                   <button
                     onClick={handleEditDetailsClick}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    disabled={isRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Edit className="w-4 h-4" />
-                    Edit Details
+                    Chỉnh sửa thông tin
                   </button>
-                </div>
-              )}
-
-              {/* ✅ View-Only Message for Admin */}
-              {isViewOnlyMode && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
-                  <Eye className="w-4 h-4" />
-                  <span>You have view-only access to this spare part information.</span>
                 </div>
               )}
             </div>
@@ -446,7 +502,7 @@ export default function PartDetailModal({
           {/* Detailed Information */}
           <div className="border-t border-border pt-6">
             <h3 className="text-lg font-medium text-foreground mb-6">
-              Part Details
+              Thông tin chi tiết
             </h3>
             
             <div className="space-y-6">
@@ -455,7 +511,7 @@ export default function PartDetailModal({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Settings className="w-4 h-4 text-blue-500" />
-                    Machine Type
+                    Loại máy
                   </label>
                   <p className="text-sm text-foreground">
                     {currentPart.machineType || "N/A"}
@@ -464,7 +520,7 @@ export default function PartDetailModal({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Tag className="w-4 h-4 text-green-500" />
-                    Category
+                    Danh mục
                   </label>
                   <p className="text-sm text-foreground">
                     {currentPart.category || "N/A"}
@@ -477,7 +533,7 @@ export default function PartDetailModal({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Truck className="w-4 h-4 text-orange-500" />
-                    Supplier
+                    Nhà cung cấp
                   </label>
                   <p className="text-sm text-foreground">
                     {currentPart.supplier || "N/A"}
@@ -486,10 +542,10 @@ export default function PartDetailModal({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <DollarSign className="w-4 h-4 text-emerald-500" />
-                    Unit Price
+                    Đơn giá
                   </label>
                   <p className="text-sm text-foreground">
-                    {currentPart.unitPrice ? `đ${currentPart.unitPrice.toFixed(2)}` : "N/A"}
+                    {currentPart.unitPrice ? `${currentPart.unitPrice.toLocaleString('vi-VN')} đ` : "N/A"}
                   </p>
                 </div>
               </div>
@@ -499,19 +555,19 @@ export default function PartDetailModal({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <FileText className="w-4 h-4 text-purple-500" />
-                    Description
+                    Mô tả
                   </label>
                   <p className="text-sm text-foreground">
-                    {currentPart.description || "No description available"}
+                    {currentPart.description || "Không có mô tả"}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <Wrench className="w-4 h-4 text-red-500" />
-                    Specification
+                    Thông số kỹ thuật
                   </label>
                   <p className="text-sm text-foreground">
-                    {currentPart.specification || "No specification available"}
+                    {currentPart.specification || "Không có thông số"}
                   </p>
                 </div>
               </div>
@@ -520,8 +576,8 @@ export default function PartDetailModal({
         </div>
       </div>
 
-      {/* ✅ Update Quantity Modal - Only for Stock Keeper */}
-      {!isViewOnlyMode && (
+      {/* Update Quantity Modal */}
+      {hasFullAccess && (
         <UpdateQuantityModal
           isOpen={showUpdateModal}
           onClose={() => setShowUpdateModal(false)}
@@ -531,8 +587,8 @@ export default function PartDetailModal({
         />
       )}
 
-      {/* ✅ Update Spare Part Modal - Only for Stock Keeper */}
-      {!isViewOnlyMode && currentPart && (
+      {/* Update Spare Part Modal */}
+      {hasFullAccess && currentPart && (
         <UpdateSparePartModal
           isOpen={showUpdateSpModal}
           onClose={() => setShowUpdateSpModal(false)}

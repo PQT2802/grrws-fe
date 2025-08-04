@@ -15,9 +15,9 @@ interface Supplier {
 interface UpdateSparePartModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Callback to refresh inventory after successful update
-  part: PartType; // The part data to update
-  originalData?: SPAREPART_INVENTORY_ITEM; // Original API data if available
+  onSuccess: () => void; // ✅ Enhanced callback to refresh modal after successful update
+  part: PartType;
+  originalData?: SPAREPART_INVENTORY_ITEM;
 }
 
 export default function UpdateSparePartModal({
@@ -76,17 +76,14 @@ export default function UpdateSparePartModal({
       } 
       // Otherwise use the part data from PartDetailModal
       else {
-        // Fix: Use all available properties from part properly
         setFormData({
           sparepartName: part.name,
           description: part.description || "",
-          specification: part.specification || "", // Use specification from part
+          specification: part.specification || "",
           stockQuantity: part.quantity,
           unit: part.unit,
-          unitPrice: part.unitPrice || 0, // Use unitPrice from part
-          // Use a formatted date if available or empty string
+          unitPrice: part.unitPrice || 0,
           expectedAvailabilityDate: part.expectedAvailabilityDate || "",
-          // Map supplier to supplierId (they represent the same data point)
           supplierId: part.supplierId || part.supplier || "",
           category: part.category || ""
         });
@@ -110,8 +107,7 @@ export default function UpdateSparePartModal({
   const fetchSuppliers = async () => {
     try {
       setIsLoadingSuppliers(true);
-      // Replace with your actual API call
-      // For now, we'll use mock data
+      // Mock suppliers for now
       const mockSuppliers = [
         { id: "50000000-0000-0000-0000-000000000001", name: "Công ty máy may Juki" },
         { id: "50000000-0000-0000-0000-000000000002", name: "Công ty máy may gia đình Brother" }
@@ -172,22 +168,22 @@ export default function UpdateSparePartModal({
 
     // Required fields
     if (!formData.sparepartName.trim()) {
-      newErrors.sparepartName = "Spare part name is required";
+      newErrors.sparepartName = "Tên linh kiện là bắt buộc";
     }
 
     // Validate numbers
     if (formData.stockQuantity < 0) {
-      newErrors.stockQuantity = "Stock quantity cannot be negative";
+      newErrors.stockQuantity = "Số lượng tồn kho không thể âm";
     }
     if (formData.unitPrice < 0) {
-      newErrors.unitPrice = "Unit price cannot be negative";
+      newErrors.unitPrice = "Đơn giá không thể âm";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
+  // ✅ Enhanced form submission with better success handling
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -198,9 +194,9 @@ export default function UpdateSparePartModal({
     setIsSubmitting(true);
     
     try {
-      // Instead of creating FormData, use the JSON object directly
+      console.log("🔄 Updating spare part...");
+      
       const apiData = {
-        // Convert everything to PascalCase as expected by the API
         SparepartName: formData.sparepartName,
         Description: formData.description || "",
         Specification: formData.specification || "",
@@ -212,17 +208,23 @@ export default function UpdateSparePartModal({
         Category: formData.category || null
       };
       
-      console.log("Sending update data:", apiData);
+      console.log("📤 Sending update data:", apiData);
       
-      // Make API call with JSON
       const result = await sparePartService.updateSparePart(part.id, apiData);
       
-      toast.success("Spare part updated successfully!");
-      onSuccess(); // Refresh inventory
-      onClose(); // Close modal
+      console.log("✅ Update API response:", result);
+      
+      toast.success("Cập nhật thông tin linh kiện thành công!");
+      
+      // ✅ Call success callback which will trigger modal refresh
+      onSuccess();
+      
+      // ✅ Close modal after successful update
+      onClose();
+      
     } catch (error) {
-      console.error("Error updating spare part:", error);
-      toast.error("Failed to update spare part. Please try again.");
+      console.error("❌ Error updating spare part:", error);
+      toast.error("Không thể cập nhật thông tin linh kiện. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -240,13 +242,14 @@ export default function UpdateSparePartModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="p-4 flex justify-between items-center border-b dark:border-gray-700">
-          <h2 className="text-lg font-bold">Update Spare Part</h2>
+          <h2 className="text-lg font-bold">Cập nhật thông tin linh kiện</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700"
+            disabled={isSubmitting}
           >
             <X className="h-5 w-5" />
           </button>
@@ -258,7 +261,7 @@ export default function UpdateSparePartModal({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Spare Part Name <span className="text-red-500">*</span>
+                  Tên linh kiện <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -267,8 +270,9 @@ export default function UpdateSparePartModal({
                   onChange={handleChange}
                   className={`w-full border ${
                     errors.sparepartName ? "border-red-500" : "border-gray-300 dark:border-gray-600"
-                  } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700`}
+                  } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
                   required
+                  disabled={isSubmitting}
                 />
                 {errors.sparepartName && (
                   <p className="mt-1 text-sm text-red-500">{errors.sparepartName}</p>
@@ -276,40 +280,43 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">Mô tả</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Specification</label>
+                <label className="block text-sm font-medium mb-1">Thông số kỹ thuật</label>
                 <textarea
                   name="specification"
                   value={formData.specification}
                   onChange={handleChange}
                   rows={2}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Update Image</label>
+                <label className="block text-sm font-medium mb-1">Cập nhật hình ảnh</label>
                 <div className="flex items-center gap-3">
-                  <label className="cursor-pointer flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600 hover:border-primary rounded-md p-4 h-24 w-full">
+                  <label className="cursor-pointer flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 rounded-md p-4 h-24 w-full">
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
                       onChange={handleFileChange}
+                      disabled={isSubmitting}
                     />
                     <div className="flex flex-col items-center text-gray-500 dark:text-gray-400">
                       <Upload className="h-6 w-6 mb-1" />
-                      <span className="text-sm">Click to upload new image</span>
+                      <span className="text-sm">Nhấp để tải ảnh mới</span>
                     </div>
                   </label>
                   
@@ -327,6 +334,7 @@ export default function UpdateSparePartModal({
                           setImagePreview(null);
                         }}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        disabled={isSubmitting}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -340,7 +348,7 @@ export default function UpdateSparePartModal({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Stock Quantity</label>
+                  <label className="block text-sm font-medium mb-1">Số lượng tồn kho</label>
                   <input
                     type="number"
                     name="stockQuantity"
@@ -349,7 +357,8 @@ export default function UpdateSparePartModal({
                     min={0}
                     className={`w-full border ${
                       errors.stockQuantity ? "border-red-500" : "border-gray-300 dark:border-gray-600"
-                    } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700`}
+                    } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
+                    disabled={isSubmitting}
                   />
                   {errors.stockQuantity && (
                     <p className="mt-1 text-sm text-red-500">{errors.stockQuantity}</p>
@@ -357,12 +366,13 @@ export default function UpdateSparePartModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Unit</label>
+                  <label className="block text-sm font-medium mb-1">Đơn vị</label>
                   <select
                     name="unit"
                     value={formData.unit}
                     onChange={handleChange}
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                    disabled={isSubmitting}
                   >
                     <option value="Cái">Cái</option>
                     <option value="Bộ">Bộ</option>
@@ -371,9 +381,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Unit Price</label>
+                <label className="block text-sm font-medium mb-1">Đơn giá</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2">₫</span>
+                  <span className="absolute left-3 top-2 text-gray-500">₫</span>
                   <input
                     type="number"
                     name="unitPrice"
@@ -383,7 +393,8 @@ export default function UpdateSparePartModal({
                     step={0.01}
                     className={`w-full pl-7 border ${
                       errors.unitPrice ? "border-red-500" : "border-gray-300 dark:border-gray-600"
-                    } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700`}
+                    } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
+                    disabled={isSubmitting}
                   />
                 </div>
                 {errors.unitPrice && (
@@ -393,38 +404,40 @@ export default function UpdateSparePartModal({
 
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Expected Availability Date
+                  Ngày dự kiến có hàng
                 </label>
                 <input
                   type="date"
                   name="expectedAvailabilityDate"
                   value={formData.expectedAvailabilityDate}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
+                <label className="block text-sm font-medium mb-1">Danh mục</label>
                 <input
                   type="text"
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Supplier</label>
+                <label className="block text-sm font-medium mb-1">Nhà cung cấp</label>
                 <select
                   name="supplierId"
                   value={formData.supplierId}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:bg-slate-700"
-                  disabled={isLoadingSuppliers}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700"
+                  disabled={isLoadingSuppliers || isSubmitting}
                 >
-                  <option value="">Select a supplier</option>
+                  <option value="">Chọn nhà cung cấp</option>
                   {suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>
                       {supplier.name}
@@ -439,25 +452,25 @@ export default function UpdateSparePartModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm flex items-center gap-2 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                  <span>Updating...</span>
+                  <span>Đang cập nhật...</span>
                 </>
               ) : (
                 <>
                   <Edit className="h-4 w-4" />
-                  <span>Update Spare Part</span>
+                  <span>Cập nhật linh kiện</span>
                 </>
               )}
             </button>

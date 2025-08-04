@@ -399,7 +399,7 @@ export default function MachineRequestsAdmin() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-200">
-                    <th className="px-4 py-3 text-left font-medium">Mã xác nhận</th>
+                    <th className="px-4 py-3 text-left font-medium w-[350px]">Mã xác nhận</th>
                     <th className="px-4 py-3 text-left font-medium">Loại hành động</th>
                     <th className="px-4 py-3 text-left font-medium">Ngày yêu cầu</th>
                     <th className="px-4 py-3 text-left font-medium">Người thực hiện</th>
