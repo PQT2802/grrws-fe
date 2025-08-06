@@ -109,13 +109,13 @@ const NotificationBtn = () => {
         if (notification.type === NotificationType.TaskCompleted || 
             notification.type === NotificationType.MechanicTaskCompleted) {
           if (data.TaskGroupId) {
-            return `/workspace/sample-1/tasks/group/${data.TaskGroupId}`;
+            return `/workspace/hot/tasks/group/${data.TaskGroupId}`;
           }
         }
         
         if (notification.type === NotificationType.RequestCreated) {
           if (data.RequestId) {
-            return `/workspace/sample-1/requests/${data.RequestId}`;
+            return `/workspace/hot/requests/${data.RequestId}`;
           }
         }
 

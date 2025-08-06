@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -65,7 +65,6 @@ const RequestDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const requestId = params?.["request-id"] as string;
-  const workspaceId = params?.["workspace-id"] as string;
 
   const [requestDetail, setRequestDetail] = useState<REQUEST_DETAIL_WEB | null>(
     null
@@ -103,14 +102,14 @@ const RequestDetailPage = () => {
   }, [tasks]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const tasksData = await requestService.getTasksByRequestId(requestId);
       setTasks(tasksData);
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
     }
-  };
+  }, [requestId]);
 
   useEffect(() => {
     const fetchRequestDetail = async () => {
@@ -252,7 +251,7 @@ const RequestDetailPage = () => {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <Link href={`/workspace/${workspaceId}/requests`}>
+                  <Link href={`/workspace/hot/requests`}>
                     <div className="flex items-center gap-3">
                       <span>Danh sách yêu cầu</span>
                     </div>
@@ -446,7 +445,6 @@ const RequestDetailPage = () => {
                     <TaskTableCpn
                       requestId={requestId}
                       refreshTrigger={refreshTrigger}
-                      workspaceId={workspaceId}
                     />
                   </TabsContent>
                 </>

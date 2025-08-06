@@ -128,7 +128,7 @@ export function NavProjects(props: PropType) {
           }
         })}
 
-        <Link href={`/workspace/${workspace?.id}/project`}>
+        <Link href={`/workspace/project`}>
           <SidebarMenuItem>
             <SidebarMenuButton className="text-sidebar-foreground/70">
               <MoreHorizontal className="text-sidebar-foreground/70" />

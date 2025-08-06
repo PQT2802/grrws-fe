@@ -55,12 +55,10 @@ import useSignalRStore from "@/store/useSignalRStore";
 interface TaskTableCpnProps {
   requestId: string;
   refreshTrigger?: number;
-  workspaceId: string;
 }
 const TaskTableCpn = ({
   requestId,
   refreshTrigger = 0,
-  workspaceId,
 }: TaskTableCpnProps) => {
   const [taskGroups, setTaskGroups] = useState<TASK_GROUP_WEB[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -350,7 +348,7 @@ const TaskTableCpn = ({
 
         return (
           <a
-            href={`/workspace/${workspaceId}/tasks/group/${taskGroup.taskGroupId}`}
+            href={`/workspace/hot/tasks/group/${taskGroup.taskGroupId}`}
             className="inline-block w-full"
           >
             <Button variant="outline" size="sm" className="w-full">
