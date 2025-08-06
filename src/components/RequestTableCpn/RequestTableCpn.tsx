@@ -47,7 +47,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { translateTaskStatus, translateTaskPriority } from "@/utils/textTypeTask";
+import {
+  translateTaskStatus,
+  translateTaskPriority,
+} from "@/utils/textTypeTask";
 import { apiClient } from "@/lib/api-client";
 
 interface RequestTableCpnProps {
@@ -101,35 +104,39 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
   }, [requestSummary]);
 
   // Use enhanced data if available, otherwise fall back to original data
-  const displayData = enhancedRequests.length > 0 ? enhancedRequests : tableData;
+  const displayData =
+    enhancedRequests.length > 0 ? enhancedRequests : tableData;
 
   // Fetch user name by ID
   const fetchUserNameById = async (userId: string): Promise<string> => {
     if (!userId || userCache[userId]) {
-      return userCache[userId] || 'Không xác định';
+      return userCache[userId] || "Không xác định";
     }
 
     try {
       const userResponse = await apiClient.user.getUserById(userId);
-      const userName = userResponse.data?.fullName || userResponse.fullName || 'Người dùng không rõ';
-      
+      const userName =
+        userResponse.data?.fullName ||
+        userResponse.fullName ||
+        "Người dùng không rõ";
+
       // Cache the result
-      setUserCache(prev => ({
+      setUserCache((prev) => ({
         ...prev,
-        [userId]: userName
+        [userId]: userName,
       }));
-      
+
       return userName;
     } catch (error) {
       console.error(`Failed to fetch user ${userId}:`, error);
-      const fallbackName = 'Người dùng không rõ';
-      
+      const fallbackName = "Người dùng không rõ";
+
       // Cache the fallback result to avoid repeated failed requests
-      setUserCache(prev => ({
+      setUserCache((prev) => ({
         ...prev,
-        [userId]: fallbackName
+        [userId]: fallbackName,
       }));
-      
+
       return fallbackName;
     }
   };
@@ -139,31 +146,37 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
     try {
       setIsLoadingEnhanced(true);
       const response = await apiClient.dashboard.getAllRequests(1, 100); // Get more data for better display
-      
+
       if (response?.data && Array.isArray(response.data)) {
         setEnhancedRequests(response.data);
-        
+
         // Fetch user names for all unique user IDs
-        const userIds = [...new Set(response.data.map((req: REQUEST_ITEM) => req.createdBy).filter(Boolean))];
-        
+        const userIds = [
+          ...new Set(
+            response.data
+              .map((req: REQUEST_ITEM) => req.createdBy)
+              .filter(Boolean)
+          ),
+        ];
+
         // Fetch user names in parallel
         const userNamePromises = userIds.map(async (userId) => {
           const userName = await fetchUserNameById(userId);
           return { userId, userName };
         });
-        
+
         const userNameResults = await Promise.allSettled(userNamePromises);
         const newUserCache: { [userId: string]: string } = { ...userCache };
-        
+
         userNameResults.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
+          if (result.status === "fulfilled") {
             newUserCache[result.value.userId] = result.value.userName;
           } else {
             // Fallback for failed requests
-            newUserCache[userIds[index]] = 'Người dùng không rõ';
+            newUserCache[userIds[index]] = "Người dùng không rõ";
           }
         });
-        
+
         setUserCache(newUserCache);
       }
     } catch (error) {
@@ -184,75 +197,77 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
   // Safe translation functions
   const safeTranslateTaskStatus = (status: string) => {
     try {
-      return translateTaskStatus(status || 'unknown');
+      return translateTaskStatus(status || "unknown");
     } catch (error) {
-      console.error('Error translating status:', error);
-      return status || 'Không xác định';
+      console.error("Error translating status:", error);
+      return status || "Không xác định";
     }
   };
 
   const safeTranslateTaskPriority = (priority: string) => {
     try {
-      return translateTaskPriority(priority || 'medium');
+      return translateTaskPriority(priority || "medium");
     } catch (error) {
-      console.error('Error translating priority:', error);
-      return priority || 'Trung bình';
+      console.error("Error translating priority:", error);
+      return priority || "Trung bình";
     }
   };
 
   // Get unique statuses and priorities for filter dropdowns
   const availableStatuses = useMemo(() => {
-    return [...new Set(displayData.map(req => req.status).filter(Boolean))];
+    return [...new Set(displayData.map((req) => req.status).filter(Boolean))];
   }, [displayData]);
 
   const availablePriorities = useMemo(() => {
-    return [...new Set(displayData.map(req => req.priority).filter(Boolean))];
+    return [...new Set(displayData.map((req) => req.priority).filter(Boolean))];
   }, [displayData]);
 
   const filteredData = useMemo(() => {
     return displayData.filter((request) => {
       const title = request.requestTitle || request.title || "";
       const matchesSearch = title.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || request.status === statusFilter;
-      const matchesPriority = priorityFilter === "all" || request.priority === priorityFilter;
-      
+      const matchesStatus =
+        statusFilter === "all" || request.status === statusFilter;
+      const matchesPriority =
+        priorityFilter === "all" || request.priority === priorityFilter;
+
       return matchesSearch && matchesStatus && matchesPriority;
     });
   }, [displayData, search, statusFilter, priorityFilter]);
 
   const handleViewDetail = (request: REQUEST_SUMMARY | REQUEST_ITEM) => {
-    if (!workspaceId) {
-      toast.error("Không thể điều hướng: không xác định được workspace");
-      return;
-    }
-
-    const requestId = 'requestId' in request ? request.requestId : request.id;
-    router.push(`/workspace/${workspaceId}/requests/${requestId}`);
+    const requestId = "requestId" in request ? request.requestId : request.id;
+    router.push(`/workspace/hot/requests/${requestId}`);
   };
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      const timeString = date.toLocaleTimeString('vi-VN', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      const timeString = date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
       });
-      const dateTimeString = date.toLocaleDateString('vi-VN') + ' ' + timeString;
-      
+      const dateTimeString =
+        date.toLocaleDateString("vi-VN") + " " + timeString;
+
       // Calculate relative time
       const now = new Date();
-      const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-      let relativeTime = '';
-      
+      const diffInHours = Math.floor(
+        (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+      );
+      let relativeTime = "";
+
       if (diffInHours < 1) {
-        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+        const diffInMinutes = Math.floor(
+          (now.getTime() - date.getTime()) / (1000 * 60)
+        );
         relativeTime = `${diffInMinutes} phút trước`;
       } else if (diffInHours < 24) {
         relativeTime = `${diffInHours} giờ trước`;
       } else {
         relativeTime = "Trên 1 ngày";
       }
-      
+
       return `${dateTimeString} • ${relativeTime}`;
     } catch (error) {
       console.error("Date formatting error:", error);
@@ -262,44 +277,44 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
-      case 'urgent':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      case 'high':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'low':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case "urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'approved':
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      case 'inprogress':
-      case 'in progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case "approved":
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "inprogress":
+      case "in progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'approved':
-      case 'completed':
+      case "approved":
+      case "completed":
         return <CheckCircle className="h-4 w-4" />;
-      case 'pending':
+      case "pending":
         return <AlertTriangle className="h-4 w-4" />;
-      case 'rejected':
+      case "rejected":
         return <XCircle className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
@@ -355,13 +370,19 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         const request = row.original;
         return (
           <div>
-            <div className="font-medium text-base"> {/* Made title bigger */}
-              {request.requestTitle || 'Yêu cầu không có tiêu đề'}
+            <div className="font-medium text-base">
+              {" "}
+              {/* Made title bigger */}
+              {request.requestTitle || "Yêu cầu không có tiêu đề"}
             </div>
-            <div className="text-sm text-muted-foreground"> {/* Increased subtitle size */}
+            <div className="text-sm text-muted-foreground">
+              {" "}
+              {/* Increased subtitle size */}
               {/* Show device info and issues like in template */}
               {request.deviceName && request.deviceCode ? (
-                <span>{request.deviceName} • {request.deviceCode}</span>
+                <span>
+                  {request.deviceName} • {request.deviceCode}
+                </span>
               ) : (
                 <span>ID: {request.requestId || request.id}</span>
               )}
@@ -375,15 +396,16 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
       header: "Người tạo",
       cell: ({ row }) => {
         const request = row.original;
-        const createdBy = request.createdBy || request.requestedBy || request.submittedBy;
-        
+        const createdBy =
+          request.createdBy || request.requestedBy || request.submittedBy;
+
         return (
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-gray-400" />
             <div>
               <div className="font-medium text-sm">
                 {/* Display user name from cache, falling back to user ID if name not available */}
-                {userCache[createdBy] || createdBy || 'Không xác định'}
+                {userCache[createdBy] || createdBy || "Không xác định"}
               </div>
               {/* Show issue count like in template if available */}
               {request.issues && Array.isArray(request.issues) && (
@@ -404,8 +426,8 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         if (!priority) return <span className="text-gray-400">---</span>;
 
         return (
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className={`${getPriorityColor(priority)} border-0`}
           >
             {safeTranslateTaskPriority(priority)}
@@ -423,8 +445,8 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         return (
           <div className="flex items-center gap-2">
             {getStatusIcon(status)}
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className={`${getStatusColor(status)} border-0`}
             >
               {safeTranslateTaskStatus(status)}
@@ -459,9 +481,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         return (
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4 text-gray-400" />
-            <div className="text-sm">
-              {formatDate(dateValue)}
-            </div>
+            <div className="text-sm">{formatDate(dateValue)}</div>
           </div>
         );
       },
@@ -540,14 +560,14 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
             className="pl-10"
           />
         </div>
-        
+
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Lọc theo độ ưu tiên" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả độ ưu tiên</SelectItem>
-            {availablePriorities.map(priority => (
+            {availablePriorities.map((priority) => (
               <SelectItem key={priority} value={priority}>
                 {safeTranslateTaskPriority(priority)}
               </SelectItem>
@@ -561,7 +581,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            {availableStatuses.map(status => (
+            {availableStatuses.map((status) => (
               <SelectItem key={status} value={status}>
                 {safeTranslateTaskStatus(status)}
               </SelectItem>
@@ -622,8 +642,12 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
                     >
                       <div className="flex flex-col items-center justify-center py-8">
                         <FileText className="h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-gray-500">Không có yêu cầu nào được tìm thấy</p>
-                        {(search || statusFilter !== 'all' || priorityFilter !== 'all') && (
+                        <p className="text-gray-500">
+                          Không có yêu cầu nào được tìm thấy
+                        </p>
+                        {(search ||
+                          statusFilter !== "all" ||
+                          priorityFilter !== "all") && (
                           <button
                             className="mt-2 text-primary underline text-sm"
                             onClick={clearFilters}
@@ -646,7 +670,9 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
         <div className="flex items-center justify-between pt-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600 dark:text-gray-400">
-              {`${Object.keys(rowSelection).length} trong số ${filteredData.length} hàng được chọn`}
+              {`${Object.keys(rowSelection).length} trong số ${
+                filteredData.length
+              } hàng được chọn`}
             </span>
           </div>
 
@@ -687,7 +713,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
               >
                 Trước
               </Button>
-              
+
               <div className="flex items-center gap-1">
                 {Array.from({ length: table.getPageCount() }, (_, index) => (
                   <Button
@@ -705,7 +731,11 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPageIndex(Math.min(table.getPageCount() - 1, pageIndex + 1))}
+                onClick={() =>
+                  setPageIndex(
+                    Math.min(table.getPageCount() - 1, pageIndex + 1)
+                  )
+                }
                 disabled={pageIndex >= table.getPageCount() - 1}
               >
                 Tiếp

@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import HOTNotificationArea from "@/components/HOTChartCpn/HOTNotificationArea";
 import HOTQuickActions from "@/components/HOTChartCpn/HOTQuickActions";
@@ -53,24 +53,22 @@ interface DashboardStats {
 }
 
 const DetailWorkspacePage = () => {
-  const { user, canAccessWorkspace } = useAuth();
+  const { user, canAccessWorkspace, loading: authLoading } = useAuth();
   const router = useRouter();
-  const params = useParams();
-  const workspaceIdParams = params?.["workspace-id"];
 
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
     null
   );
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Redirect if user can't access workspace
+  // Redirect if user can't access workspace (but don't block render)
   useEffect(() => {
-    if (!canAccessWorkspace) {
+    if (!authLoading && !canAccessWorkspace) {
       router.push("/access-denied");
     }
-  }, [canAccessWorkspace, router]);
+  }, [authLoading, canAccessWorkspace, router]);
 
-  // Fetch dashboard statistics
+  // Fetch dashboard statistics - Remove workspace ID dependency
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
@@ -84,10 +82,11 @@ const DetailWorkspacePage = () => {
       }
     };
 
-    if (workspaceIdParams && canAccessWorkspace) {
+    // Only check if user is authenticated and has access
+    if (!authLoading && canAccessWorkspace) {
       fetchDashboardStats();
     }
-  }, [workspaceIdParams, canAccessWorkspace]);
+  }, [authLoading, canAccessWorkspace]);
 
   // Prepare chart data with calculated percentages
   const chartData = useMemo(() => {
@@ -102,7 +101,9 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.pending,
         color: "#FFA726",
         percentage: Number(
-          ((dashboardStats.requestStats.pending / requestTotal) * 100).toFixed(1)
+          ((dashboardStats.requestStats.pending / requestTotal) * 100).toFixed(
+            1
+          )
         ),
       },
       {
@@ -110,7 +111,10 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.inProgress,
         color: "#42A5F5",
         percentage: Number(
-          ((dashboardStats.requestStats.inProgress / requestTotal) * 100).toFixed(1)
+          (
+            (dashboardStats.requestStats.inProgress / requestTotal) *
+            100
+          ).toFixed(1)
         ),
       },
       {
@@ -118,7 +122,10 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.completed,
         color: "#66BB6A",
         percentage: Number(
-          ((dashboardStats.requestStats.completed / requestTotal) * 100).toFixed(1)
+          (
+            (dashboardStats.requestStats.completed / requestTotal) *
+            100
+          ).toFixed(1)
         ),
       },
     ].filter((item) => item.value > 0);
@@ -160,7 +167,10 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.mechanicStats.available,
         color: "#4CAF50",
         percentage: Number(
-          ((dashboardStats.mechanicStats.available / mechanicTotal) * 100).toFixed(1)
+          (
+            (dashboardStats.mechanicStats.available / mechanicTotal) *
+            100
+          ).toFixed(1)
         ),
       },
       {
@@ -168,7 +178,9 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.mechanicStats.inTask,
         color: "#F44336",
         percentage: Number(
-          ((dashboardStats.mechanicStats.inTask / mechanicTotal) * 100).toFixed(1)
+          ((dashboardStats.mechanicStats.inTask / mechanicTotal) * 100).toFixed(
+            1
+          )
         ),
       },
     ].filter((item) => item.value > 0);
@@ -196,17 +208,35 @@ const DetailWorkspacePage = () => {
     };
   }, [dashboardStats]);
 
-  // Don't render if user can't access
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <SkeletonCard />
+      </div>
+    );
+  }
+
+  // Show access denied message instead of returning null
   if (!canAccessWorkspace) {
-    return null;
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold mb-2">Access Denied</h1>
+          <p className="text-gray-600">
+            You don&apos;t have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {loading ? (
         <SkeletonCard />
       ) : (
-        <div className="space-y-6">
+        <>
           {/* Page Title */}
           <PageTitle
             title="Head Of Technical Dashboard"
@@ -243,9 +273,9 @@ const DetailWorkspacePage = () => {
               <CombinedBarChart data={chartData.combined} />
             </div>
           </div>
-        </div>
+        </>
       )}
-    </>
+    </div>
   );
 };
 

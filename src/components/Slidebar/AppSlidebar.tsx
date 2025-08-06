@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   Bug,
   Wrench,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { NavMain } from "@/components/Slidebar/NavMain";
 import { NavProjects } from "@/components/Slidebar/NavProjects";
@@ -55,53 +55,53 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const MAIN_ITEMS: SLIDEBAR_ITEM_TYPE[] = [
     {
       title: "Home",
-      url: `/workspace/${workspaceId ?? "#"}`,
+      url: `/workspace/`,
       icon: House,
       items: [],
     },
     {
       title: "Tasks",
-      url: `/workspace/${workspaceId ?? "#"}/tasks`,
+      url: `/workspace/hot/tasks`,
       icon: CircleCheckBig,
       items: [],
     },
     {
       title: "Requests",
-      url: `/workspace/${workspaceId ?? "#"}/requests`,
+      url: `/workspace/hot/requests`,
       icon: Frame,
       items: [],
     },
     {
       title: "Calendar",
-      url: `/workspace/${workspaceId ?? "#"}/projects`,
+      url: `/workspace/calendar`,
       icon: Map,
       items: PROJECT_ITEMS,
     },
     {
       title: "Reports",
-      url: `/workspace/${workspaceId ?? "#"}/reports`,
+      url: `/workspace/reports`,
       icon: PieChart,
       items: [],
     },
     {
-      title: "Incident Tracking", 
+      title: "Incident Tracking",
       url: "#",
       icon: AlertTriangle,
       items: [
         {
           title: "Issues",
-          url: `/workspace/${workspaceId ?? "#"}/incident/issues`,
+          url: `/workspace/incident/issues`,
           icon: AlertCircle,
         },
         {
           title: "Technical Issues",
-          url: `/workspace/${workspaceId ?? "#"}/incident/technicalIssues`, 
+          url: `/workspace/incident/technicalIssues`,
           icon: Wrench,
         },
         {
           title: "Errors",
-          url: `/workspace/${workspaceId ?? "#"}/incident/errors`, 
-          icon: Bug, 
+          url: `/workspace/incident/errors`,
+          icon: Bug,
         },
       ],
     },

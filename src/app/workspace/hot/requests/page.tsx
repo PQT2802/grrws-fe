@@ -23,7 +23,7 @@ const RequestsPage = () => {
       } else {
         setLoading(true);
       }
-      
+
       const data = await requestService.getRequestSummary();
       console.log(data);
       setRequestSummary(data);
@@ -77,7 +77,7 @@ const RequestsPage = () => {
             Xem tất cả các yêu cầu của bạn tại đây
           </p>
         </div>
-        
+
         {/* Action Buttons - Refresh and Export */}
         <div className="flex items-center gap-3">
           <ButtonCpn
@@ -87,7 +87,7 @@ const RequestsPage = () => {
             loading={isRefreshing}
             onClick={handleRefresh}
           />
-          
+
           <ButtonCpn
             type="button"
             title="Xuất dữ liệu"

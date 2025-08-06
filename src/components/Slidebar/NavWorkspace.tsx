@@ -37,12 +37,6 @@ export function WorkspaceSwitcher() {
     getWorkspaces,
     getWorkspaceByWorkspaceId,
   }: WorkspaceStoreState = useWorkspaceStore();
-  const {
-    setProjects,
-    getProjectsByWorkspaceId,
-    setTasks,
-    getTasksByWorkspaceId,
-  }: TaskStoreState = useTaskStore();
 
   const { state, isMobile } = useSidebar();
   const router = useRouter();
@@ -68,13 +62,6 @@ export function WorkspaceSwitcher() {
 
     if (res && res?.id) {
       setWorkspace(res);
-
-      const projectsRes = await getProjectsByWorkspaceId(res?.id);
-      const tasksRes = await getTasksByWorkspaceId(res?.id);
-
-      setJoinUsers(res?.joinUsers ?? []);
-      setProjects(projectsRes);
-      setTasks(tasksRes);
     }
   };
 

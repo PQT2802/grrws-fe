@@ -102,6 +102,7 @@ const RequestDetailPage = () => {
     );
   }, [tasks]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchTasks = async () => {
     try {
       const tasksData = await requestService.getTasksByRequestId(requestId);
@@ -128,7 +129,7 @@ const RequestDetailPage = () => {
       fetchRequestDetail();
       fetchTasks();
     }
-  }, [requestId]);
+  }, [fetchTasks, requestId]);
 
   // Fetch technical issues on mount and when refreshTrigger changes
   useEffect(() => {

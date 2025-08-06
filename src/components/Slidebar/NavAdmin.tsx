@@ -1,22 +1,22 @@
 "use client";
 
-import { 
-  UsersRound, 
-  Settings, 
-  Shield, 
-  LayoutDashboard, 
-  WashingMachine, 
-  ClipboardList, 
-  Smartphone, 
-  AlertCircle, 
-  Bug, 
+import {
+  UsersRound,
+  Settings,
+  Shield,
+  LayoutDashboard,
+  WashingMachine,
+  ClipboardList,
+  Smartphone,
+  AlertCircle,
+  Bug,
   Wrench,
   FileText,
   Package,
   Users,
   History,
   MapPin,
-  PackageSearch // New icon for spare parts
+  PackageSearch, // New icon for spare parts
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
@@ -45,84 +45,84 @@ export function NavAdmin() {
   const ADMIN_ITEMS = [
     {
       title: "DashBoard",
-      url: `/workspace/${workspaceId}/admin/dashboard`,
+      url: `/workspace/admin/dashboard`,
       icon: LayoutDashboard,
-      items: []
+      items: [],
     },
     {
       title: "User",
-      url: `/workspace/${workspaceId}/admin/userList`,
+      url: `/workspace/admin/userList`,
       icon: UsersRound,
-      items: []
+      items: [],
     },
     {
       title: "Machine",
-      url: `/workspace/${workspaceId}/admin/machineList`,
+      url: `/workspace/admin/machineList`,
       icon: WashingMachine,
-      items: []
+      items: [],
     },
     {
       title: "Device",
-      url: `/workspace/${workspaceId}/admin/deviceList`,
+      url: `/workspace/admin/deviceList`,
       icon: Smartphone,
-      items: []
+      items: [],
     },
     {
       title: "Spare Part",
-      url: `/workspace/${workspaceId}/admin/spare-parts`,
+      url: `/workspace/admin/spare-parts`,
       icon: PackageSearch,
-      items: []
+      items: [],
     },
     {
-      title: "Location", 
+      title: "Location",
       url: "#",
       icon: MapPin,
       items: [
         {
           title: "Areas",
-          url: `/workspace/${workspaceId}/admin/location/areas`,
+          url: `/workspace/admin/location/areas`,
           icon: MapPin,
         },
         {
           title: "Zones",
-          url: `/workspace/${workspaceId}/admin/location/zones`,
+          url: `/workspace/admin/location/zones`,
           icon: MapPin,
         },
         {
           title: "Positions",
-          url: `/workspace/${workspaceId}/admin/location/positions`,
+          url: `/workspace/admin/location/positions`,
           icon: MapPin,
         },
       ],
     },
     {
-      title: "Request", 
+      title: "Request",
       url: "#",
       icon: ClipboardList,
       items: [
         {
           title: "HOD Requests",
-          url: `/workspace/${workspaceId}/admin/requestList`,
+          url: `/workspace/admin/requestList`,
           icon: AlertCircle,
         },
         {
           title: "HOT Reports",
-          url: `/workspace/${workspaceId}/admin/requests/hot`,
+          url: `/workspace/admin/requests/hot`,
           icon: Wrench,
         },
         {
           title: "Stock Keeper Requests",
-          url: `/workspace/${workspaceId}/admin/requests/stock_keeper`,
+          url: `/workspace/admin/requests/stock_keeper`,
           icon: Package,
         },
         {
           title: "Staff Tasks",
-          url: `/workspace/${workspaceId}/admin/requests/staff`,
+          url: `/workspace/admin/requests/staff`,
           icon: Users,
         },
         {
           title: "Request History",
-          url: `/workspace/${workspaceId}/admin/requests/history`,
+          url: `/workspace/admin/requests/history`,
           icon: History,
         },
       ],
@@ -130,13 +130,13 @@ export function NavAdmin() {
   ];
 
   // Helper function to check if current path matches any child item
-  const shouldMenuBeOpen = (item: typeof ADMIN_ITEMS[0]) => {
+  const shouldMenuBeOpen = (item: (typeof ADMIN_ITEMS)[0]) => {
     if (!item.items || item.items.length === 0) {
       return false;
     }
-    
+
     // Check if current pathname matches any child item URL
-    return item.items.some(subItem => pathname === subItem.url);
+    return item.items.some((subItem) => pathname === subItem.url);
   };
 
   return (
@@ -162,7 +162,7 @@ export function NavAdmin() {
             );
           } else {
             const isMenuOpen = shouldMenuBeOpen(item);
-            
+
             return (
               <Collapsible
                 key={item.title}
@@ -183,7 +183,7 @@ export function NavAdmin() {
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton 
+                          <SidebarMenuSubButton
                             asChild
                             className={`${
                               pathname === subItem.url &&
@@ -191,7 +191,9 @@ export function NavAdmin() {
                             }`}
                           >
                             <Link href={subItem.url}>
-                              {subItem.icon && <subItem.icon className="mr-2 h-4 w-4" />}
+                              {subItem.icon && (
+                                <subItem.icon className="mr-2 h-4 w-4" />
+                              )}
                               <span>{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>
