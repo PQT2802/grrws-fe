@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import useWorkspaceStore, { WorkspaceStoreState } from "@/store/workspace";
 import { toast } from "react-toastify";
 import { USER_ROLES } from "@/types/auth.type";
@@ -21,8 +21,6 @@ import DeviceWarrantyChart from "@/components/ChartCpn/DeviceWarrantyChart";
 const AdminDashboardPage = () => {
   const { user, canAccessWorkspace } = useAuth();
   const router = useRouter();
-  const params = useParams();
-  const workspaceId = params?.["workspace-id"] as string;
 
   const { workspace, loading }: WorkspaceStoreState = useWorkspaceStore();
 

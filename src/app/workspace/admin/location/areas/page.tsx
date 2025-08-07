@@ -35,9 +35,7 @@ interface AreaWithCounts extends Area {
 }
 
 export default function AreasPage() {
-  const params = useParams();
   const router = useRouter();
-  const workspaceId = params?.["workspace-id"];
 
   const [areas, setAreas] = useState<AreaWithCounts[]>([]);
   const [filteredAreas, setFilteredAreas] = useState<AreaWithCounts[]>([]);
@@ -112,7 +110,7 @@ export default function AreasPage() {
               }
 
               // Count devices in positions
-              deviceCount += positions.filter(position => 
+              deviceCount += positions.filter((position: any) => 
                 position.device || position.deviceId || (position.deviceCount && position.deviceCount > 0)
               ).length;
             }
@@ -244,9 +242,9 @@ export default function AreasPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.createArea(data);
-      toast.success('Khu vực đã được tạo thành công');
-      setIsAreaModalOpen(false);
+      // await apiClient.location.createArea(data);
+      // toast.success('Khu vực đã được tạo thành công');
+      // setIsAreaModalOpen(false);
       
       // Refresh data
       await fetchAreas();
@@ -266,10 +264,10 @@ export default function AreasPage() {
         throw new Error('Không tìm thấy khu vực được chọn');
       }
       
-      await apiClient.location.updateArea(selectedArea.id, data);
-      toast.success('Khu vực đã được cập nhật thành công');
-      setIsAreaModalOpen(false);
-      setSelectedArea(null);
+      // await apiClient.location.updateArea(selectedArea.id, data);
+      // toast.success('Khu vực đã được cập nhật thành công');
+      // setIsAreaModalOpen(false);
+      // setSelectedArea(null);
       
       // Refresh data
       await fetchAreas();
@@ -287,10 +285,10 @@ export default function AreasPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.deleteArea(selectedArea.id);
-      toast.success('Khu vực đã được xóa thành công');
-      setIsDeleteModalOpen(false);
-      setSelectedArea(null);
+      // await apiClient.location.deleteArea(selectedArea.id);
+      // toast.success('Khu vực đã được xóa thành công');
+      // setIsDeleteModalOpen(false);
+      // setSelectedArea(null);
       
       // Refresh data
       await fetchAreas();
@@ -309,9 +307,9 @@ export default function AreasPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      await apiClient.location.importAreas(formData);
-      toast.success('Dữ liệu khu vực đã được nhập thành công');
-      setIsImportModalOpen(false);
+      // await apiClient.location.importAreas(formData);
+      // toast.success('Dữ liệu khu vực đã được nhập thành công');
+      // setIsImportModalOpen(false);
       
       // Refresh data
       await fetchAreas();
@@ -324,7 +322,7 @@ export default function AreasPage() {
   };
 
   const handleViewZones = (area: AreaWithCounts) => {
-    router.push(`/workspace/${workspaceId}/admin/location/zones?area=${area.id}`);
+    router.push(`/workspace/admin/location/zones?area=${area.id}`);
   };
 
   const breadcrumbItems = [

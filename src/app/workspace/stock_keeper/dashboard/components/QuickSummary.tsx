@@ -111,7 +111,7 @@ export default function QuickSummary() {
       value: summaryData.totalSparePartRequests,
       icon: Package,
       color: "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-      action: () => router.push(`/workspace/${workspaceId}/stock_keeper/requests?tab=spare-parts`),
+      action: () => router.push(`/workspace/stock_keeper/requests?tab=spare-parts`),
       clickable: true
     },
     {
@@ -119,7 +119,7 @@ export default function QuickSummary() {
       value: summaryData.totalMachineRequests,
       icon: Settings,
       color: "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-      action: () => router.push(`/workspace/${workspaceId}/stock_keeper/requests?tab=machines`),
+      action: () => router.push(`/workspace/stock_keeper/requests?tab=machines`),
       clickable: true
     },
     {
@@ -127,7 +127,7 @@ export default function QuickSummary() {
       value: summaryData.totalSparePartsInventory,
       icon: Archive,
       color: "bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-      action: () => router.push(`/workspace/${workspaceId}/stock_keeper/inventory`),
+      action: () => router.push(`/workspace/stock_keeper/inventory`),
       clickable: true
     },
     {
@@ -135,7 +135,7 @@ export default function QuickSummary() {
       value: summaryData.lowStockItems,
       icon: AlertTriangle,
       color: "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-      action: () => router.push(`/workspace/${workspaceId}/stock_keeper/inventory?filter=lowstock`),
+      action: () => router.push(`/workspace/stock_keeper/inventory?filter=lowstock`),
       clickable: true
     },
   ];

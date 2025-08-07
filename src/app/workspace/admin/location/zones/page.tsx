@@ -41,10 +41,8 @@ interface ZoneWithCounts extends Zone {
 }
 
 export default function ZonesPage() {
-  const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workspaceId = params?.["workspace-id"];
   
   const selectedAreaId = searchParams.get('area');
 
@@ -90,7 +88,7 @@ export default function ZonesPage() {
           const positions = positionsResponse.data.data;
           positionCount = positionsResponse.data.totalCount || positions.length;
           // Count positions that have a device
-          deviceCount = positions.filter(position => 
+          deviceCount = positions.filter((position: any) => 
             position.device || position.deviceId || (position.deviceCount && position.deviceCount > 0)
           ).length;
         }
@@ -98,7 +96,7 @@ export default function ZonesPage() {
         else if (positionsResponse.data && Array.isArray(positionsResponse.data)) {
           const positions = positionsResponse.data;
           positionCount = positions.length;
-          deviceCount = positions.filter(position => 
+          deviceCount = positions.filter((position: any) => 
             position.device || position.deviceId || (position.deviceCount && position.deviceCount > 0)
           ).length;
         }
@@ -106,7 +104,7 @@ export default function ZonesPage() {
         else if (Array.isArray(positionsResponse)) {
           const positions = positionsResponse;
           positionCount = positions.length;
-          deviceCount = positions.filter(position => 
+          deviceCount = positions.filter((position: any) => 
             position.device || position.deviceId || (position.deviceCount && position.deviceCount > 0)
           ).length;
         }
@@ -114,7 +112,7 @@ export default function ZonesPage() {
         else if (positionsResponse.positions && Array.isArray(positionsResponse.positions)) {
           const positions = positionsResponse.positions;
           positionCount = positions.length;
-          deviceCount = positions.filter(position => 
+          deviceCount = positions.filter((position: any) => 
             position.device || position.deviceId || (position.deviceCount && position.deviceCount > 0)
           ).length;
         }
@@ -300,9 +298,9 @@ export default function ZonesPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.createZone(data);
-      toast.success('Khu đã được tạo thành công');
-      setIsZoneModalOpen(false);
+      // await apiClient.location.createZone(data);
+      // toast.success('Khu đã được tạo thành công');
+      // setIsZoneModalOpen(false);
       
       // Refresh data
       await fetchZones();
@@ -322,10 +320,10 @@ export default function ZonesPage() {
         throw new Error('Không tìm thấy khu được chọn');
       }
       
-      await apiClient.location.updateZone(selectedZone.id, data);
-      toast.success('Khu đã được cập nhật thành công');
-      setIsZoneModalOpen(false);
-      setSelectedZone(null);
+      // await apiClient.location.updateZone(selectedZone.id, data);
+      // toast.success('Khu đã được cập nhật thành công');
+      // setIsZoneModalOpen(false);
+      // setSelectedZone(null);
       
       // Refresh data
       await fetchZones();
@@ -343,10 +341,10 @@ export default function ZonesPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.deleteZone(selectedZone.id);
-      toast.success('Khu đã được xóa thành công');
-      setIsDeleteModalOpen(false);
-      setSelectedZone(null);
+      // await apiClient.location.deleteZone(selectedZone.id);
+      // toast.success('Khu đã được xóa thành công');
+      // setIsDeleteModalOpen(false);
+      // setSelectedZone(null);
       
       // Refresh data
       await fetchZones();
@@ -365,9 +363,9 @@ export default function ZonesPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      await apiClient.location.importZones(formData);
-      toast.success('Dữ liệu khu đã được nhập thành công');
-      setIsImportModalOpen(false);
+      // await apiClient.location.importZones(formData);
+      // toast.success('Dữ liệu khu đã được nhập thành công');
+      // setIsImportModalOpen(false);
       
       // Refresh data
       await fetchZones();
@@ -380,15 +378,15 @@ export default function ZonesPage() {
   };
 
   const handleViewPositions = (zone: ZoneWithCounts) => {
-    router.push(`/workspace/${workspaceId}/admin/location/positions?zone=${zone.id}`);
+    router.push(`/workspace/admin/location/positions?zone=${zone.id}`);
   };
 
   const handleBackToAreas = () => {
-    router.push(`/workspace/${workspaceId}/admin/location/areas`);
+    router.push(`/workspace/admin/location/areas`);
   };
 
   const breadcrumbItems = [
-    { label: 'Khu vực', href: `/workspace/${workspaceId}/admin/location/areas` },
+    { label: 'Khu vực', href: `/workspace/admin/location/areas` },
     ...(selectedArea 
       ? [{ label: selectedArea.areaName, isActive: true }]
       : [{ label: 'Khu', isActive: true }]

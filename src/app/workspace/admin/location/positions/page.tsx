@@ -38,10 +38,8 @@ import { DEVICE_WEB } from '@/types/device.type';
 import { apiClient } from '@/lib/api-client';
 
 export default function PositionsPage() {
-  const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workspaceId = params?.["workspace-id"];
   
   // Get zone ID from URL parameters (when accessed from Zone page)
   const selectedZoneId = searchParams.get('zone');
@@ -209,7 +207,7 @@ export default function PositionsPage() {
               console.log(`✅ Device data fetched for position ${position.id}:`, deviceData);
             } catch (error) {
               console.warn(`⚠️ Could not fetch device ${position.deviceId} for position ${position.id}:`, error);
-              deviceData = null;
+              deviceData = undefined;
             }
           }
 
@@ -312,9 +310,9 @@ export default function PositionsPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.createPosition(data);
-      toast.success('Vị trí đã được tạo thành công');
-      setIsPositionModalOpen(false);
+      // await apiClient.location.createPosition(data);
+      // toast.success('Vị trí đã được tạo thành công');
+      // setIsPositionModalOpen(false);
       
       // Refresh data
       await fetchPositions();
@@ -334,10 +332,10 @@ export default function PositionsPage() {
         throw new Error('Không tìm thấy vị trí được chọn');
       }
       
-      await apiClient.location.updatePosition(selectedPosition.id, data);
-      toast.success('Vị trí đã được cập nhật thành công');
-      setIsPositionModalOpen(false);
-      setSelectedPosition(null);
+      // await apiClient.location.updatePosition(selectedPosition.id, data);
+      // toast.success('Vị trí đã được cập nhật thành công');
+      // setIsPositionModalOpen(false);
+      // setSelectedPosition(null);
       
       // Refresh data
       await fetchPositions();
@@ -355,10 +353,10 @@ export default function PositionsPage() {
     try {
       setIsLoading(true);
       
-      await apiClient.location.deletePosition(selectedPosition.id);
-      toast.success('Vị trí đã được xóa thành công');
-      setIsDeleteModalOpen(false);
-      setSelectedPosition(null);
+      // await apiClient.location.deletePosition(selectedPosition.id);
+      // toast.success('Vị trí đã được xóa thành công');
+      // setIsDeleteModalOpen(false);
+      // setSelectedPosition(null);
       
       // Refresh data
       await fetchPositions();
@@ -377,9 +375,9 @@ export default function PositionsPage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      await apiClient.location.importPositions(formData);
-      toast.success('Dữ liệu vị trí đã được nhập thành công');
-      setIsImportModalOpen(false);
+      // await apiClient.location.importPositions(formData);
+      // toast.success('Dữ liệu vị trí đã được nhập thành công');
+      // setIsImportModalOpen(false);
       
       // Refresh data
       await fetchPositions();
@@ -409,20 +407,20 @@ export default function PositionsPage() {
   // Navigation
   const handleBackToZones = () => {
     if (selectedZone && selectedArea) {
-      router.push(`/workspace/${workspaceId}/admin/location/zones?area=${selectedArea.id}`);
+      router.push(`/workspace/admin/location/zones?area=${selectedArea.id}`);
     } else {
-      router.push(`/workspace/${workspaceId}/admin/location/zones`);
+      router.push(`/workspace/admin/location/zones`);
     }
   };
 
   // Dynamic breadcrumb based on context
   const breadcrumbItems = selectedZoneId && selectedZone ? [
-    { label: 'Khu vực', href: `/workspace/${workspaceId}/admin/location/areas` },
-    { label: 'Khu', href: `/workspace/${workspaceId}/admin/location/zones` },
+    { label: 'Khu vực', href: `/workspace/admin/location/areas` },
+    { label: 'Khu', href: `/workspace/admin/location/zones` },
     { label: selectedZone.zoneName, isActive: true }
   ] : [
-    { label: 'Khu vực', href: `/workspace/${workspaceId}/admin/location/areas` },
-    { label: 'Khu', href: `/workspace/${workspaceId}/admin/location/zones` },
+    { label: 'Khu vực', href: `/workspace/admin/location/areas` },
+    { label: 'Khu', href: `/workspace/admin/location/zones` },
     { label: 'Vị trí', isActive: true }
   ];
 

@@ -90,17 +90,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [
         {
           title: "Issues",
-          url: `/workspace/incident/issues`,
+          url: `/workspace/hot/incident/issues`,
           icon: AlertCircle,
         },
         {
           title: "Technical Issues",
-          url: `/workspace/incident/technicalIssues`,
+          url: `/workspace/hot/incident/technicalIssues`,
           icon: Wrench,
         },
         {
           title: "Errors",
-          url: `/workspace/incident/errors`,
+          url: `/workspace/hot/incident/errors`,
           icon: Bug,
         },
       ],
