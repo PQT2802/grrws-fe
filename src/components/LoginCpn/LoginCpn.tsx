@@ -129,13 +129,13 @@ const LoginCpn = ({
 
       switch (userInfo.role) {
         case USER_ROLES.ADMIN:
-          redirectPath = "/workspace/admin";
+          redirectPath = "/workspace/admin/dashboard";
           break;
         case USER_ROLES.HOT:
           redirectPath = "/workspace/hot";
           break;
         case USER_ROLES.STOCK_KEEPER:
-          redirectPath = "/workspace/stock_keeper";
+          redirectPath = "/workspace/stock_keeper/dashboard";
           break;
         default:
           redirectPath = "/access-denied"; // No access for other roles

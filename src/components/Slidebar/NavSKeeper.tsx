@@ -20,7 +20,6 @@ import {
 
 export function NavSKeeper() {
   const pathname = usePathname();
-  const params = useParams();
 
   const STOCK_KEEPER_ITEMS = [
     {

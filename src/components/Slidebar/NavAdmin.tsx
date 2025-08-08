@@ -39,8 +39,6 @@ import { ChevronRight } from "lucide-react";
 
 export function NavAdmin() {
   const pathname = usePathname();
-  const params = useParams();
-  const workspaceId = params?.["workspace-id"];
 
   const ADMIN_ITEMS = [
     {
