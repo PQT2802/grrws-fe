@@ -14,11 +14,11 @@ const WorkspacePage = () => {
   const getRouteByRole = (role: number) => {
     switch (role) {
       case USER_ROLES.ADMIN:
-        return `workspace/admin`;
+        return `/workspace/admin/dashboard`; 
       case USER_ROLES.STOCK_KEEPER:
-        return `workspace/stock_keeper`;
+        return `/workspace/stock_keeper/dashboard`; 
       case USER_ROLES.HOT:
-        return `workspace/hot`;
+        return `/workspace/hot`; 
       default:
         return "/access-denied";
     }

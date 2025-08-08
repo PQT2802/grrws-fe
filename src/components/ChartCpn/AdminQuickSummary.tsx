@@ -85,7 +85,7 @@ export default function AdminQuickSummary() {
       value: summaryData.totalUsers,
       icon: Users,
       color: "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-      action: () => router.push(`/workspace/${workspaceId}/admin/userList`),
+      action: () => router.push(`/workspace/admin/userList`),
       clickable: true
     },
     {
@@ -93,7 +93,7 @@ export default function AdminQuickSummary() {
       value: summaryData.totalMachines,
       icon: Wrench,
       color: "bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-      action: () => router.push(`/workspace/${workspaceId}/admin/machineList`),
+      action: () => router.push(`/workspace/admin/machineList`),
       clickable: true
     },
     {
@@ -101,7 +101,7 @@ export default function AdminQuickSummary() {
       value: summaryData.totalDevices,
       icon: HardDrive,
       color: "bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800",
-      action: () => router.push(`/workspace/${workspaceId}/admin/deviceList`),
+      action: () => router.push(`/workspace/admin/deviceList`),
       clickable: true
     },
     {
@@ -109,7 +109,7 @@ export default function AdminQuickSummary() {
       value: summaryData.totalRequests,
       icon: FileText,
       color: "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-      action: () => router.push(`/workspace/${workspaceId}/admin/requestList`),
+      action: () => router.push(`/workspace/admin/requestList`),
       clickable: true
     },
   ];

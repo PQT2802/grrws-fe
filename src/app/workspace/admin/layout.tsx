@@ -1,12 +1,12 @@
-// src/app/workspace/stock_keeper/layout.tsx
+// src/app/workspace/admin/layout.tsx
 import type { Metadata } from "next";
 import { AppSidebar } from "@/components/Slidebar/AppSlidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppNavbar from "@/components/AppNavbar/AppNavbar";
 
 export const metadata: Metadata = {
-  title: `${process.env.NEXT_PUBLIC_APP_NAME ?? "GRRWS"} | Stock Keeper Workspace`,
-  description: "Stock Keeper workspace for GRRWS",
+  title: `${process.env.NEXT_PUBLIC_APP_NAME ?? "GRRWS"} | Admin Workspace`,
+  description: "Admin workspace for GRRWS",
 };
 
 export default function Layout({

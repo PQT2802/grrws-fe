@@ -37,8 +37,6 @@ interface HOTQuickActionsProps {
 
 export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickActionsProps) {
   const router = useRouter();
-  const params = useParams();
-  const workspaceId = params?.["workspace-id"];
 
   const quickActionItems = useMemo(() => {
     if (!dashboardStats) return [];
@@ -50,7 +48,7 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
         count: dashboardStats.requestStats.total,
         icon: FolderGit2,
         color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
-        action: () => router.push(`/workspace/${workspaceId}/requests`),
+        action: () => router.push(`/workspace/hot/requests`),
         clickable: true
       },
       {
@@ -59,7 +57,7 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
         count: dashboardStats.taskStats.total,
         icon: ClipboardList,
         color: 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800',
-        action: () => router.push(`/workspace/${workspaceId}/tasks`),
+        action: () => router.push(`/workspace/hot/tasks`),
         clickable: true
       },
       {
@@ -68,7 +66,7 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
         count: dashboardStats.taskStats.inProgress,
         icon: CircleEllipsis,
         color: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
-        action: () => router.push(`/workspace/${workspaceId}/tasks?status=inProgress`),
+        action: () => router.push(`/workspace/hot/tasks?status=inProgress`),
         clickable: true
       },
       {
@@ -77,7 +75,7 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
         count: dashboardStats.taskStats.completed,
         icon: CircleCheckBig,
         color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
-        action: () => router.push(`/workspace/${workspaceId}/tasks?status=completed`),
+        action: () => router.push(`/workspace/hot/tasks?status=completed`),
         clickable: true
       },
       {
@@ -87,11 +85,11 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
         icon: Users,
         color: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800',
         // Note: You may want to create a mechanics page or redirect to users with filter
-        action: () => router.push(`/workspace/${workspaceId}/users?role=mechanic&status=available`),
+        action: () => router.push(`/workspace/hot/users?role=mechanic&status=available`),
         clickable: false // Set to true when the mechanics page is available
       }
     ];
-  }, [dashboardStats, router, workspaceId]);
+  }, [dashboardStats, router]);
 
   if (loading) {
     return (

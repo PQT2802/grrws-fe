@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Bell, ArrowRight, FileText, Clock, MapPin } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { REQUEST_ITEM } from "@/types/dashboard.type";
 
@@ -49,8 +49,6 @@ const getStatusBadgeClass = (status: string): string => {
 
 export default function HOTNotificationArea() {
   const router = useRouter();
-  const params = useParams();
-  const workspaceId = params?.["workspace-id"] as string;
 
   const [state, setState] = useState<NotificationState>({
     requests: [],
@@ -62,18 +60,16 @@ export default function HOTNotificationArea() {
   // Memoized handlers to prevent unnecessary re-renders
   const handleRequestClick = useCallback(
     (requestId: string) => {
-      if (workspaceId) {
-        router.push(`/workspace/${workspaceId}/requests/${requestId}`);
-      }
+      // ✅ Navigate to clean URL without workspaceId
+      router.push(`/workspace/hot/requests/${requestId}`);
     },
-    [router, workspaceId]
+    [router] // ✅ Remove workspaceId from dependencies
   );
 
   const handleViewAllRequests = useCallback(() => {
-    if (workspaceId) {
-      router.push(`/workspace/${workspaceId}/requests`);
-    }
-  }, [router, workspaceId]);
+    // ✅ Navigate to clean URL without workspaceId
+    router.push(`/workspace/hot/requests`);
+  }, [router]); // ✅ Remove workspaceId from dependencies
 
   // Fetch creator name for a request
   const fetchCreatorName = useCallback(
