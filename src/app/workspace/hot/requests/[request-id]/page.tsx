@@ -57,6 +57,7 @@ import AddErrorToRequestModal from "@/components/ErrorTableCpn/AddErrorToRequest
 import { Badge } from "@/components/ui/badge";
 import TechnicalIssueTableCpn from "@/components/TechnicalIssueTableCpn/TechnicalIssueTableCpn";
 import { da } from "date-fns/locale";
+import { apiClient } from "@/lib/api-client";
 
 // Only keep "Lỗi" and "Nhiệm vụ" tabs
 const TAB_CONTENT_LIST = ["Lỗi", "Nhiệm vụ"];
@@ -103,7 +104,7 @@ const RequestDetailPage = () => {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const tasksData = await requestService.getTasksByRequestId(requestId);
+      const tasksData = await apiClient.request.getTaskOfRequest(requestId);
       setTasks(tasksData);
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
@@ -133,7 +134,7 @@ const RequestDetailPage = () => {
   useEffect(() => {
     const fetchTechnicalIssues = async () => {
       try {
-        const data = await requestService.getTechnicalIssuesByRequestId(
+        const data = await apiClient.request.getTechnicalIssueOfRequest(
           requestId
         );
         setTechnicalIssues(data);

@@ -1,7 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { apiClient } from "@/lib/api-client";
 
-export async function GET(req: Request) {
+// Assumed UserInfo type (adjust based on actual API response)
+interface UserInfo {
+  id: string;
+  username: string;
+  email?: string;
+  role: string;
+}
+
+// Ensure dynamic routing for API call
+export const dynamic = "force-dynamic";
+
+// GET /api/auth/info - Get user information with token
+export async function GET(
+  req: NextRequest
+): Promise<NextResponse<UserInfo | { error: string; details?: string }>> {
   try {
     console.log("🚀 [SERVER] API Route Called: /api/auth/info");
 
@@ -16,23 +30,27 @@ export async function GET(req: Request) {
       );
     }
 
-    // ✅ Extract the token from the Authorization header
+    // Extract the token
     const token = authorization.replace("Bearer ", "");
+    if (!token) {
+      console.log("❌ [SERVER] Invalid token format");
+      return NextResponse.json(
+        { error: "Invalid token format" },
+        { status: 401 }
+      );
+    }
     console.log("🔑 [SERVER] Extracted token for backend call");
 
     console.log("🔄 [SERVER] About to call backend with token...");
-
-    // ✅ Pass the token explicitly to the API client
     const userInfo = await apiClient.user.getInfoWithToken(token);
     console.log("✅ [SERVER] Backend user info response:", userInfo);
 
-    return NextResponse.json(userInfo, { status: 200 });
+    return NextResponse.json(userInfo as unknown as UserInfo, { status: 200 });
   } catch (error: any) {
     console.error("❌ [SERVER] Get user info failed:");
     console.error("  Error name:", error.name);
     console.error("  Error message:", error.message);
 
-    // ✅ Better error handling for common scenarios
     if (error.message.includes("Unauthorized")) {
       return NextResponse.json(
         { error: "Invalid or expired token" },

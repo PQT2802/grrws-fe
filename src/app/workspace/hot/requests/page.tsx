@@ -5,9 +5,9 @@ import { Download, RotateCcw } from "lucide-react";
 import PageTitle from "@/components/PageTitle/PageTitle";
 import ButtonCpn from "@/components/ButtonCpn/ButtonCpn";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
-import { requestService } from "@/app/service/request.service";
 import { REQUEST_SUMMARY } from "@/types/request.type";
 import RequestTableCpn from "@/components/RequestTableCpn/RequestTableCpn";
+import { apiClient } from "@/lib/api-client";
 
 const RequestsPage = () => {
   const [requestSummary, setRequestSummary] = useState<REQUEST_SUMMARY | null>(
@@ -24,7 +24,7 @@ const RequestsPage = () => {
         setLoading(true);
       }
 
-      const data = await requestService.getRequestSummary();
+      const data = await apiClient.request.getRequestSummary();
       console.log(data);
       setRequestSummary(data);
     } catch (error) {
