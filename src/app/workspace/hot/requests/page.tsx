@@ -25,7 +25,7 @@ const RequestsPage = () => {
       }
 
       const data = await apiClient.request.getRequestSummary();
-      console.log(data);
+      console.log("api be", data);
       setRequestSummary(data);
     } catch (error) {
       console.error("Failed to fetch request summary:", error);

@@ -115,7 +115,7 @@ const RequestDetailPage = () => {
     const fetchRequestDetail = async () => {
       try {
         setLoading(true);
-        const data = await requestService.getRequestDetail(requestId);
+        const data = await apiClient.request.getRequestDetail(requestId);
         setRequestDetail(data);
       } catch (error) {
         console.error("Failed to fetch request detail:", error);

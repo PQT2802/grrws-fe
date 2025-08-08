@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import {
   ColumnDef,
@@ -107,45 +107,42 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
   const displayData =
     enhancedRequests.length > 0 ? enhancedRequests : tableData;
 
-  // Fetch user name by ID, memoized
-  const fetchUserNameById = useCallback(
-    async (userId: string): Promise<string> => {
-      if (!userId || userCache[userId]) {
-        return userCache[userId] || "Không xác định";
-      }
+  // Fetch user name by ID
+  const fetchUserNameById = async (userId: string): Promise<string> => {
+    if (!userId || userCache[userId]) {
+      return userCache[userId] || "Không xác định";
+    }
 
-      try {
-        const userResponse = await apiClient.user.getUserById(userId);
-        const userName =
-          userResponse.data?.fullName ||
-          userResponse.fullName ||
-          "Người dùng không rõ";
+    try {
+      const userResponse = await apiClient.user.getUserById(userId);
+      const userName =
+        userResponse.data?.fullName ||
+        userResponse.fullName ||
+        "Người dùng không rõ";
 
-        // Cache the result
-        setUserCache((prev) => ({
-          ...prev,
-          [userId]: userName,
-        }));
+      // Cache the result
+      setUserCache((prev) => ({
+        ...prev,
+        [userId]: userName,
+      }));
 
-        return userName;
-      } catch (error) {
-        console.error(`Failed to fetch user ${userId}:`, error);
-        const fallbackName = "Người dùng không rõ";
+      return userName;
+    } catch (error) {
+      console.error(`Failed to fetch user ${userId}:`, error);
+      const fallbackName = "Người dùng không rõ";
 
-        // Cache the fallback result to avoid repeated failed requests
-        setUserCache((prev) => ({
-          ...prev,
-          [userId]: fallbackName,
-        }));
+      // Cache the fallback result to avoid repeated failed requests
+      setUserCache((prev) => ({
+        ...prev,
+        [userId]: fallbackName,
+      }));
 
-        return fallbackName;
-      }
-    },
-    [userCache, setUserCache] // Dependencies for fetchUserNameById
-  );
+      return fallbackName;
+    }
+  };
 
   // Fetch enhanced data like in template (with creator info and issue descriptions)
-  const fetchEnhancedData = useCallback(async () => {
+  const fetchEnhancedData = async () => {
     try {
       setIsLoadingEnhanced(true);
       const response = await apiClient.dashboard.getAllRequests(1, 100); // Get more data for better display
@@ -188,14 +185,14 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
     } finally {
       setIsLoadingEnhanced(false);
     }
-  }, [fetchUserNameById, userCache]);
+  };
 
   // Fetch enhanced data on component mount
   useEffect(() => {
     if (requestSummary && !loading) {
       fetchEnhancedData();
     }
-  }, [requestSummary, loading, fetchEnhancedData]);
+  }, [requestSummary, loading]);
 
   // Safe translation functions
   const safeTranslateTaskStatus = (status: string) => {
