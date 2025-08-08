@@ -401,8 +401,9 @@ const GroupTaskDetailsPage = () => {
     const handleEvent = async (eventName: string, data: any) => {
       console.log(`📩 SignalR event: ${eventName}`, data);
       if (
-        eventName === "TaskGroupUpdated" &&
-        data?.taskGroupId === taskGroupId
+        (eventName === "TaskGroupUpdated" &&
+          data?.taskGroupId === taskGroupId) ||
+        eventName === "NotificationReceived"
       ) {
         await handleFullDataRefresh();
       }
@@ -469,10 +470,10 @@ const GroupTaskDetailsPage = () => {
       try {
         // Fetch old device
         const oldDeviceId = installDetail?.stockInDeviceId
-        ? installDetail?.stockInDeviceId
-        : installDetail?.deviceId;
+          ? installDetail?.stockInDeviceId
+          : installDetail?.deviceId;
         const newDeviceId = installDetail?.stockOutDeviceId;
-        console.log("concac",oldDeviceId, newDeviceId);
+        console.log("concac", oldDeviceId, newDeviceId);
         if (oldDeviceId) {
           try {
             const oldDeviceData = await apiClient.device.getDeviceById(

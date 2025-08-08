@@ -56,6 +56,7 @@ import {
   translateTaskType,
   translateGroupType,
 } from "@/utils/textTypeTask";
+import useSignalRStore from "@/store/useSignalRStore";
 
 const TaskManagementPage = () => {
   const { canAccessWorkspace } = useAuth();
@@ -141,6 +142,37 @@ const TaskManagementPage = () => {
     statusFilter,
     priorityFilter,
   ]);
+
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
+    if (!token) return;
+
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const roleName = "HOT";
+    const { connect, disconnect } = useSignalRStore.getState();
+
+    const handleEvent = async (eventName: string, data: any) => {
+      // You can adjust eventName/data logic as needed
+      if (
+        eventName === "TaskGroupUpdated" ||
+        eventName === "NotificationReceived"
+      ) {
+        // Refresh both lists
+        await fetchTaskGroups();
+        await fetchSingleTasks();
+      }
+    };
+
+    connect(token, backendUrl, [`role:${roleName}`], handleEvent);
+
+    return () => {
+      disconnect();
+    };
+  }, [fetchTaskGroups, fetchSingleTasks]);
 
   useEffect(() => {
     if (canAccessWorkspace) {
