@@ -467,10 +467,15 @@ const GroupTaskDetailsPage = () => {
       const installDetail = installationTaskDetails[selectedInstallationTaskId];
 
       try {
-        if (installDetail.deviceId) {
+        // Fetch old device
+        const oldDeviceId = installDetail?.stockInDeviceId
+        ? installDetail?.stockInDeviceId
+        : installDetail?.deviceId;
+        const newDeviceId = installDetail?.stockOutDeviceId;
+        if (oldDeviceId) {
           try {
             const oldDeviceData = await apiClient.device.getDeviceById(
-              installDetail.deviceId
+              oldDeviceId
             );
             setDeviceTabOldDevice(oldDeviceData);
           } catch (error) {
@@ -479,10 +484,11 @@ const GroupTaskDetailsPage = () => {
           }
         }
 
-        if (installDetail.newDeviceId) {
+        // Fetch new device
+        if (newDeviceId) {
           try {
             const newDeviceData = await apiClient.device.getDeviceById(
-              installDetail.newDeviceId
+              newDeviceId
             );
             setDeviceTabNewDevice(newDeviceData);
           } catch (error) {

@@ -125,7 +125,8 @@ export interface INSTALL_TASK_DETAIL {
   expectedTime: string;
   endTime: string | null;
   assigneeName: string | null;
-  newDeviceId: string; // ID of the new device to be installed
+  stockOutDeviceId?: string;
+  stockInDeviceId?: string;
 }
 
 export interface WARRANTY_TASK_DETAIL {
