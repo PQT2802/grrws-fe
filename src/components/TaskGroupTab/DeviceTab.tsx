@@ -94,7 +94,7 @@ const DeviceTab = ({
                 Đang tải thông tin thiết bị...
               </span>
             </div>
-          ) : deviceTabOldDevice && deviceTabNewDevice ? (
+          ) : deviceTabOldDevice  ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 items-center">
                 {/* Old Device */}
@@ -158,6 +158,7 @@ const DeviceTab = ({
                 <Card
                   className="border-green-200 bg-green-50 dark:bg-green-950/30 cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors"
                   onClick={() =>
+                    deviceTabNewDevice &&
                     onDeviceClick(
                       deviceTabNewDevice,
                       "Chi tiết Thiết bị Mới (Lắp)"
@@ -174,24 +175,37 @@ const DeviceTab = ({
                       <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-2">
                         <Monitor className="h-6 w-6 text-green-600 dark:text-green-400" />
                       </div>
-                      <h4 className="font-semibold">
-                        {deviceTabNewDevice.deviceName}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {deviceTabNewDevice.deviceCode}
-                      </p>
+                      {deviceTabNewDevice ? (
+                        <>
+                          <h4 className="font-semibold">
+                            {deviceTabNewDevice.deviceName}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {deviceTabNewDevice.deviceCode}
+                          </p>
+                        </>
+                      ) : (
+                        <div>
+                          <h4 className="font-semibold text-gray-500">
+                            Đang trong quá trình chọn thiết bị
+                          </h4>
+                          <p className="text-sm text-gray-400">
+                            Chờ thủ kho chọn thiết bị thay thế
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between">
                         <span>Model:</span>
                         <span className="font-medium">
-                          {deviceTabNewDevice.model || "N/A"}
+                          {deviceTabNewDevice?.model || "Chưa xác định"}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Vị trí:</span>
                         <span className="font-medium">
-                          {deviceTabNewDevice.zoneName || "Trong kho"}
+                          {deviceTabNewDevice?.zoneName || "Trong kho"}
                         </span>
                       </div>
                     </div>

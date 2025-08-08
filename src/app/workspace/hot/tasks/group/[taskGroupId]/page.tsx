@@ -472,6 +472,7 @@ const GroupTaskDetailsPage = () => {
         ? installDetail?.stockInDeviceId
         : installDetail?.deviceId;
         const newDeviceId = installDetail?.stockOutDeviceId;
+        console.log("concac",oldDeviceId, newDeviceId);
         if (oldDeviceId) {
           try {
             const oldDeviceData = await apiClient.device.getDeviceById(
