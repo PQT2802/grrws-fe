@@ -1,163 +1,180 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Filter, Package, Calendar, User, Clock, Wrench } from 'lucide-react';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious, 
-  PaginationEllipsis 
-} from '@/components/ui/pagination';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { apiClient } from '@/lib/api-client';
-import { toast } from 'sonner';
-import { UNIFIED_SKEEPER_REQUEST } from '@/types/sparePart.type';
-import { Skeleton } from '@/components/ui/skeleton';
-import { translateActionType, translateTaskStatus } from '@/utils/textTypeTask';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Search,
+  Filter,
+  Package,
+  Calendar,
+  User,
+  Clock,
+  Wrench,
+} from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { apiClient } from "@/lib/api-client";
+import { toast } from "sonner";
+import { UNIFIED_SKEEPER_REQUEST } from "@/types/sparePart.type";
+import { Skeleton } from "@/components/ui/skeleton";
+import { translateActionType, translateTaskStatus } from "@/utils/textTypeTask";
+import { useRouter } from "next/navigation";
 
 export default function SparePartRequestsTable() {
   const router = useRouter();
   const [requests, setRequests] = useState<UNIFIED_SKEEPER_REQUEST[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
   // Pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
     pageSize: 10,
     totalItems: 0,
-    totalPages: 1
+    totalPages: 1,
   });
+  const fetchRequests = useCallback(
+    async (page: number = 1, pageSize: number = 10) => {
+      try {
+        setIsLoading(true);
+        console.log(
+          `Fetching spare part requests for page ${page}, size ${pageSize}`
+        );
 
+        // Fetch from unified API with filter for spare part requests
+        const response = await apiClient.machineActionConfirmation.getAll(
+          page,
+          pageSize,
+          false, // newest first
+          statusFilter !== "all" ? statusFilter : undefined,
+          "SparePartRequest" // Filter for spare part requests only
+        );
+
+        let machineActionData: any[] = [];
+        let totalItems = 0;
+        let totalPages = 1;
+        let currentPage = page;
+
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          machineActionData = response.data.data;
+          totalItems = response.data.totalCount || 0;
+          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          currentPage = response.data.pageNumber || page;
+        } else if (Array.isArray(response?.data)) {
+          machineActionData = response.data;
+          totalItems = response.totalCount || response.data.length;
+          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          currentPage = response.pageNumber || page;
+        } else if (Array.isArray(response)) {
+          machineActionData = response;
+          totalItems = response.length;
+          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+        }
+
+        // Transform to unified format - only spare part requests
+        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
+          .filter((req) => req.actionType?.toLowerCase() === "sparepartrequest")
+          .map((req) => ({
+            id: req.id,
+            type: "machineAction" as const,
+            title: req.confirmationCode,
+            description: `${safeTranslateActionType(req.actionType)} - ${
+              req.notes || "Không có ghi chú"
+            }`,
+            requestDate: req.startDate,
+            status: req.status,
+            assigneeName: req.assigneeName,
+            actionType: req.actionType,
+            confirmationCode: req.confirmationCode,
+            mechanicConfirm: req.mechanicConfirm,
+            stockkeeperConfirm: req.stockkeeperConfirm,
+            originalData: req,
+          }));
+
+        console.log(
+          `Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`
+        );
+
+        setRequests(sparePartRequests);
+        setPagination({
+          currentPage,
+          pageSize,
+          totalItems: sparePartRequests.length,
+          totalPages: Math.max(
+            1,
+            Math.ceil(sparePartRequests.length / pageSize)
+          ),
+        });
+      } catch (error) {
+        console.error("Failed to fetch spare part requests:", error);
+        toast.error("Không thể tải danh sách yêu cầu linh kiện");
+
+        setRequests([]);
+        setPagination({
+          currentPage: 1,
+          pageSize,
+          totalItems: 0,
+          totalPages: 1,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [statusFilter]
+  );
   useEffect(() => {
     fetchRequests(1, pagination.pageSize);
-  }, []);
+  }, [fetchRequests, pagination.pageSize]);
 
   // Safe translation functions
   const safeTranslateTaskStatus = (status: string) => {
     try {
-      return translateTaskStatus(status || 'unknown');
+      return translateTaskStatus(status || "unknown");
     } catch (error) {
-      console.error('Error translating status:', error);
-      return status || 'Unknown';
+      console.error("Error translating status:", error);
+      return status || "Unknown";
     }
   };
 
   const safeTranslateActionType = (actionType: string) => {
     try {
-      return translateActionType(actionType || 'unknown');
+      return translateActionType(actionType || "unknown");
     } catch (error) {
-      console.error('Error translating action type:', error);
-      return actionType || 'Unknown';
-    }
-  };
-
-  const fetchRequests = async (page: number = 1, pageSize: number = 10) => {
-    try {
-      setIsLoading(true);
-      console.log(`Fetching spare part requests for page ${page}, size ${pageSize}`);
-      
-      // Fetch from unified API with filter for spare part requests
-      const response = await apiClient.machineActionConfirmation.getAll(
-        page, 
-        pageSize, 
-        false, // newest first
-        statusFilter !== 'all' ? statusFilter : undefined,
-        'SparePartRequest' // Filter for spare part requests only
-      );
-
-      let machineActionData: any[] = [];
-      let totalItems = 0;
-      let totalPages = 1;
-      let currentPage = page;
-
-      if (response?.data?.data && Array.isArray(response.data.data)) {
-        machineActionData = response.data.data;
-        totalItems = response.data.totalCount || 0;
-        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-        currentPage = response.data.pageNumber || page;
-      } else if (Array.isArray(response?.data)) {
-        machineActionData = response.data;
-        totalItems = response.totalCount || response.data.length;
-        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-        currentPage = response.pageNumber || page;
-      } else if (Array.isArray(response)) {
-        machineActionData = response;
-        totalItems = response.length;
-        totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-      }
-
-      // Transform to unified format - only spare part requests
-      const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-        .filter(req => req.actionType?.toLowerCase() === 'sparepartrequest')
-        .map(req => ({
-          id: req.id,
-          type: 'machineAction' as const,
-          title: req.confirmationCode,
-          description: `${safeTranslateActionType(req.actionType)} - ${req.notes || 'Không có ghi chú'}`,
-          requestDate: req.startDate,
-          status: req.status,
-          assigneeName: req.assigneeName,
-          actionType: req.actionType,
-          confirmationCode: req.confirmationCode,
-          mechanicConfirm: req.mechanicConfirm,
-          stockkeeperConfirm: req.stockkeeperConfirm,
-          originalData: req
-        }));
-
-      console.log(`Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`);
-
-      setRequests(sparePartRequests);
-      setPagination({
-        currentPage,
-        pageSize,
-        totalItems: sparePartRequests.length,
-        totalPages: Math.max(1, Math.ceil(sparePartRequests.length / pageSize))
-      });
-      
-    } catch (error) {
-      console.error("Failed to fetch spare part requests:", error);
-      toast.error("Không thể tải danh sách yêu cầu linh kiện");
-      
-      setRequests([]);
-      setPagination({
-        currentPage: 1,
-        pageSize,
-        totalItems: 0,
-        totalPages: 1
-      });
-    } finally {
-      setIsLoading(false);
+      console.error("Error translating action type:", error);
+      return actionType || "Unknown";
     }
   };
 
   // Helper function to get status in Vietnamese
   const getVietnameseStatus = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'PENDING': 'Đang chờ xử lý',
-      'APPROVED': 'Đã duyệt',
-      'CONFIRMED': 'Đã xác nhận',
-      'INPROGRESS': 'Đang thực hiện',
-      'COMPLETED': 'Hoàn thành',
-      'CANCELLED': 'Đã hủy',
-      'REJECTED': 'Đã từ chối'
+      PENDING: "Đang chờ xử lý",
+      APPROVED: "Đã duyệt",
+      CONFIRMED: "Đã xác nhận",
+      INPROGRESS: "Đang thực hiện",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy",
+      REJECTED: "Đã từ chối",
     };
     return statusMap[status.toUpperCase()] || status;
   };
@@ -166,10 +183,14 @@ export default function SparePartRequestsTable() {
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+    const diffInHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    );
+
     if (diffInHours < 1) {
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      const diffInMinutes = Math.floor(
+        (now.getTime() - date.getTime()) / (1000 * 60)
+      );
       return `${diffInMinutes} phút trước`;
     } else if (diffInHours < 24) {
       return `${diffInHours} giờ trước`;
@@ -180,19 +201,21 @@ export default function SparePartRequestsTable() {
 
   // Get unique statuses for filter dropdown
   const availableStatuses = useMemo(() => {
-    return [...new Set(requests.map(req => req.status))];
+    return [...new Set(requests.map((req) => req.status))];
   }, [requests]);
 
   // Filter requests based on search, status, and date range
   const filteredRequests = useMemo(() => {
-    return requests.filter(request => {
-      const matchesSearch = searchTerm === '' || 
+    return requests.filter((request) => {
+      const matchesSearch =
+        searchTerm === "" ||
         request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
-      
+
+      const matchesStatus =
+        statusFilter === "all" || request.status === statusFilter;
+
       // Date range filtering
       let matchesDateRange = true;
       if (fromDate || toDate) {
@@ -207,16 +230,16 @@ export default function SparePartRequestsTable() {
           matchesDateRange = matchesDateRange && requestDate <= to;
         }
       }
-      
+
       return matchesSearch && matchesStatus && matchesDateRange;
     });
   }, [requests, searchTerm, statusFilter, fromDate, toDate]);
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = [];
+    const pages: (number | "ellipsis")[] = [];
     const maxVisiblePages = 5;
-    
+
     if (pagination.totalPages <= maxVisiblePages) {
       for (let i = 1; i <= pagination.totalPages; i++) {
         pages.push(i);
@@ -226,25 +249,33 @@ export default function SparePartRequestsTable() {
         for (let i = 1; i <= 4; i++) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(pagination.totalPages);
       } else if (pagination.currentPage >= pagination.totalPages - 2) {
         pages.push(1);
-        pages.push('ellipsis');
-        for (let i = pagination.totalPages - 3; i <= pagination.totalPages; i++) {
+        pages.push("ellipsis");
+        for (
+          let i = pagination.totalPages - 3;
+          i <= pagination.totalPages;
+          i++
+        ) {
           pages.push(i);
         }
       } else {
         pages.push(1);
-        pages.push('ellipsis');
-        for (let i = pagination.currentPage - 1; i <= pagination.currentPage + 1; i++) {
+        pages.push("ellipsis");
+        for (
+          let i = pagination.currentPage - 1;
+          i <= pagination.currentPage + 1;
+          i++
+        ) {
           pages.push(i);
         }
-        pages.push('ellipsis');
+        pages.push("ellipsis");
         pages.push(pagination.totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -260,35 +291,44 @@ export default function SparePartRequestsTable() {
 
   const handleViewRequest = async (request: UNIFIED_SKEEPER_REQUEST) => {
     try {
-      console.log(`Navigating to spare part request detail with ID: ${request.id}`);
+      console.log(
+        `Navigating to spare part request detail with ID: ${request.id}`
+      );
       router.push(`./requests/${request.id}/sparepart`);
     } catch (error) {
-      console.error('Failed to navigate to request details:', error);
-      toast.error('Không thể mở chi tiết yêu cầu');
+      console.error("Failed to navigate to request details:", error);
+      toast.error("Không thể mở chi tiết yêu cầu");
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'confirmed': case 'inprogress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'cancelled': case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "confirmed":
+      case "inprogress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "cancelled":
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setFromDate('');
-    setToDate('');
+    setSearchTerm("");
+    setStatusFilter("all");
+    setFromDate("");
+    setToDate("");
   };
 
   // Update filter change handlers
   const handleStatusChange = (status: string) => {
     setStatusFilter(status);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
     fetchRequests(1, pagination.pageSize);
   };
 
@@ -307,7 +347,7 @@ export default function SparePartRequestsTable() {
               className="pl-10"
             />
           </div>
-          
+
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-44">
@@ -315,12 +355,14 @@ export default function SparePartRequestsTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả trạng thái</SelectItem>
-              {availableStatuses.map(status => (
-                <SelectItem key={status} value={status}>{getVietnameseStatus(status)}</SelectItem>
+              {availableStatuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {getVietnameseStatus(status)}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           {/* Date Range - Compact */}
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium whitespace-nowrap">Từ:</label>
@@ -331,9 +373,11 @@ export default function SparePartRequestsTable() {
               className="w-36"
             />
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium whitespace-nowrap">Đến:</label>
+            <label className="text-sm font-medium whitespace-nowrap">
+              Đến:
+            </label>
             <Input
               type="date"
               value={toDate}
@@ -341,7 +385,7 @@ export default function SparePartRequestsTable() {
               className="w-36"
             />
           </div>
-          
+
           {/* Clear Filters Button */}
           <Button variant="outline" onClick={clearFilters} className="shrink-0">
             <Filter className="mr-2 h-4 w-4" />
@@ -362,7 +406,7 @@ export default function SparePartRequestsTable() {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map(i => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
@@ -372,7 +416,7 @@ export default function SparePartRequestsTable() {
               <p className="text-gray-500 dark:text-gray-400">
                 Không có yêu cầu linh kiện nào
               </p>
-              {(searchTerm || statusFilter !== 'all' || fromDate || toDate) && (
+              {(searchTerm || statusFilter !== "all" || fromDate || toDate) && (
                 <button
                   className="mt-2 text-primary underline text-sm"
                   onClick={clearFilters}
@@ -386,19 +430,32 @@ export default function SparePartRequestsTable() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-200">
-                    <th className="px-4 py-3 text-left font-medium">Mã xác nhận</th>
-                    <th className="px-4 py-3 text-left font-medium">Ngày yêu cầu</th>
-                    <th className="px-4 py-3 text-left font-medium">Người thực hiện</th>
-                    <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
-                    <th className="px-4 py-3 text-center font-medium">Hành động</th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Mã xác nhận
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Ngày yêu cầu
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Người thực hiện
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium">
+                      Trạng thái
+                    </th>
+                    <th className="px-4 py-3 text-center font-medium">
+                      Hành động
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredRequests.map((request) => {
                     const requestDate = new Date(request.requestDate);
-                    const timeString = requestDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    const timeString = requestDate.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
                     const relativeTime = getRelativeTime(request.requestDate);
-                    
+
                     return (
                       <tr
                         key={request.id}
@@ -411,18 +468,28 @@ export default function SparePartRequestsTable() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4 text-gray-400" />
-                            {requestDate.toLocaleDateString('vi-VN')}
+                            {requestDate.toLocaleDateString("vi-VN")}
                           </div>
                           <div className="flex items-center gap-1 text-xs text-gray-500">
                             <Clock className="h-3 w-3" />
-                            <span>{timeString} • {relativeTime}</span>
+                            <span>
+                              {timeString} • {relativeTime}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4 text-gray-400" />
-                            <span className={`${!request.assigneeName || request.assigneeName.trim() === '' ? 'text-gray-400 italic' : ''}`}>
-                              {request.assigneeName || 'Chưa có người thực hiện'}
+                            <span
+                              className={`${
+                                !request.assigneeName ||
+                                request.assigneeName.trim() === ""
+                                  ? "text-gray-400 italic"
+                                  : ""
+                              }`}
+                            >
+                              {request.assigneeName ||
+                                "Chưa có người thực hiện"}
                             </span>
                           </div>
                         </td>
@@ -456,9 +523,11 @@ export default function SparePartRequestsTable() {
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   Hiển thị
                 </span>
-                <Select 
-                  value={pagination.pageSize.toString()} 
-                  onValueChange={(value) => handlePageSizeChange(parseInt(value))}
+                <Select
+                  value={pagination.pageSize.toString()}
+                  onValueChange={(value) =>
+                    handlePageSizeChange(parseInt(value))
+                  }
                 >
                   <SelectTrigger className="w-20">
                     <SelectValue />
@@ -479,16 +548,23 @@ export default function SparePartRequestsTable() {
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => pagination.currentPage > 1 && handlePageChange(pagination.currentPage - 1)}
-                        className={pagination.currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      <PaginationPrevious
+                        onClick={() =>
+                          pagination.currentPage > 1 &&
+                          handlePageChange(pagination.currentPage - 1)
+                        }
+                        className={
+                          pagination.currentPage <= 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
-                    
+
                     {pagination.totalPages > 1 ? (
                       generatePageNumbers().map((page, index) => (
                         <PaginationItem key={index}>
-                          {page === 'ellipsis' ? (
+                          {page === "ellipsis" ? (
                             <PaginationEllipsis />
                           ) : (
                             <PaginationLink
@@ -503,16 +579,26 @@ export default function SparePartRequestsTable() {
                       ))
                     ) : (
                       <PaginationItem>
-                        <PaginationLink isActive={true} className="cursor-default">
+                        <PaginationLink
+                          isActive={true}
+                          className="cursor-default"
+                        >
                           1
                         </PaginationLink>
                       </PaginationItem>
                     )}
-                    
+
                     <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => pagination.currentPage < pagination.totalPages && handlePageChange(pagination.currentPage + 1)}
-                        className={pagination.currentPage >= pagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      <PaginationNext
+                        onClick={() =>
+                          pagination.currentPage < pagination.totalPages &&
+                          handlePageChange(pagination.currentPage + 1)
+                        }
+                        className={
+                          pagination.currentPage >= pagination.totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>

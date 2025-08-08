@@ -1,16 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { apiClient } from '@/lib/api-client';
-import { DEVICE_WEB } from '@/types/device.type';
-import { toast } from 'sonner';
+import React, { useState, useEffect, useCallback } from "react";
+import { X, RefreshCw, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { apiClient } from "@/lib/api-client";
+import { DEVICE_WEB } from "@/types/device.type";
+import { toast } from "sonner";
 
 interface ReplaceDeviceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (deviceId: string, reason: string, notes?: string) => Promise<void>;
+  onConfirm: (
+    deviceId: string,
+    reason: string,
+    notes?: string
+  ) => Promise<void>;
   requestId: string;
   machineId: string;
   currentDeviceName: string;
@@ -24,54 +28,52 @@ export default function ReplaceDeviceModal({
   requestId,
   machineId,
   currentDeviceName,
-  isLoading = false
+  isLoading = false,
 }: ReplaceDeviceModalProps) {
   const [availableDevices, setAvailableDevices] = useState<DEVICE_WEB[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
-  const [reason, setReason] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
   const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Disable body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
-    
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
-  // Fetch available devices when modal opens
-  useEffect(() => {
-    if (isOpen && machineId) {
-      fetchAvailableDevices();
-    }
-  }, [isOpen, machineId]);
-
-  const fetchAvailableDevices = async () => {
+  const fetchAvailableDevices = useCallback(async () => {
     try {
       setIsLoadingDevices(true);
-      
+
       console.log(`Fetching devices for machine ID: ${machineId}`);
-      
+
       // First try to get devices by machine ID with Active status
       let devices: DEVICE_WEB[] = [];
-      
+
       try {
-        devices = await apiClient.machine.getActiveDevicesByMachineId(machineId);
-        console.log('Fetched devices by machine ID:', devices);
+        devices = await apiClient.machine.getActiveDevicesByMachineId(
+          machineId
+        );
+        console.log("Fetched devices by machine ID:", devices);
       } catch (error) {
-        console.warn('Failed to fetch devices by machine ID, trying general device list:', error);
-        
+        console.warn(
+          "Failed to fetch devices by machine ID, trying general device list:",
+          error
+        );
+
         // Fallback: Get all devices and filter by machine ID and active status
         const response: any = await apiClient.device.getDevices(1, 100);
         let allDevices: DEVICE_WEB[] = [];
-        
+
         if (Array.isArray(response)) {
           allDevices = response;
         } else if (response?.data && Array.isArray(response.data)) {
@@ -79,41 +81,51 @@ export default function ReplaceDeviceModal({
         }
 
         // Filter devices by machine ID and active status
-        devices = allDevices.filter(device => 
-          device.machineId === machineId && 
-          device.status === 'Active'
+        devices = allDevices.filter(
+          (device) =>
+            device.machineId === machineId && device.status === "Active"
         );
       }
-      
-      console.log('Final filtered devices for replacement:', devices);
+
+      console.log("Final filtered devices for replacement:", devices);
       setAvailableDevices(devices);
-      
     } catch (error) {
-      console.error('Failed to fetch available devices:', error);
-      toast.error('Không thể tải danh sách thiết bị thay thế');
+      console.error("Failed to fetch available devices:", error);
+      toast.error("Không thể tải danh sách thiết bị thay thế");
     } finally {
       setIsLoadingDevices(false);
     }
-  };
+  }, [machineId]);
+
+  // Fetch available devices when modal opens
+  useEffect(() => {
+    if (isOpen && machineId) {
+      fetchAvailableDevices();
+    }
+  }, [isOpen, machineId, fetchAvailableDevices]);
 
   const handleSubmit = async () => {
     if (!selectedDeviceId) {
-      toast.error('Vui lòng chọn thiết bị thay thế');
+      toast.error("Vui lòng chọn thiết bị thay thế");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await onConfirm(selectedDeviceId, reason.trim() || 'Thay thế thiết bị', notes.trim() || undefined);
-      
+      await onConfirm(
+        selectedDeviceId,
+        reason.trim() || "Thay thế thiết bị",
+        notes.trim() || undefined
+      );
+
       // Reset form
-      setSelectedDeviceId('');
-      setReason('');
-      setNotes('');
-      
+      setSelectedDeviceId("");
+      setReason("");
+      setNotes("");
+
       onClose();
     } catch (error) {
-      console.error('Error replacing device:', error);
+      console.error("Error replacing device:", error);
       // Error handling is done in parent component
     } finally {
       setIsSubmitting(false);
@@ -122,12 +134,12 @@ export default function ReplaceDeviceModal({
 
   const handleClose = () => {
     if (isSubmitting) return;
-    
+
     // Reset form
-    setSelectedDeviceId('');
-    setReason('');
-    setNotes('');
-    
+    setSelectedDeviceId("");
+    setReason("");
+    setNotes("");
+
     onClose();
   };
 
@@ -136,14 +148,13 @@ export default function ReplaceDeviceModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Enhanced backdrop with blur */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
-      
+
       {/* Modal content */}
       <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-        
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -175,13 +186,15 @@ export default function ReplaceDeviceModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Chọn thiết bị thay thế *
             </label>
-            
+
             {/* Device List */}
             {isLoadingDevices ? (
               <div className="text-center py-8">
                 <div className="inline-flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-gray-500">Đang tải danh sách thiết bị...</span>
+                  <span className="text-gray-500">
+                    Đang tải danh sách thiết bị...
+                  </span>
                 </div>
               </div>
             ) : (
@@ -193,8 +206,8 @@ export default function ReplaceDeviceModal({
                         key={device.id}
                         className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 ${
                           selectedDeviceId === device.id
-                            ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500'
-                            : ''
+                            ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                            : ""
                         }`}
                         onClick={() => setSelectedDeviceId(device.id)}
                       >
@@ -211,7 +224,8 @@ export default function ReplaceDeviceModal({
                               {device.deviceName}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {device.deviceCode} • {device.serialNumber} • {device.model}
+                              {device.deviceCode} • {device.serialNumber} •{" "}
+                              {device.model}
                             </div>
                             <div className="text-xs text-green-600 dark:text-green-400 font-medium">
                               {device.status} • {device.manufacturer}
@@ -285,7 +299,7 @@ export default function ReplaceDeviceModal({
                 Đang thay thế...
               </div>
             ) : (
-              'Xác nhận thay thế'
+              "Xác nhận thay thế"
             )}
           </Button>
         </div>

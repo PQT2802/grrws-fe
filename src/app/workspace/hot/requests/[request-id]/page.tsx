@@ -101,7 +101,6 @@ const RequestDetailPage = () => {
     );
   }, [tasks]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchTasks = useCallback(async () => {
     try {
       const tasksData = await requestService.getTasksByRequestId(requestId);

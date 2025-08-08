@@ -55,7 +55,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const MAIN_ITEMS: SLIDEBAR_ITEM_TYPE[] = [
     {
       title: "Home",
-      url: `/workspace/`,
+      url: `/workspace/hot`,
       icon: House,
       items: [],
     },

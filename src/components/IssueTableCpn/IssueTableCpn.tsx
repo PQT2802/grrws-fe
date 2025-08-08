@@ -172,16 +172,19 @@ const IssueTableCpn = ({
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                 {selectedImages.map((imageUrl, index) => (
                   <div key={index} className="relative group">
-                    {/* Replace the Next.js Image with regular img for Firebase URLs */}
+                    {/* Optimized with Next.js Image */}
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-                      <img
+                      <Image
                         src={imageUrl}
                         alt={`Hình sự cố ${index + 1}`}
-                        className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        fill
+                        unoptimized
+                        className="object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        sizes="(max-width: 768px) 50vw, 33vw"
                         onClick={() => window.open(imageUrl, "_blank")}
                         onError={(e) => {
-                          // Handle error with placeholder
-                          e.currentTarget.src = "/placeholder-image.png";
+                          (e.currentTarget as HTMLImageElement).src =
+                            "/placeholder-image.png";
                           console.error(
                             `Failed to load Firebase image: ${imageUrl}`
                           );
@@ -360,16 +363,19 @@ const IssueTableCpn = ({
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             {selectedImages.map((imageUrl, index) => (
               <div key={index} className="relative group">
-                {/* Replace the Next.js Image with regular img for Firebase URLs */}
+                {/* Use Next.js Image for optimization */}
                 <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-                  <img
+                  <Image
                     src={imageUrl}
                     alt={`Hình sự cố ${index + 1}`}
-                    className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                    fill
+                    unoptimized
+                    className="object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                    sizes="(max-width: 768px) 50vw, 33vw"
                     onClick={() => window.open(imageUrl, "_blank")}
                     onError={(e) => {
-                      // Handle error with placeholder
-                      e.currentTarget.src = "/placeholder-image.png";
+                      (e.currentTarget as HTMLImageElement).src =
+                        "/placeholder-image.png";
                       console.error(
                         `Failed to load Firebase image: ${imageUrl}`
                       );

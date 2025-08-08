@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from "react";
+import { AlertCircle, CheckCircle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmDeviceAvailableModalProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ export default function ConfirmDeviceAvailableModal({
   onClose,
   onConfirm,
   requestTitle,
-  isLoading = false
+  isLoading = false,
 }: ConfirmDeviceAvailableModalProps) {
   const [isConfirming, setIsConfirming] = useState(false);
 
@@ -27,7 +27,7 @@ export default function ConfirmDeviceAvailableModal({
       await onConfirm();
       onClose();
     } catch (error) {
-      console.error('Error confirming device availability:', error);
+      console.error("Error confirming device availability:", error);
     } finally {
       setIsConfirming(false);
     }
@@ -74,8 +74,9 @@ export default function ConfirmDeviceAvailableModal({
                   Xác nhận thiết bị đã sẵn sàng
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Bạn có chắc chắn rằng thiết bị thay thế đã sẵn sàng và có thể tiến hành thay thế không?
-                  Hành động này sẽ chuyển trạng thái yêu cầu sang "Đang tiến hành".
+                  Bạn có chắc chắn rằng thiết bị thay thế đã sẵn sàng và có thể
+                  tiến hành thay thế không? Hành động này sẽ chuyển trạng thái
+                  yêu cầu sang &quot;Đang tiến hành&quot;.
                 </p>
               </div>
             </div>
@@ -89,8 +90,8 @@ export default function ConfirmDeviceAvailableModal({
                   Lưu ý quan trọng
                 </p>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Chỉ xác nhận khi thiết bị thay thế đã được kiểm tra và sẵn sàng để lắp đặt.
-                  Không thể hoàn tác hành động này.
+                  Chỉ xác nhận khi thiết bị thay thế đã được kiểm tra và sẵn
+                  sàng để lắp đặt. Không thể hoàn tác hành động này.
                 </p>
               </div>
             </div>
@@ -117,7 +118,7 @@ export default function ConfirmDeviceAvailableModal({
                 Đang xác nhận...
               </div>
             ) : (
-              'Xác nhận thiết bị sẵn sàng'
+              "Xác nhận thiết bị sẵn sàng"
             )}
           </Button>
         </div>

@@ -22,12 +22,12 @@ import { getTimeAgo } from "@/lib/utils";
 import Empty from "../Empty/Empty";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const NotificationBtn = () => {
   const { user } = useAuth();
   const router = useRouter();
-  
+
   const {
     notifications,
     unreadCount,
@@ -44,19 +44,20 @@ const NotificationBtn = () => {
   const [activeTab, setActiveTab] = useState<"unread" | "read">("unread");
   const [refreshing, setRefreshing] = useState(false);
 
-  const unreadNotifications = notifications.filter(n => !n.isRead);
-  const readNotifications = notifications.filter(n => n.isRead);
+  const unreadNotifications = notifications.filter((n) => !n.isRead);
+  const readNotifications = notifications.filter((n) => n.isRead);
 
   // Initialize notifications and SignalR connection
   useEffect(() => {
     if (user) {
       const token = localStorage.getItem("accessToken");
-      
+
       if (token) {
         getNotifications(0, 50);
         getUnreadCount();
-        
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+        const backendUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         connectToSignalR(token, backendUrl);
       }
     }
@@ -64,11 +65,18 @@ const NotificationBtn = () => {
     return () => {
       disconnectSignalR();
     };
-  }, [user]);
+    // Added all referenced functions to dependency array to satisfy exhaustive-deps
+  }, [
+    user,
+    getNotifications,
+    getUnreadCount,
+    connectToSignalR,
+    disconnectSignalR,
+  ]);
 
   const handleDropdownToggle = (newOpen: boolean) => {
     setOpen(newOpen);
-    
+
     if (newOpen && user) {
       const token = localStorage.getItem("accessToken");
       if (token) {
@@ -105,14 +113,16 @@ const NotificationBtn = () => {
     if (notification.data) {
       try {
         const data = JSON.parse(notification.data);
-        
-        if (notification.type === NotificationType.TaskCompleted || 
-            notification.type === NotificationType.MechanicTaskCompleted) {
+
+        if (
+          notification.type === NotificationType.TaskCompleted ||
+          notification.type === NotificationType.MechanicTaskCompleted
+        ) {
           if (data.TaskGroupId) {
             return `/workspace/hot/tasks/group/${data.TaskGroupId}`;
           }
         }
-        
+
         if (notification.type === NotificationType.RequestCreated) {
           if (data.RequestId) {
             return `/workspace/hot/requests/${data.RequestId}`;
@@ -210,10 +220,10 @@ const NotificationBtn = () => {
 
   // Add this function to mark all unread notifications as read
   const handleMarkAllAsRead = async () => {
-    const unreadIds = unreadNotifications.map(n => n.id);
+    const unreadIds = unreadNotifications.map((n) => n.id);
     if (unreadIds.length === 0) return;
     try {
-      await Promise.all(unreadIds.map(id => markAsRead(id)));
+      await Promise.all(unreadIds.map((id) => markAsRead(id)));
       await getUnreadCount();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
@@ -273,21 +283,36 @@ const NotificationBtn = () => {
           </div>
 
           <div className="p-3">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "unread" | "read")}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) =>
+                setActiveTab(value as "unread" | "read")
+              }
+            >
               <TabsList className="grid w-full grid-cols-2 mb-2">
                 <TabsTrigger value="unread" className="relative">
                   <span>Chưa đọc</span>
                   {unreadNotifications.length > 0 && (
-                    <Badge variant="destructive" className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
-                      {unreadNotifications.length > 99 ? "99+" : unreadNotifications.length}
+                    <Badge
+                      variant="destructive"
+                      className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                    >
+                      {unreadNotifications.length > 99
+                        ? "99+"
+                        : unreadNotifications.length}
                     </Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="read" className="relative">
                   <span>Đã đọc</span>
                   {readNotifications.length > 0 && (
-                    <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center">
-                      {readNotifications.length > 99 ? "99+" : readNotifications.length}
+                    <Badge
+                      variant="secondary"
+                      className="ml-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                    >
+                      {readNotifications.length > 99
+                        ? "99+"
+                        : readNotifications.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -316,12 +341,14 @@ const NotificationBtn = () => {
                       <div className="rounded-full w-12 h-12 bg-red-100 flex items-center justify-center mx-auto mb-3">
                         <Bell className="h-6 w-6 text-red-500" />
                       </div>
-                      <p className="text-sm text-red-500 font-medium">Lỗi khi tải thông báo</p>
+                      <p className="text-sm text-red-500 font-medium">
+                        Lỗi khi tải thông báo
+                      </p>
                       <p className="text-xs text-red-400 mt-1">{error}</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-3" 
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
                         onClick={handleRefresh}
                       >
                         Thử lại
@@ -337,61 +364,75 @@ const NotificationBtn = () => {
 
                   {!loading && unreadNotifications.length > 0 && (
                     <div className="divide-y">
-                      {unreadNotifications.slice(0, 10).map((notification: Notification) => (
-                        <div
-                          key={notification.id}
-                          className="p-3.5 hover:bg-accent/40 transition-colors cursor-pointer"
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-10 w-10 rounded-full flex-shrink-0 border-2 border-primary/10">
-                              <AvatarFallback className="rounded-full text-white text-[0.9rem] bg-primary">
-                                {notification.senderName ? 
-                                  notification.senderName.charAt(0).toUpperCase() : 
-                                  <User className="h-4 w-4" />
-                                }
-                              </AvatarFallback>
-                            </Avatar>
+                      {unreadNotifications
+                        .slice(0, 10)
+                        .map((notification: Notification) => (
+                          <div
+                            key={notification.id}
+                            className="p-3.5 hover:bg-accent/40 transition-colors cursor-pointer"
+                            onClick={() =>
+                              handleNotificationClick(notification)
+                            }
+                          >
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-10 w-10 rounded-full flex-shrink-0 border-2 border-primary/10">
+                                <AvatarFallback className="rounded-full text-white text-[0.9rem] bg-primary">
+                                  {notification.senderName ? (
+                                    notification.senderName
+                                      .charAt(0)
+                                      .toUpperCase()
+                                  ) : (
+                                    <User className="h-4 w-4" />
+                                  )}
+                                </AvatarFallback>
+                              </Avatar>
 
-                            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                              <div className="flex items-start justify-between">
-                                <h4 className="text-sm font-medium text-foreground line-clamp-2 pr-4 flex-1">
-                                  {getNotificationTitle(notification)}
-                                </h4>
-                                <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0 mt-1.5"></div>
-                              </div>
-                              
-                              {notification.body && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {notification.body}
-                                </p>
-                              )}
-                              
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] font-medium text-muted-foreground">
-                                  {notification.senderName}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground/60">•</span>
-                                <span className="text-[11px] text-muted-foreground/60">
-                                  {notification.createdDate ? 
-                                    getTimeAgo(notification.createdDate) : 
-                                    "Vừa xong"
-                                  }
-                                </span>
-                                
-                                {notification.priority && notification.priority > 5 && (
-                                  <>
-                                    <span className="text-[11px] text-muted-foreground/60">•</span>
-                                    <Badge variant="destructive" className="text-[10px] px-1 py-0 h-4">
-                                      Quan trọng
-                                    </Badge>
-                                  </>
+                              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                <div className="flex items-start justify-between">
+                                  <h4 className="text-sm font-medium text-foreground line-clamp-2 pr-4 flex-1">
+                                    {getNotificationTitle(notification)}
+                                  </h4>
+                                  <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0 mt-1.5"></div>
+                                </div>
+
+                                {notification.body && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2">
+                                    {notification.body}
+                                  </p>
                                 )}
+
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] font-medium text-muted-foreground">
+                                    {notification.senderName}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground/60">
+                                    •
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground/60">
+                                    {notification.createdDate
+                                      ? getTimeAgo(notification.createdDate)
+                                      : "Vừa xong"}
+                                  </span>
+
+                                  {notification.priority &&
+                                    notification.priority > 5 && (
+                                      <>
+                                        <span className="text-[11px] text-muted-foreground/60">
+                                          •
+                                        </span>
+                                        <Badge
+                                          variant="destructive"
+                                          className="text-[10px] px-1 py-0 h-4"
+                                        >
+                                          Quan trọng
+                                        </Badge>
+                                      </>
+                                    )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </ScrollArea>
@@ -420,12 +461,14 @@ const NotificationBtn = () => {
                       <div className="rounded-full w-12 h-12 bg-red-100 flex items-center justify-center mx-auto mb-3">
                         <Bell className="h-6 w-6 text-red-500" />
                       </div>
-                      <p className="text-sm text-red-500 font-medium">Lỗi khi tải thông báo</p>
+                      <p className="text-sm text-red-500 font-medium">
+                        Lỗi khi tải thông báo
+                      </p>
                       <p className="text-xs text-red-400 mt-1">{error}</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-3" 
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
                         onClick={handleRefresh}
                       >
                         Thử lại
@@ -441,49 +484,57 @@ const NotificationBtn = () => {
 
                   {!loading && readNotifications.length > 0 && (
                     <div className="divide-y">
-                      {readNotifications.slice(0, 10).map((notification: Notification) => (
-                        <div
-                          key={notification.id}
-                          className="p-3.5 hover:bg-accent/40 transition-colors cursor-pointer"
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Avatar className="h-10 w-10 rounded-full flex-shrink-0 border border-muted">
-                              <AvatarFallback className="rounded-full text-white text-[0.9rem] bg-muted-foreground/50">
-                                {notification.senderName ? 
-                                  notification.senderName.charAt(0).toUpperCase() : 
-                                  <User className="h-4 w-4" />
-                                }
-                              </AvatarFallback>
-                            </Avatar>
+                      {readNotifications
+                        .slice(0, 10)
+                        .map((notification: Notification) => (
+                          <div
+                            key={notification.id}
+                            className="p-3.5 hover:bg-accent/40 transition-colors cursor-pointer"
+                            onClick={() =>
+                              handleNotificationClick(notification)
+                            }
+                          >
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-10 w-10 rounded-full flex-shrink-0 border border-muted">
+                                <AvatarFallback className="rounded-full text-white text-[0.9rem] bg-muted-foreground/50">
+                                  {notification.senderName ? (
+                                    notification.senderName
+                                      .charAt(0)
+                                      .toUpperCase()
+                                  ) : (
+                                    <User className="h-4 w-4" />
+                                  )}
+                                </AvatarFallback>
+                              </Avatar>
 
-                            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                              <h4 className="text-sm font-medium text-muted-foreground line-clamp-2">
-                                {getNotificationTitle(notification)}
-                              </h4>
-                              
-                              {notification.body && (
-                                <p className="text-xs text-muted-foreground/70 line-clamp-2">
-                                  {notification.body}
-                                </p>
-                              )}
-                              
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[11px] text-muted-foreground/70">
-                                  {notification.senderName}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground/50">•</span>
-                                <span className="text-[11px] text-muted-foreground/50">
-                                  {notification.createdDate ? 
-                                    getTimeAgo(notification.createdDate) : 
-                                    "Vừa xong"
-                                  }
-                                </span>
+                              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-muted-foreground line-clamp-2">
+                                  {getNotificationTitle(notification)}
+                                </h4>
+
+                                {notification.body && (
+                                  <p className="text-xs text-muted-foreground/70 line-clamp-2">
+                                    {notification.body}
+                                  </p>
+                                )}
+
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] text-muted-foreground/70">
+                                    {notification.senderName}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground/50">
+                                    •
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground/50">
+                                    {notification.createdDate
+                                      ? getTimeAgo(notification.createdDate)
+                                      : "Vừa xong"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </ScrollArea>
@@ -494,7 +545,7 @@ const NotificationBtn = () => {
           <DropdownMenuSeparator className="m-0" />
 
           <DropdownMenuGroup className="py-3 bg-muted/20">
-            <Link 
+            <Link
               href={`/notifications?tab=${activeTab}`}
               className="block text-center"
               onClick={() => setOpen(false)}

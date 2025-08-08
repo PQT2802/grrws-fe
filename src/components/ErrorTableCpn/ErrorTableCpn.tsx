@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   ColumnDef,
   useReactTable,
@@ -62,7 +62,7 @@ const ErrorTableCpn = ({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [openCreateTaskModal, setOpenCreateTaskModal] = useState(false);
 
-  const fetchErrors = async () => {
+  const fetchErrors = useCallback(async () => {
     try {
       setLoading(true);
       const data = await requestService.getErrorsByRequestId(requestId);
@@ -72,13 +72,13 @@ const ErrorTableCpn = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestId]);
 
   useEffect(() => {
     if (requestId) {
       fetchErrors();
     }
-  }, [requestId, refreshTrigger]);
+  }, [requestId, refreshTrigger, fetchErrors]);
 
   const filteredData = useMemo(() => {
     return errors.filter((error) => {

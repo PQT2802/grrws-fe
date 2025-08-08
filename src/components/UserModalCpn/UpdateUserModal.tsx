@@ -184,7 +184,7 @@ export const UpdateUserModal = ({
       controller.abort();
       document.body.style.pointerEvents = "";
     };
-  }, [open, userId]);
+  }, [open, userId, onOpenChange]);
 
   const handleBlur = (field: string) => {
     setTouched({ ...touched, [field]: true });

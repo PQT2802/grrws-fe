@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PartCard from "./components/PartCard";
 import FilterBar from "./components/FilterBar";
@@ -36,33 +36,37 @@ export default function InventoryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  
+
   // State for UI filters (client-side)
   const [search, setSearch] = useState<string>("");
   const [machineFilter, setMachineFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<string>("asc");
-  
+
   // State for modal
   const [selectedPart, setSelectedPart] = useState<PartType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
-  
+
   // State for data
   const [inventory, setInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
-  const [fullInventory, setFullInventory] = useState<SPAREPART_INVENTORY_ITEM[]>([]);
+  const [fullInventory, setFullInventory] = useState<
+    SPAREPART_INVENTORY_ITEM[]
+  >([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pagination state (server-side)
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalCount, setTotalCount] = useState<number>(0);
 
   // State for handling direct part access from notifications
-  const [directPartId, setDirectPartId] = useState<string | undefined>(undefined);
+  const [directPartId, setDirectPartId] = useState<string | undefined>(
+    undefined
+  );
 
   // Special filter states for Low Stock and Out of Stock
   const [specialFilter, setSpecialFilter] = useState<string | null>(null);
@@ -74,11 +78,11 @@ export default function InventoryPage() {
 
   // Initialize pagination from URL params
   useEffect(() => {
-    const page = searchParams.get('page');
-    const size = searchParams.get('pageSize');
-    const category = searchParams.get('category');
-    const filter = searchParams.get('filter');
-    
+    const page = searchParams.get("page");
+    const size = searchParams.get("pageSize");
+    const category = searchParams.get("category");
+    const filter = searchParams.get("filter");
+
     if (page) {
       setPageIndex(parseInt(page) - 1);
     }
@@ -88,12 +92,12 @@ export default function InventoryPage() {
     if (category) {
       setCategoryFilter(category);
     }
-    if (filter === 'lowstock') {
-      setSpecialFilter('lowstock');
+    if (filter === "lowstock") {
+      setSpecialFilter("lowstock");
       setCategoryFilter("All");
     }
-    if (filter === 'outofstock') {
-      setSpecialFilter('outofstock');
+    if (filter === "outofstock") {
+      setSpecialFilter("outofstock");
       setCategoryFilter("All");
     }
   }, [searchParams]);
@@ -101,62 +105,76 @@ export default function InventoryPage() {
   // Check for pending modal opening from sessionStorage
   useEffect(() => {
     if (initialDataLoaded) {
-      const modalData = sessionStorage.getItem('openPartModal');
+      const modalData = sessionStorage.getItem("openPartModal");
       if (modalData) {
         try {
           const { partId, timestamp } = JSON.parse(modalData);
           if (Date.now() - timestamp < 30000) {
-            console.log('Opening modal for part from sessionStorage:', partId);
+            console.log("Opening modal for part from sessionStorage:", partId);
             setDirectPartId(partId);
             setIsModalOpen(true);
-            sessionStorage.removeItem('openPartModal');
+            sessionStorage.removeItem("openPartModal");
           } else {
-            sessionStorage.removeItem('openPartModal');
+            sessionStorage.removeItem("openPartModal");
           }
         } catch (error) {
-          console.error('Error parsing modal data from sessionStorage:', error);
-          sessionStorage.removeItem('openPartModal');
+          console.error("Error parsing modal data from sessionStorage:", error);
+          sessionStorage.removeItem("openPartModal");
         }
       }
     }
   }, [initialDataLoaded]);
 
   // Update URL when pagination or category changes
-  const updateURL = (newPageIndex: number, newPageSize: number, newCategory?: string, newSpecialFilter?: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', (newPageIndex + 1).toString());
-    params.set('pageSize', newPageSize.toString());
-    
-    if (newCategory !== undefined) {
-      if (newCategory === "All") {
-        params.delete('category');
-      } else {
-        params.set('category', newCategory);
-      }
-    }
+  const updateURL = useCallback(
+    (
+      newPageIndex: number,
+      newPageSize: number,
+      newCategory?: string,
+      newSpecialFilter?: string | null
+    ) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", (newPageIndex + 1).toString());
+      params.set("pageSize", newPageSize.toString());
 
-    // Handle special filters
-    if (newSpecialFilter) {
-      params.set('filter', newSpecialFilter);
-    } else {
-      params.delete('filter');
-    }
-    
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
+      if (newCategory !== undefined) {
+        if (newCategory === "All") {
+          params.delete("category");
+        } else {
+          params.set("category", newCategory);
+        }
+      }
+
+      // Handle special filters
+      if (newSpecialFilter) {
+        params.set("filter", newSpecialFilter);
+      } else {
+        params.delete("filter");
+      }
+
+      router.push(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
   // Fetch full inventory for summary calculations
-  const fetchFullInventory = async () => {
+  const fetchFullInventory = useCallback(async () => {
     try {
-      console.log('🔍 Fetching full inventory for summary calculations');
+      console.log("🔍 Fetching full inventory for summary calculations");
       const response = await apiClient.sparePart.getInventory(1, 1000);
-      
+
       let inventoryData: SPAREPART_INVENTORY_ITEM[] = [];
-      
-      if (response && typeof response === 'object') {
-        if ((response as any).data?.data && Array.isArray((response as any).data.data)) {
+
+      if (response && typeof response === "object") {
+        if (
+          (response as any).data?.data &&
+          Array.isArray((response as any).data.data)
+        ) {
           inventoryData = (response as any).data.data;
-        } else if ((response as any).data && Array.isArray((response as any).data)) {
+        } else if (
+          (response as any).data &&
+          Array.isArray((response as any).data)
+        ) {
           inventoryData = (response as any).data;
         } else if (Array.isArray(response)) {
           inventoryData = response;
@@ -168,41 +186,57 @@ export default function InventoryPage() {
     } catch (error) {
       console.error("❌ Error fetching full inventory:", error);
     }
-  };
+  }, []);
 
   // Fetch inventory data for current page
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const apiPageNumber = pageIndex + 1;
-      
-      console.log(`🔍 Fetching inventory: page ${apiPageNumber}, size ${pageSize}`);
-      
-      const response = await apiClient.sparePart.getInventory(apiPageNumber, pageSize);
+
+      console.log(
+        `🔍 Fetching inventory: page ${apiPageNumber}, size ${pageSize}`
+      );
+
+      const response = await apiClient.sparePart.getInventory(
+        apiPageNumber,
+        pageSize
+      );
       console.log("🔍 API Client Response:", response);
 
       let inventoryData: SPAREPART_INVENTORY_ITEM[] = [];
       let totalCount = 0;
 
-      if (response && typeof response === 'object') {
-        if ((response as any).data?.data && Array.isArray((response as any).data.data)) {
+      if (response && typeof response === "object") {
+        if (
+          (response as any).data?.data &&
+          Array.isArray((response as any).data.data)
+        ) {
           inventoryData = (response as any).data.data;
           totalCount = (response as any).data.totalCount || 0;
-        } else if ((response as any).data && Array.isArray((response as any).data)) {
+        } else if (
+          (response as any).data &&
+          Array.isArray((response as any).data)
+        ) {
           inventoryData = (response as any).data;
           totalCount = (response as any).totalCount || inventoryData.length;
         } else if (Array.isArray(response)) {
           inventoryData = response;
           totalCount = inventoryData.length;
-        } else if ((response as any).items && Array.isArray((response as any).items)) {
+        } else if (
+          (response as any).items &&
+          Array.isArray((response as any).items)
+        ) {
           inventoryData = (response as any).items;
           totalCount = (response as any).totalCount || inventoryData.length;
         }
       }
 
-      console.log(`✅ Processed inventory: ${inventoryData.length} items, total: ${totalCount}`);
-      
+      console.log(
+        `✅ Processed inventory: ${inventoryData.length} items, total: ${totalCount}`
+      );
+
       setInventory(inventoryData);
       setTotalCount(totalCount);
       setInitialDataLoaded(true);
@@ -213,18 +247,25 @@ export default function InventoryPage() {
         updateURL(0, pageSize);
         return;
       }
-
     } catch (error) {
       console.error("❌ Error fetching inventory:", error);
-      setError(`Không thể tải danh sách linh kiện: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
-      toast.error(`Không thể tải danh sách linh kiện: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
+      setError(
+        `Không thể tải danh sách linh kiện: ${
+          error instanceof Error ? error.message : "Lỗi không xác định"
+        }`
+      );
+      toast.error(
+        `Không thể tải danh sách linh kiện: ${
+          error instanceof Error ? error.message : "Lỗi không xác định"
+        }`
+      );
       setInventory([]);
       setTotalCount(0);
       setInitialDataLoaded(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageIndex, pageSize, updateURL]);
 
   // Fetch data when pagination changes
   useEffect(() => {
@@ -232,7 +273,7 @@ export default function InventoryPage() {
     if (!fullInventory.length) {
       fetchFullInventory();
     }
-  }, [pageIndex, pageSize]);
+  }, [fetchInventory, fetchFullInventory, fullInventory.length]);
 
   // Calculate pagination values
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -260,7 +301,7 @@ export default function InventoryPage() {
   };
 
   // Handle special filter clicks (Low Stock, Out of Stock)
-  const handleSpecialFilterClick = (filterType: 'lowstock' | 'outofstock') => {
+  const handleSpecialFilterClick = (filterType: "lowstock" | "outofstock") => {
     setSpecialFilter(filterType);
     setCategoryFilter("All");
     setPageIndex(0);
@@ -295,9 +336,9 @@ export default function InventoryPage() {
       supplier: item.supplierName || "",
       supplierId: item.supplierId || "",
       unitPrice: item.unitPrice || 0,
-      expectedAvailabilityDate: item.expectedAvailabilityDate 
-        ? new Date(item.expectedAvailabilityDate).toISOString().split('T')[0]
-        : ""
+      expectedAvailabilityDate: item.expectedAvailabilityDate
+        ? new Date(item.expectedAvailabilityDate).toISOString().split("T")[0]
+        : "",
     }));
 
     let filteredParts = convertedParts;
@@ -305,43 +346,50 @@ export default function InventoryPage() {
     // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredParts = filteredParts.filter(part =>
-        part.name.toLowerCase().includes(searchLower) ||
-        part.description.toLowerCase().includes(searchLower) ||
-        part.category.toLowerCase().includes(searchLower)
+      filteredParts = filteredParts.filter(
+        (part) =>
+          part.name.toLowerCase().includes(searchLower) ||
+          part.description.toLowerCase().includes(searchLower) ||
+          part.category.toLowerCase().includes(searchLower)
       );
     }
 
     // Apply machine filter
     if (machineFilter) {
-      filteredParts = filteredParts.filter(part => part.machineType === machineFilter);
+      filteredParts = filteredParts.filter(
+        (part) => part.machineType === machineFilter
+      );
     }
 
     // Apply category filter
     if (categoryFilter && categoryFilter !== "All") {
-      filteredParts = filteredParts.filter(part => part.category === categoryFilter);
+      filteredParts = filteredParts.filter(
+        (part) => part.category === categoryFilter
+      );
     }
 
     // Apply special filters
-    if (specialFilter === 'lowstock') {
-      filteredParts = filteredParts.filter(part => part.quantity > 0 && part.quantity < 10);
-    } else if (specialFilter === 'outofstock') {
-      filteredParts = filteredParts.filter(part => part.quantity === 0);
+    if (specialFilter === "lowstock") {
+      filteredParts = filteredParts.filter(
+        (part) => part.quantity > 0 && part.quantity < 10
+      );
+    } else if (specialFilter === "outofstock") {
+      filteredParts = filteredParts.filter((part) => part.quantity === 0);
     }
 
     // Apply sorting
     filteredParts.sort((a, b) => {
       let aValue, bValue;
-      
-      if (sortBy === 'quantity') {
+
+      if (sortBy === "quantity") {
         aValue = a.quantity;
         bValue = b.quantity;
       } else {
         aValue = a.name.toLowerCase();
         bValue = b.name.toLowerCase();
       }
-      
-      if (sortDirection === 'asc') {
+
+      if (sortDirection === "asc") {
         return aValue > bValue ? 1 : -1;
       } else {
         return aValue < bValue ? 1 : -1;
@@ -349,16 +397,28 @@ export default function InventoryPage() {
     });
 
     return filteredParts;
-  }, [inventory, search, machineFilter, categoryFilter, sortBy, sortDirection, specialFilter]);
+  }, [
+    inventory,
+    search,
+    machineFilter,
+    categoryFilter,
+    sortBy,
+    sortDirection,
+    specialFilter,
+  ]);
 
   // Calculate summary statistics from full inventory
   const totalParts = fullInventory?.length || 0;
   const totalInventory = useMemo(
-    () => fullInventory?.reduce((sum, item) => sum + item.stockQuantity, 0) || 0,
+    () =>
+      fullInventory?.reduce((sum, item) => sum + item.stockQuantity, 0) || 0,
     [fullInventory]
   );
   const lowStockCount = useMemo(
-    () => fullInventory?.filter((item) => item.stockQuantity > 0 && item.stockQuantity < 10).length || 0,
+    () =>
+      fullInventory?.filter(
+        (item) => item.stockQuantity > 0 && item.stockQuantity < 10
+      ).length || 0,
     [fullInventory]
   );
   const outOfStockCount = useMemo(
@@ -380,8 +440,10 @@ export default function InventoryPage() {
         console.log(`Refreshing selected part: ${selectedPart.id}`);
         await fetchInventory();
         await fetchFullInventory();
-        
-        const updatedPart = processedInventory.find(p => p.id === selectedPart.id);
+
+        const updatedPart = processedInventory.find(
+          (p) => p.id === selectedPart.id
+        );
         if (updatedPart) {
           console.log("Updated part found:", updatedPart);
           setSelectedPart(updatedPart);
@@ -423,12 +485,12 @@ export default function InventoryPage() {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     console.log(`📂 Importing spare parts file: ${file.name}`);
-    
+
     await apiClient.sparePart.importSparePart(formData);
-    
+
     // Refresh both inventories
     await fetchInventory();
     await fetchFullInventory();
@@ -437,9 +499,7 @@ export default function InventoryPage() {
   const PaginationSection = () => (
     <div className="flex flex-col sm:flex-row items-center sm:justify-end gap-4 mt-6">
       <div className="flex items-center gap-3 w-full sm:w-auto order-2 sm:order-1 justify-center sm:justify-start">
-        <span className="text-sm text-muted-foreground">
-          Số mục mỗi trang
-        </span>
+        <span className="text-sm text-muted-foreground">Số mục mỗi trang</span>
         <Select
           value={pageSize.toString()}
           onValueChange={(value: string) => handlePageSizeChange(Number(value))}
@@ -467,8 +527,8 @@ export default function InventoryPage() {
               <PaginationPrevious
                 onClick={() => handlePageChange(currentPage - 1)}
                 className={
-                  currentPage <= 1 
-                    ? "pointer-events-none opacity-50" 
+                  currentPage <= 1
+                    ? "pointer-events-none opacity-50"
                     : "cursor-pointer"
                 }
               />
@@ -503,8 +563,8 @@ export default function InventoryPage() {
               <PaginationNext
                 onClick={() => handlePageChange(currentPage + 1)}
                 className={
-                  currentPage >= totalPages 
-                    ? "pointer-events-none opacity-50" 
+                  currentPage >= totalPages
+                    ? "pointer-events-none opacity-50"
                     : "cursor-pointer"
                 }
               />
@@ -542,7 +602,9 @@ export default function InventoryPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <PackageSearch className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              <h1 className="text-xl font-bold text-foreground">Kho Linh Kiện</h1>
+              <h1 className="text-xl font-bold text-foreground">
+                Kho Linh Kiện
+              </h1>
             </div>
             {/* ✅ Show Import button for both Admin and Stock Keeper */}
             {hasFullAccess && (
@@ -555,7 +617,7 @@ export default function InventoryPage() {
               </Button>
             )}
           </div>
-          
+
           {/* Admin-style summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="p-4 rounded-lg border transition-colors bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
@@ -567,7 +629,7 @@ export default function InventoryPage() {
                 <Package className="w-8 h-8 opacity-75" />
               </div>
             </div>
-            
+
             <div className="p-4 rounded-lg border transition-colors bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800">
               <div className="flex items-center justify-between">
                 <div>
@@ -580,11 +642,11 @@ export default function InventoryPage() {
 
             {/* Clickable Low Stock card */}
             <button
-              onClick={() => handleSpecialFilterClick('lowstock')}
+              onClick={() => handleSpecialFilterClick("lowstock")}
               className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${
-                specialFilter === 'lowstock' 
-                  ? 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700' 
-                  : 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800'
+                specialFilter === "lowstock"
+                  ? "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700"
+                  : "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -598,11 +660,11 @@ export default function InventoryPage() {
 
             {/* Clickable Out of Stock card */}
             <button
-              onClick={() => handleSpecialFilterClick('outofstock')}
+              onClick={() => handleSpecialFilterClick("outofstock")}
               className={`p-4 rounded-lg border transition-colors cursor-pointer text-left w-full block appearance-none bg-transparent outline-none focus:outline-none hover:shadow-md active:scale-95 ${
-                specialFilter === 'outofstock' 
-                  ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700' 
-                  : 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 dark:border-red-800'
+                specialFilter === "outofstock"
+                  ? "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700"
+                  : "bg-red-50 hover:bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 dark:border-red-800"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -645,21 +707,23 @@ export default function InventoryPage() {
               {/* Parts Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                 {processedInventory.map((part) => (
-                  <PartCard 
-                    key={part.id} 
-                    part={part} 
+                  <PartCard
+                    key={part.id}
+                    part={part}
                     onClick={handlePartClick}
                   />
                 ))}
               </div>
-              
+
               {/* Pagination */}
               <PaginationSection />
             </>
           ) : totalCount > 0 ? (
             <div className="text-center py-8">
               <PackageSearch className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">Không tìm thấy linh kiện phù hợp với bộ lọc.</p>
+              <p className="text-muted-foreground">
+                Không tìm thấy linh kiện phù hợp với bộ lọc.
+              </p>
               <Button
                 variant="outline"
                 className="mt-2"

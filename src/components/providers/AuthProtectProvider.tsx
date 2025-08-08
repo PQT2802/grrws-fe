@@ -1,22 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useCallback } from "react";
 import { AuthContext } from "./AuthProvider";
 import Loading from "@/components/Loading/Loading";
-import router from "next/router";
+
+interface AuthContextType {
+  user: any; // Replace 'any' with a more specific type if available
+  loading: boolean;
+  logout: () => void;
+}
 
 interface PropType {
   children: React.ReactNode;
 }
 
-const AuthProtectProvider = (props: PropType) => {
-  const { children } = props;
+const AuthProtectProvider = ({ children }: PropType) => {
   const router = useRouter();
-  const { user, loading, logout }: any = useContext(AuthContext);
+  const { user, loading, logout } = useContext(AuthContext) as AuthContextType;
 
-  // Check token expiration
-  const checkTokenExpiration = () => {
+  // Check token expiration, memoized
+  const checkTokenExpiration = useCallback(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
       try {
@@ -36,8 +40,9 @@ const AuthProtectProvider = (props: PropType) => {
       }
     }
     return false;
-  };
+  }, [logout]);
 
+  // Check token on initial load
   useEffect(() => {
     if (!loading) {
       const isTokenExpired = checkTokenExpiration();
@@ -46,8 +51,7 @@ const AuthProtectProvider = (props: PropType) => {
         router.push("/");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, user, router, checkTokenExpiration]);
 
   // Set up interval to check token expiration periodically
   useEffect(() => {
@@ -58,7 +62,7 @@ const AuthProtectProvider = (props: PropType) => {
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [user, router]);
+  }, [user, router, checkTokenExpiration]);
 
   if (loading) {
     return (

@@ -1,6 +1,12 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -208,8 +214,8 @@ const CreateInstallUninstallTaskCpn = ({
     }
   };
 
-  // ✅ Fetch task groups
-  const fetchTaskGroups = async () => {
+  // ✅ Fetch task groups (wrapped in useCallback to stabilize reference)
+  const fetchTaskGroups = useCallback(async () => {
     try {
       setLoadingTaskGroups(true);
       const response: TASK_GROUP_RESPONSE = await apiClient.task.getTaskGroups(
@@ -226,7 +232,7 @@ const CreateInstallUninstallTaskCpn = ({
     } finally {
       setLoadingTaskGroups(false);
     }
-  };
+  }, [requestId]);
 
   // ✅ Effect to fetch data when modal opens
   useEffect(() => {
@@ -246,7 +252,7 @@ const CreateInstallUninstallTaskCpn = ({
       setStartDate(new Date());
       setCanProceed(false);
     }
-  }, [open]);
+  }, [fetchTaskGroups, open]);
 
   // ✅ Check if current step can proceed
   useEffect(() => {

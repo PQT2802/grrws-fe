@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,14 +48,17 @@ import {
   Wrench,
   Archive,
   Package,
-  Settings
+  Settings,
 } from "lucide-react";
 import { REQUEST_ITEM } from "@/types/dashboard.type";
 import { apiClient } from "@/lib/api-client";
-import { translateTaskStatus, translateTaskPriority } from "@/utils/textTypeTask";
+import {
+  translateTaskStatus,
+  translateTaskPriority,
+} from "@/utils/textTypeTask";
 import RequestDetailModal from "./RequestDetailModal";
 
-type ReportTabType = 'all' | 'repair' | 'warranty';
+type ReportTabType = "all" | "repair" | "warranty";
 
 interface RequestReportsAdminProps {
   activeTab: ReportTabType;
@@ -68,19 +71,24 @@ interface RequestWithTasks extends REQUEST_ITEM {
   createdByName?: string; // Add field for creator name
 }
 
-export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refreshTrigger }: RequestReportsAdminProps) {
+export default function RequestReportsAdmin({
+  activeTab,
+  onRequestsUpdate,
+  refreshTrigger,
+}: RequestReportsAdminProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<RequestWithTasks[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<RequestWithTasks | null>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<RequestWithTasks | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     pageSize: 10,
     totalItems: 0,
-    totalPages: 1
+    totalPages: 1,
   });
 
   // Page size options
@@ -90,101 +98,113 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
   const fetchCreatorName = async (userId: string): Promise<string> => {
     try {
       const userInfo = await apiClient.user.getUserById(userId);
-      return userInfo.fullName || userInfo.name || 'Unknown User';
+      return userInfo.fullName || userInfo.name || "Unknown User";
     } catch (error) {
       console.error(`Error fetching user info for ID ${userId}:`, error);
-      return 'Unknown User';
+      return "Unknown User";
     }
   };
 
   // Fetch requests from API
-  const fetchRequests = async (page: number = 1, newPageSize?: number) => {
-    setIsLoading(true);
-    try {
-      const currentPageSize = newPageSize || pagination.pageSize;
-      console.log(`Fetching requests for page ${page}, size ${currentPageSize}`);
-      
-      const response = await apiClient.dashboard.getAllRequests(page, currentPageSize);
-      console.log("API Response:", response);
+  const fetchRequests = useCallback(
+    async (page: number = 1, newPageSize?: number) => {
+      setIsLoading(true);
+      try {
+        const currentPageSize = newPageSize || pagination.pageSize;
+        console.log(
+          `Fetching requests for page ${page}, size ${currentPageSize}`
+        );
 
-      // Handle different possible response structures
-      let requestsData: REQUEST_ITEM[] = [];
-      
-      if (response?.data?.data && Array.isArray(response.data.data)) {
-        // Structure: { data: { data: REQUEST_ITEM[] } }
-        requestsData = response.data.data;
-      } else if (response?.data && Array.isArray(response.data)) {
-        // Structure: { data: REQUEST_ITEM[] }
-        requestsData = response.data;
-      } else if (Array.isArray(response)) {
-        // Structure: REQUEST_ITEM[]
-        requestsData = response;
-      } else {
-        console.error("Unexpected response structure:", response);
-        throw new Error("Invalid response structure");
-      }
+        const response = await apiClient.dashboard.getAllRequests(
+          page,
+          currentPageSize
+        );
+        console.log("API Response:", response);
 
-      // Filter requests that have tasks and fetch their tasks + creator names
-      const requestsWithTasks = [];
-      for (const request of requestsData) {
-        try {
-          const tasks = await apiClient.request.getTaskOfRequest(request.id);
-          if (tasks && tasks.length > 0) {
-            // Fetch creator name
-            const createdByName = await fetchCreatorName(request.createdBy);
-            
-            requestsWithTasks.push({
-              ...request,
-              tasks: tasks,
-              createdByName: createdByName
-            });
-          }
-        } catch (error) {
-          console.error(`Error fetching tasks for request ${request.id}:`, error);
-          // Continue with next request
+        // Handle different possible response structures
+        let requestsData: REQUEST_ITEM[] = [];
+
+        if (response?.data?.data && Array.isArray(response.data.data)) {
+          // Structure: { data: { data: REQUEST_ITEM[] } }
+          requestsData = response.data.data;
+        } else if (response?.data && Array.isArray(response.data)) {
+          // Structure: { data: REQUEST_ITEM[] }
+          requestsData = response.data;
+        } else if (Array.isArray(response)) {
+          // Structure: REQUEST_ITEM[]
+          requestsData = response;
+        } else {
+          console.error("Unexpected response structure:", response);
+          throw new Error("Invalid response structure");
         }
-      }
 
-      console.log(`Found ${requestsWithTasks.length} requests with tasks`);
-      setRequests(requestsWithTasks);
-      
-      // Update pagination based on the response structure
-      const totalCount = response?.data?.totalCount || requestsWithTasks.length;
-      const pageNumber = response?.data?.pageNumber || page;
-      
-      setPagination({
-        currentPage: pageNumber,
-        pageSize: currentPageSize,
-        totalItems: requestsWithTasks.length, // Use filtered count
-        totalPages: Math.ceil(requestsWithTasks.length / currentPageSize)
-      });
+        // Filter requests that have tasks and fetch their tasks + creator names
+        const requestsWithTasks = [];
+        for (const request of requestsData) {
+          try {
+            const tasks = await apiClient.request.getTaskOfRequest(request.id);
+            if (tasks && tasks.length > 0) {
+              // Fetch creator name
+              const createdByName = await fetchCreatorName(request.createdBy);
 
-      // Update parent component with all requests for counting
-      if (onRequestsUpdate) {
-        onRequestsUpdate(requestsWithTasks);
+              requestsWithTasks.push({
+                ...request,
+                tasks: tasks,
+                createdByName: createdByName,
+              });
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching tasks for request ${request.id}:`,
+              error
+            );
+            // Continue with next request
+          }
+        }
+
+        console.log(`Found ${requestsWithTasks.length} requests with tasks`);
+        setRequests(requestsWithTasks);
+
+        // Update pagination based on the response structure
+        const totalCount =
+          response?.data?.totalCount || requestsWithTasks.length;
+        const pageNumber = response?.data?.pageNumber || page;
+
+        setPagination({
+          currentPage: pageNumber,
+          pageSize: currentPageSize,
+          totalItems: requestsWithTasks.length, // Use filtered count
+          totalPages: Math.ceil(requestsWithTasks.length / currentPageSize),
+        });
+
+        // Update parent component with all requests for counting
+        if (onRequestsUpdate) {
+          onRequestsUpdate(requestsWithTasks);
+        }
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+        setRequests([]);
+        setPagination({
+          currentPage: 1,
+          pageSize: pagination.pageSize,
+          totalItems: 0,
+          totalPages: 1,
+        });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch requests:', error);
-      setRequests([]);
-      setPagination({
-        currentPage: 1,
-        pageSize: pagination.pageSize,
-        totalItems: 0,
-        totalPages: 1
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [pagination.pageSize, onRequestsUpdate]
+  );
 
   useEffect(() => {
     fetchRequests(1); // Reset to page 1 when filters change
-  }, [statusFilter, priorityFilter, refreshTrigger]);
+  }, [statusFilter, priorityFilter, refreshTrigger, fetchRequests]);
 
   // Handle page size change
   const handlePageSizeChange = (newPageSize: string) => {
     const size = parseInt(newPageSize);
-    setPagination(prev => ({ ...prev, pageSize: size, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, pageSize: size, currentPage: 1 }));
     fetchRequests(1, size);
   };
 
@@ -207,15 +227,19 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
     let filtered = requests;
 
     // Filter by tab
-    if (activeTab !== 'all') {
-      filtered = filtered.filter(request => {
+    if (activeTab !== "all") {
+      filtered = filtered.filter((request) => {
         const tasks = request.tasks || [];
         return tasks.some((task: any) => {
           const taskType = task.taskType?.toLowerCase();
-          if (activeTab === 'repair') {
-            return taskType === 'repair';
-          } else if (activeTab === 'warranty') {
-            return taskType === 'warranty' || taskType === 'warrantysubmission' || taskType === 'warrantyreturn';
+          if (activeTab === "repair") {
+            return taskType === "repair";
+          } else if (activeTab === "warranty") {
+            return (
+              taskType === "warranty" ||
+              taskType === "warrantysubmission" ||
+              taskType === "warrantyreturn"
+            );
           }
           return false;
         });
@@ -225,25 +249,35 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
     // Filter by search term
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(request =>
-        request.requestTitle.toLowerCase().includes(searchLower) ||
-        request.deviceName.toLowerCase().includes(searchLower) ||
-        (request.createdByName && request.createdByName.toLowerCase().includes(searchLower))
+      filtered = filtered.filter(
+        (request) =>
+          request.requestTitle.toLowerCase().includes(searchLower) ||
+          request.deviceName.toLowerCase().includes(searchLower) ||
+          (request.createdByName &&
+            request.createdByName.toLowerCase().includes(searchLower))
       );
     }
 
     // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(request => request.status.toLowerCase() === statusFilter.toLowerCase());
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (request) => request.status.toLowerCase() === statusFilter.toLowerCase()
+      );
     }
 
     // Filter by priority
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(request => request.priority.toLowerCase() === priorityFilter.toLowerCase());
+    if (priorityFilter !== "all") {
+      filtered = filtered.filter(
+        (request) =>
+          request.priority.toLowerCase() === priorityFilter.toLowerCase()
+      );
     }
 
     // Sort by creation date (descending)
-    return filtered.sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+    );
   };
 
   const filteredRequests = getFilteredRequests();
@@ -252,44 +286,75 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
   const getReportType = (request: RequestWithTasks) => {
     const tasks = request.tasks || [];
     const taskTypes = tasks.map((task: any) => task.taskType?.toLowerCase());
-    
-    if (taskTypes.includes('warranty') || taskTypes.includes('warrantysubmission') || taskTypes.includes('warrantyreturn')) {
-      return { type: 'warranty', label: 'Báo cáo bảo hành', icon: Archive, color: 'text-blue-400' };
-    } else if (taskTypes.includes('repair')) {
-      return { type: 'repair', label: 'Báo cáo sửa chữa', icon: Wrench, color: 'text-orange-400' };
+
+    if (
+      taskTypes.includes("warranty") ||
+      taskTypes.includes("warrantysubmission") ||
+      taskTypes.includes("warrantyreturn")
+    ) {
+      return {
+        type: "warranty",
+        label: "Báo cáo bảo hành",
+        icon: Archive,
+        color: "text-blue-400",
+      };
+    } else if (taskTypes.includes("repair")) {
+      return {
+        type: "repair",
+        label: "Báo cáo sửa chữa",
+        icon: Wrench,
+        color: "text-orange-400",
+      };
     } else {
-      return { type: 'mixed', label: 'Báo cáo hỗn hợp', icon: Package, color: 'text-purple-400' };
+      return {
+        type: "mixed",
+        label: "Báo cáo hỗn hợp",
+        icon: Package,
+        color: "text-purple-400",
+      };
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'approved': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'rejected': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'inprogress': case 'in-progress': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'completed': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case "pending":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+      case "approved":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      case "rejected":
+        return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "inprogress":
+      case "in-progress":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+      case "completed":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      default:
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'urgent': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'high': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-      case 'medium': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'low': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case "urgent":
+        return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "high":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      case "medium":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+      case "low":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      default:
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -300,10 +365,14 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'all': return 'Tất cả báo cáo';
-      case 'repair': return 'Báo cáo sửa chữa';
-      case 'warranty': return 'Báo cáo bảo hành';
-      default: return 'Báo cáo';
+      case "all":
+        return "Tất cả báo cáo";
+      case "repair":
+        return "Báo cáo sửa chữa";
+      case "warranty":
+        return "Báo cáo bảo hành";
+      default:
+        return "Báo cáo";
     }
   };
 
@@ -311,11 +380,11 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
   const generatePaginationItems = () => {
     const items = [];
     const { currentPage, totalPages } = pagination;
-    
+
     if (totalPages > 0) {
       items.push(
         <PaginationItem key={1}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(1)}
             isActive={currentPage === 1}
             className="cursor-pointer"
@@ -336,11 +405,11 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
 
     const start = Math.max(2, currentPage - 1);
     const end = Math.min(totalPages - 1, currentPage + 1);
-    
+
     for (let i = start; i <= end; i++) {
       items.push(
         <PaginationItem key={i}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(i)}
             isActive={currentPage === i}
             className="cursor-pointer"
@@ -362,7 +431,7 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
     if (totalPages > 1) {
       items.push(
         <PaginationItem key={totalPages}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(totalPages)}
             isActive={currentPage === totalPages}
             className="cursor-pointer"
@@ -384,7 +453,7 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
             {getTabTitle()}
             <Badge variant="secondary">{pagination.totalItems}</Badge>
           </div>
-          
+
           {/* Search and Filters */}
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -436,7 +505,7 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -466,12 +535,14 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
               {filteredRequests.map((request) => {
                 const reportType = getReportType(request);
                 const ReportIcon = reportType.icon;
-                
+
                 return (
                   <TableRow key={request.id} className="hover:bg-muted/30">
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium">{request.requestTitle}</div>
+                        <div className="font-medium">
+                          {request.requestTitle}
+                        </div>
                         {request.description && (
                           <div className="text-sm text-muted-foreground line-clamp-2 max-w-xs">
                             {request.description}
@@ -480,7 +551,9 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className={`flex items-center gap-2 ${reportType.color}`}>
+                      <div
+                        className={`flex items-center gap-2 ${reportType.color}`}
+                      >
                         <ReportIcon className="h-4 w-4" />
                         <span className="text-sm">{reportType.label}</span>
                       </div>
@@ -497,18 +570,23 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <div className="font-medium text-sm">{request.deviceName}</div>
-                        <div className="text-xs text-muted-foreground">{request.deviceCode}</div>
+                        <div className="font-medium text-sm">
+                          {request.deviceName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {request.deviceCode}
+                        </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="h-3 w-3" />
-                          {request.areaName} - {request.zoneName} (Vị trí {request.positionIndex})
+                          {request.areaName} - {request.zoneName} (Vị trí{" "}
+                          {request.positionIndex})
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
                         <User className="h-3 w-3 text-muted-foreground" />
-                        <span>{request.createdByName || 'Loading...'}</span>
+                        <span>{request.createdByName || "Loading..."}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -540,25 +618,34 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Hiển thị:</span>
-              <Select value={pagination.pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <Select
+                value={pagination.pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {pageSizeOptions.map(size => (
+                  {pageSizeOptions.map((size) => (
                     <SelectItem key={size} value={size.toString()}>
                       {size}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground">mục mỗi trang</span>
+              <span className="text-sm text-muted-foreground">
+                mục mỗi trang
+              </span>
             </div>
-            
+
             <div className="text-sm text-muted-foreground">
-              Hiển thị {((pagination.currentPage - 1) * pagination.pageSize) + 1} đến{' '}
-              {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} của{' '}
-              {pagination.totalItems} báo cáo
+              Hiển thị {(pagination.currentPage - 1) * pagination.pageSize + 1}{" "}
+              đến{" "}
+              {Math.min(
+                pagination.currentPage * pagination.pageSize,
+                pagination.totalItems
+              )}{" "}
+              của {pagination.totalItems} báo cáo
             </div>
           </div>
 
@@ -567,18 +654,26 @@ export default function RequestReportsAdmin({ activeTab, onRequestsUpdate, refre
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    className={pagination.currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    className={
+                      pagination.currentPage <= 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
-                
+
                 {generatePaginationItems()}
-                
+
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    className={pagination.currentPage >= pagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    className={
+                      pagination.currentPage >= pagination.totalPages
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>
