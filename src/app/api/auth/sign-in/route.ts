@@ -3,46 +3,6 @@ import { apiClient } from "@/lib/api-client";
 import http from "@/lib/http";
 import { AuthResponse, AuthUser, LoginRequest } from "@/types/auth.type";
 
-export const authService = {
-  // ✅ Login - calls sign-in endpoint
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    return http.post<AuthResponse>("/api/auth/sign-in", data, {
-      useInternalRoute: true,
-      isPublic: true,
-    });
-  },
-
-  // ✅ Get user info - calls user info endpoint (NOT sign-in!)
-  getCurrentUser: async (): Promise<AuthUser> => {
-    return http.get<AuthUser>("/api/user/info", {
-      // ✅ Changed endpoint
-      useInternalRoute: true,
-    });
-  },
-
-  logout: async (): Promise<{ message: string }> => {
-    return http.post<{ message: string }>(
-      "/api/auth/logout",
-      {},
-      {
-        useInternalRoute: true,
-      }
-    );
-  },
-
-  refreshToken: async (): Promise<AuthResponse> => {
-    return http.post<AuthResponse>(
-      "/api/auth/refresh",
-      {},
-      {
-        useInternalRoute: true,
-      }
-    );
-  },
-};
-
-export default authService;
-
 export async function POST(req: Request) {
   try {
     console.log(req);

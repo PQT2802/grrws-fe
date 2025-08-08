@@ -1,6 +1,13 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState, useMemo } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -120,8 +127,8 @@ const CreateTaskFromTechnicalIssuesCpn = ({
   // ✅ Get selected warranty info
   const selectedWarranty = warranties.find((w) => w.id === selectedWarrantyId);
 
-  // ✅ Fetch warranties for the device
-  const fetchWarranties = async () => {
+  // ✅ Fetch warranties for the device (memoized to avoid recreation each render)
+  const fetchWarranties = useCallback(async () => {
     try {
       setLoadingWarranties(true);
       console.log("Fetching warranties for device:", deviceId);
@@ -140,7 +147,7 @@ const CreateTaskFromTechnicalIssuesCpn = ({
     } finally {
       setLoadingWarranties(false);
     }
-  };
+  }, [deviceId]);
 
   // ✅ Fetch mechanics (same as CreateTaskFromErrorsCpn)
   const fetchMechanics = async () => {
@@ -169,7 +176,7 @@ const CreateTaskFromTechnicalIssuesCpn = ({
       setStartDate(new Date());
       setCanProceed(false);
     }
-  }, [open, deviceId]);
+  }, [open, fetchWarranties]);
 
   // ✅ Check if current step can proceed (same pattern)
   useEffect(() => {

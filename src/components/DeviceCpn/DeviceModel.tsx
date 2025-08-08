@@ -26,8 +26,9 @@ import {
   Hash,
   X,
   Shield,
-  Image,
+  Image as ImageIcon,
 } from "lucide-react";
+import Image from "next/image";
 
 interface DeviceDetailModalProps {
   isOpen: boolean;
@@ -101,15 +102,17 @@ const DeviceDetailModal = ({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Image className="h-4 w-4 text-indigo-600" />
+                  <ImageIcon className="h-4 w-4 text-indigo-600" />
                   Hình ảnh Thiết bị
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-center">
-                  <img
+                  <Image
                     src={device.photoUrl}
-                    alt={device.deviceName}
+                    alt={device.deviceName || "Hình ảnh thiết bị"}
+                    width={384} // Approximate width for max-w-full
+                    height={192} // Matches h-48 (48 * 4 = 192px)
                     className="max-w-full h-48 object-cover rounded-lg border"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -220,9 +223,7 @@ const DeviceDetailModal = ({
                 <label className="text-sm font-medium text-gray-500">
                   ID máy móc
                 </label>
-                <p className="text-sm font-mono">
-                  {device.id || "Không có"}
-                </p>
+                <p className="text-sm font-mono">{device.id || "Không có"}</p>
               </div>
             </CardContent>
           </Card>

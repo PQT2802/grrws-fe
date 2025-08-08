@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
   ColumnDef,
   useReactTable,
@@ -55,13 +55,8 @@ import useSignalRStore from "@/store/useSignalRStore";
 interface TaskTableCpnProps {
   requestId: string;
   refreshTrigger?: number;
-  workspaceId: string;
 }
-const TaskTableCpn = ({
-  requestId,
-  refreshTrigger = 0,
-  workspaceId,
-}: TaskTableCpnProps) => {
+const TaskTableCpn = ({ requestId, refreshTrigger = 0 }: TaskTableCpnProps) => {
   const [taskGroups, setTaskGroups] = useState<TASK_GROUP_WEB[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState("");
@@ -78,7 +73,7 @@ const TaskTableCpn = ({
     useState<TASK_GROUP_WEB | null>(null);
   const [showTaskGroupModal, setShowTaskGroupModal] = useState(false);
 
-  const fetchTaskGroups = async () => {
+  const fetchTaskGroups = useCallback(async () => {
     try {
       setLoading(true);
       const response: TASK_GROUP_RESPONSE = await apiClient.task.getTaskGroups(
@@ -96,7 +91,7 @@ const TaskTableCpn = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestId, pageIndex, pageSize]);
 
   // Add this new useEffect after the existing fetchTaskGroups useEffect
   useEffect(() => {
@@ -125,13 +120,13 @@ const TaskTableCpn = ({
 
       return () => disconnect();
     }
-  }, [requestId]);
+  }, [requestId, fetchTaskGroups]);
 
   useEffect(() => {
     if (requestId) {
       fetchTaskGroups();
     }
-  }, [requestId, refreshTrigger, pageIndex, pageSize]);
+  }, [requestId, refreshTrigger, pageIndex, pageSize, fetchTaskGroups]);
 
   const filteredData = useMemo(() => {
     return taskGroups.filter((group) => {
@@ -298,9 +293,15 @@ const TaskTableCpn = ({
               Tổng cộng: {summary.total} nhiệm vụ
             </div>
             <div className="flex gap-2 text-xs">
-              <span className="text-green-600">✓ {summary.completed} hoàn thành</span>
-              <span className="text-blue-600">⟳ {summary.inProgress} đang xử lý</span>
-              <span className="text-yellow-600">⏸ {summary.pending} chờ xử lý</span>
+              <span className="text-green-600">
+                ✓ {summary.completed} hoàn thành
+              </span>
+              <span className="text-blue-600">
+                ⟳ {summary.inProgress} đang xử lý
+              </span>
+              <span className="text-yellow-600">
+                ⏸ {summary.pending} chờ xử lý
+              </span>
             </div>
           </div>
         );
@@ -350,7 +351,7 @@ const TaskTableCpn = ({
 
         return (
           <a
-            href={`/workspace/${workspaceId}/tasks/group/${taskGroup.taskGroupId}`}
+            href={`/workspace/hot/tasks/group/${taskGroup.taskGroupId}`}
             className="inline-block w-full"
           >
             <Button variant="outline" size="sm" className="w-full">

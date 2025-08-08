@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/components/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import NotificationArea from "./components/NotificationArea";
 import QuickSummary from "./components/QuickSummary";
 import StockOverviewChart from "./components/StockOverviewChart";
@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && !isStockKeeper) {
-      router.push('/unauthorized');
+      router.push("/unauthorized");
     }
   }, [loading, isStockKeeper, router]);
 
@@ -35,10 +35,10 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div className="rounded-lg p-6 border">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome back, {user?.fullName || 'Stock Keeper'}!
+          Welcome back, {user?.fullName || "Stock Keeper"}!
         </h1>
         <p className="text-gray-600 dark:text-gray-300">
-          Here's an overview of your inventory and pending tasks.
+          Here&apos;s an overview of your inventory and pending tasks.
         </p>
       </div>
 

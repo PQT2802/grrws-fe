@@ -126,9 +126,20 @@ const LoginCpn = ({
 
       // ✅ Step 5: Determine redirection based on role
       let redirectPath = "/access-denied"; // Default redirection
-      if (canAccessWorkspace(userInfo.role)) {
-        redirectPath = "/workspace";
-      } 
+
+      switch (userInfo.role) {
+        case USER_ROLES.ADMIN:
+          redirectPath = "/workspace/admin";
+          break;
+        case USER_ROLES.HOT:
+          redirectPath = "/workspace/hot";
+          break;
+        case USER_ROLES.STOCK_KEEPER:
+          redirectPath = "/workspace/stock_keeper";
+          break;
+        default:
+          redirectPath = "/access-denied"; // No access for other roles
+      }
 
       // ✅ Step 6: Trigger custom event to force AuthProvider refresh
       console.log("🔄 Triggering auth change event...");

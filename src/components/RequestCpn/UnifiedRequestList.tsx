@@ -77,6 +77,32 @@ export default function UnifiedRequestList({
     })
   }
 
+  // ✅ Add proper time formatting function
+  const formatDateTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      // Format: DD/MM/YYYY HH:mm:ss
+      return date.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return "Invalid Date";
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'urgent':
@@ -355,7 +381,7 @@ export default function UnifiedRequestList({
                                         {getReportStatus(request)}
                                       </td>
                                       <td className="px-4 py-3 text-sm">
-                                        {formatDate(request.createdDate)}
+                                        {formatDateTime(request.createdDate)}
                                       </td>
                                       <td className="px-4 py-3 text-right">
                                         <Button 

@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/tooltip";
 import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaimButton";
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
+import Image from "next/image";
 
 const WarrantyTaskDetailPage = () => {
   // State and params setup
@@ -907,16 +908,17 @@ const WarrantyTaskDetailPage = () => {
                         </div>
                       )}
                     </div>
-
                     {deviceDetail.photoUrl && (
                       <div>
                         <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                           Device Photo
                         </label>
                         <div className="mt-2 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-                          <img
+                          <Image
                             src={deviceDetail.photoUrl}
-                            alt={deviceDetail.deviceName}
+                            alt={deviceDetail.deviceName || "Device photo"}
+                            width={800}
+                            height={600}
                             className="w-full max-h-64 object-contain"
                           />
                         </div>

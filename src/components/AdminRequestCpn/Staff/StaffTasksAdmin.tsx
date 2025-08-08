@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,9 +54,14 @@ import {
   Pause,
   Package,
   ArrowUpDown,
-  RotateCcw
+  RotateCcw,
 } from "lucide-react";
-import { STAFF_TASK, TASK_TYPE_MAPPING, TaskTabType, TaskType } from "@/types/task.type";
+import {
+  STAFF_TASK,
+  TASK_TYPE_MAPPING,
+  TaskTabType,
+  TaskType,
+} from "@/types/task.type";
 import { apiClient } from "@/lib/api-client";
 
 interface StaffTasksAdminProps {
@@ -65,7 +70,11 @@ interface StaffTasksAdminProps {
   refreshTrigger?: number;
 }
 
-export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigger }: StaffTasksAdminProps) {
+export default function StaffTasksAdmin({
+  activeTab,
+  onTasksUpdate,
+  refreshTrigger,
+}: StaffTasksAdminProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [taskTypeFilter, setTaskTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -76,53 +85,68 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
     currentPage: 1,
     pageSize: 10,
     totalItems: 0,
-    totalPages: 1
+    totalPages: 1,
   });
 
   // Page size options
   const pageSizeOptions = [5, 10, 20, 50];
 
   // Fetch tasks from API
-  const fetchTasks = async (page: number = 1, newPageSize?: number) => {
-    setIsLoading(true);
-    try {
-      const currentPageSize = newPageSize || pagination.pageSize;
-      const response = await apiClient.task.getAllSingleTasks(
-        page,
-        currentPageSize,
-        taskTypeFilter !== 'all' ? taskTypeFilter : undefined,
-        statusFilter !== 'all' ? statusFilter : undefined,
-        priorityFilter !== 'all' ? priorityFilter : undefined
-      );
+  const fetchTasks = useCallback(
+    async (page: number = 1, newPageSize?: number) => {
+      setIsLoading(true);
+      try {
+        const currentPageSize = newPageSize || pagination.pageSize;
+        const response = await apiClient.task.getAllSingleTasks(
+          page,
+          currentPageSize,
+          taskTypeFilter !== "all" ? taskTypeFilter : undefined,
+          statusFilter !== "all" ? statusFilter : undefined,
+          priorityFilter !== "all" ? priorityFilter : undefined
+        );
 
-      setTasks(response.data);
-      setPagination({
-        currentPage: response.pageNumber,
-        pageSize: currentPageSize,
-        totalItems: response.totalCount,
-        totalPages: Math.ceil(response.totalCount / currentPageSize)
-      });
+        setTasks(response.data);
+        setPagination((prev) => ({
+          ...prev,
+          currentPage: response.pageNumber,
+          pageSize: currentPageSize,
+          totalItems: response.totalCount,
+          totalPages: Math.ceil(response.totalCount / currentPageSize),
+        }));
 
-      // Update parent component with all tasks for counting
-      if (onTasksUpdate) {
-        onTasksUpdate(response.data);
+        if (onTasksUpdate) {
+          onTasksUpdate(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+        setTasks([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-      setTasks([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [
+      pagination.pageSize,
+      taskTypeFilter,
+      statusFilter,
+      priorityFilter,
+      onTasksUpdate,
+    ]
+  );
 
   useEffect(() => {
     fetchTasks(1); // Reset to page 1 when filters change
-  }, [taskTypeFilter, statusFilter, priorityFilter, refreshTrigger]);
+  }, [
+    taskTypeFilter,
+    statusFilter,
+    priorityFilter,
+    refreshTrigger,
+    fetchTasks,
+  ]);
 
   // Handle page size change
   const handlePageSizeChange = (newPageSize: string) => {
     const size = parseInt(newPageSize);
-    setPagination(prev => ({ ...prev, pageSize: size, currentPage: 1 }));
+    setPagination((prev) => ({ ...prev, pageSize: size, currentPage: 1 }));
     fetchTasks(1, size);
   };
 
@@ -146,111 +170,155 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
     let filtered = tasks;
 
     // Filter by tab
-    if (activeTab !== 'all') {
+    if (activeTab !== "all") {
       const allowedTypes = TASK_TYPE_MAPPING[activeTab];
-      filtered = filtered.filter(task => allowedTypes.includes(task.taskType as TaskType));
+      filtered = filtered.filter((task) =>
+        allowedTypes.includes(task.taskType as TaskType)
+      );
     }
 
     // Filter by search term
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(task =>
-        task.taskName.toLowerCase().includes(searchLower) ||
-        task.taskDescription.toLowerCase().includes(searchLower) ||
-        task.assigneeName.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (task) =>
+          task.taskName.toLowerCase().includes(searchLower) ||
+          task.taskDescription.toLowerCase().includes(searchLower) ||
+          task.assigneeName.toLowerCase().includes(searchLower)
       );
     }
 
     // Sort by startTime (descending)
-    return filtered.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+    );
   };
 
   const filteredTasks = getFilteredTasks();
 
   const handleViewDetails = (task: STAFF_TASK) => {
-    console.log('View task details:', task);
+    console.log("View task details:", task);
     // TODO: Implement task detail modal or navigation
   };
 
   // Helper functions for styling and formatting
   const getTypeInfo = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'repair': return { icon: Wrench, label: 'Sửa chữa', color: 'text-orange-400' };
-      case 'warranty': return { icon: Archive, label: 'Bảo hành', color: 'text-blue-400' };
-      case 'warrantysubmission': return { icon: Package, label: 'Gửi bảo hành', color: 'text-blue-400' };
-      case 'warrantyreturn': return { icon: ArrowUpDown, label: 'Nhận máy bảo hành', color: 'text-green-400' };
-      case 'replacement': return { icon: RefreshCw, label: 'Thay thế', color: 'text-purple-400' };
-      case 'installation': return { icon: Settings, label: 'Lắp đặt máy', color: 'text-green-400' };
-      case 'uninstallation': return { icon: Settings, label: 'Tháo máy', color: 'text-red-400' };
-      default: return { icon: List, label: type, color: 'text-gray-400' };
+      case "repair":
+        return { icon: Wrench, label: "Sửa chữa", color: "text-orange-400" };
+      case "warranty":
+        return { icon: Archive, label: "Bảo hành", color: "text-blue-400" };
+      case "warrantysubmission":
+        return { icon: Package, label: "Gửi bảo hành", color: "text-blue-400" };
+      case "warrantyreturn":
+        return {
+          icon: ArrowUpDown,
+          label: "Nhận máy bảo hành",
+          color: "text-green-400",
+        };
+      case "replacement":
+        return { icon: RefreshCw, label: "Thay thế", color: "text-purple-400" };
+      case "installation":
+        return {
+          icon: Settings,
+          label: "Lắp đặt máy",
+          color: "text-green-400",
+        };
+      case "uninstallation":
+        return { icon: Settings, label: "Tháo máy", color: "text-red-400" };
+      default:
+        return { icon: List, label: type, color: "text-gray-400" };
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'inprogress': case 'in-progress': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'completed': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'cancelled': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'waitingforconfirmation': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'waitingforinstallation': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-      case 'paused': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case "pending":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+      case "inprogress":
+      case "in-progress":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+      case "completed":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      case "cancelled":
+        return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "waitingforconfirmation":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      case "waitingforinstallation":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      case "paused":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      default:
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'urgent': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      case 'high': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
-      case 'medium': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-      case 'low': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case "urgent":
+        return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "high":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      case "medium":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+      case "low":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      default:
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'inprogress': case 'in-progress': return <RefreshCw className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'cancelled': return <XCircle className="h-4 w-4" />;
-      case 'waitingforinstallation': return <Pause className="h-4 w-4" />;
-      case 'paused': return <Pause className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
+      case "pending":
+        return <Clock className="h-4 w-4" />;
+      case "inprogress":
+      case "in-progress":
+        return <RefreshCw className="h-4 w-4" />;
+      case "completed":
+        return <CheckCircle className="h-4 w-4" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4" />;
+      case "waitingforinstallation":
+        return <Pause className="h-4 w-4" />;
+      case "paused":
+        return <Pause className="h-4 w-4" />;
+      default:
+        return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatVietnameseStatus = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'pending': 'Đang chờ',
-      'inprogress': 'Đang thực hiện',
-      'in-progress': 'Đang thực hiện',
-      'completed': 'Hoàn thành',
-      'cancelled': 'Đã hủy',
-      'waitingforconfirmation': 'Chờ xác nhận',
-      'waitingforinstallation': 'Chờ lắp đặt',
-      'paused': 'Tạm dừng'
+      pending: "Đang chờ",
+      inprogress: "Đang thực hiện",
+      "in-progress": "Đang thực hiện",
+      completed: "Hoàn thành",
+      cancelled: "Đã hủy",
+      waitingforconfirmation: "Chờ xác nhận",
+      waitingforinstallation: "Chờ lắp đặt",
+      paused: "Tạm dừng",
     };
     return statusMap[status.toLowerCase()] || status;
   };
 
   const formatVietnamesePriority = (priority: string) => {
     const priorityMap: { [key: string]: string } = {
-      'urgent': 'Khẩn cấp',
-      'high': 'Cao',
-      'medium': 'Trung bình',
-      'low': 'Thấp'
+      urgent: "Khẩn cấp",
+      high: "Cao",
+      medium: "Trung bình",
+      low: "Thấp",
     };
     return priorityMap[priority.toLowerCase()] || priority;
   };
@@ -262,12 +330,16 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
     const endTime = task.endTime ? new Date(task.endTime) : null;
 
     // Calculate estimated hours (expectedTime - startTime)
-    const estimatedHours = Math.round((expectedTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+    const estimatedHours = Math.round(
+      (expectedTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+    );
 
     // Calculate actual hours (endTime - startTime) if completed
     let actualHours = null;
-    if (endTime && task.status.toLowerCase() === 'completed') {
-      actualHours = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+    if (endTime && task.status.toLowerCase() === "completed") {
+      actualHours = Math.round(
+        (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+      );
     }
 
     return { estimatedHours, actualHours };
@@ -275,12 +347,18 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'all': return 'Tất cả công việc';
-      case 'warranty': return 'Công việc bảo hành';
-      case 'repair': return 'Công việc sửa chữa';
-      case 'replace': return 'Công việc thay thế';
-      case 'install_uninstall': return 'Công việc lắp đặt & tháo';
-      default: return 'Công việc';
+      case "all":
+        return "Tất cả công việc";
+      case "warranty":
+        return "Công việc bảo hành";
+      case "repair":
+        return "Công việc sửa chữa";
+      case "replace":
+        return "Công việc thay thế";
+      case "install_uninstall":
+        return "Công việc lắp đặt & tháo";
+      default:
+        return "Công việc";
     }
   };
 
@@ -288,12 +366,12 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
   const generatePaginationItems = () => {
     const items = [];
     const { currentPage, totalPages } = pagination;
-    
+
     // Always show first page
     if (totalPages > 0) {
       items.push(
         <PaginationItem key={1}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(1)}
             isActive={currentPage === 1}
             className="cursor-pointer"
@@ -316,11 +394,11 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
     // Show pages around current page
     const start = Math.max(2, currentPage - 1);
     const end = Math.min(totalPages - 1, currentPage + 1);
-    
+
     for (let i = start; i <= end; i++) {
       items.push(
         <PaginationItem key={i}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(i)}
             isActive={currentPage === i}
             className="cursor-pointer"
@@ -344,7 +422,7 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
     if (totalPages > 1) {
       items.push(
         <PaginationItem key={totalPages}>
-          <PaginationLink 
+          <PaginationLink
             onClick={() => handlePageChange(totalPages)}
             isActive={currentPage === totalPages}
             className="cursor-pointer"
@@ -366,7 +444,7 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
             {getTabTitle()}
             <Badge variant="secondary">{pagination.totalItems}</Badge>
           </div>
-          
+
           {/* Search and Filters */}
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -388,7 +466,9 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
                 <SelectItem value="Repair">Sửa chữa</SelectItem>
                 <SelectItem value="Warranty">Bảo hành</SelectItem>
                 <SelectItem value="WarrantySubmission">Gửi bảo hành</SelectItem>
-                <SelectItem value="WarrantyReturn">Nhận máy bảo hành</SelectItem>
+                <SelectItem value="WarrantyReturn">
+                  Nhận máy bảo hành
+                </SelectItem>
                 <SelectItem value="Replacement">Thay thế</SelectItem>
                 <SelectItem value="Installation">Lắp đặt máy</SelectItem>
                 <SelectItem value="Uninstallation">Tháo máy</SelectItem>
@@ -405,7 +485,9 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
                 <SelectItem value="InProgress">Đang thực hiện</SelectItem>
                 <SelectItem value="Completed">Hoàn thành</SelectItem>
                 <SelectItem value="Cancelled">Đã hủy</SelectItem>
-                <SelectItem value="WaitingForInstallation">Chờ lắp đặt</SelectItem>
+                <SelectItem value="WaitingForInstallation">
+                  Chờ lắp đặt
+                </SelectItem>
               </SelectContent>
             </Select>
 
@@ -434,7 +516,7 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -464,8 +546,9 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
               {filteredTasks.map((task) => {
                 const typeInfo = getTypeInfo(task.taskType);
                 const TypeIcon = typeInfo.icon;
-                const { estimatedHours, actualHours } = calculateTimeDuration(task);
-                
+                const { estimatedHours, actualHours } =
+                  calculateTimeDuration(task);
+
                 return (
                   <TableRow key={task.taskId} className="hover:bg-muted/30">
                     <TableCell>
@@ -477,13 +560,19 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className={`flex items-center gap-2 ${typeInfo.color}`}>
+                      <div
+                        className={`flex items-center gap-2 ${typeInfo.color}`}
+                      >
                         <TypeIcon className="h-4 w-4" />
                         <span className="text-sm">{typeInfo.label}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${getStatusColor(task.status)} flex items-center gap-1 w-fit`}>
+                      <Badge
+                        className={`${getStatusColor(
+                          task.status
+                        )} flex items-center gap-1 w-fit`}
+                      >
                         {getStatusIcon(task.status)}
                         {formatVietnameseStatus(task.status)}
                       </Badge>
@@ -499,10 +588,10 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
                           <User className="h-3 w-3 text-muted-foreground" />
                           <span>
                             {/* Handle unassigned tasks */}
-                            {task.assigneeName && task.assigneeName.trim() !== '' 
-                              ? task.assigneeName 
-                              : "Chưa có người nhận"
-                            }
+                            {task.assigneeName &&
+                            task.assigneeName.trim() !== ""
+                              ? task.assigneeName
+                              : "Chưa có người nhận"}
                           </span>
                         </div>
                         {task.isUninstallDevice && (
@@ -550,7 +639,9 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewDetails(task)}>
+                          <DropdownMenuItem
+                            onClick={() => handleViewDetails(task)}
+                          >
                             <Eye className="mr-2 h-4 w-4" />
                             Xem chi tiết
                           </DropdownMenuItem>
@@ -570,12 +661,15 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Hiển thị:</span>
-              <Select value={pagination.pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <Select
+                value={pagination.pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {pageSizeOptions.map(size => (
+                  {pageSizeOptions.map((size) => (
                     <SelectItem key={size} value={size.toString()}>
                       {size}
                     </SelectItem>
@@ -584,11 +678,14 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
               </Select>
               {/* <span className="text-sm text-muted-foreground">mục mỗi trang</span> */}
             </div>
-            
+
             <div className="text-sm text-muted-foreground">
-             {((pagination.currentPage - 1) * pagination.pageSize) + 1} đến{' '}
-              {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalItems)} trên tổng{' '}
-              {pagination.totalItems} công việc
+              {(pagination.currentPage - 1) * pagination.pageSize + 1} đến{" "}
+              {Math.min(
+                pagination.currentPage * pagination.pageSize,
+                pagination.totalItems
+              )}{" "}
+              trên tổng {pagination.totalItems} công việc
             </div>
           </div>
 
@@ -597,18 +694,26 @@ export default function StaffTasksAdmin({ activeTab, onTasksUpdate, refreshTrigg
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
-                    className={pagination.currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    className={
+                      pagination.currentPage <= 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
-                
+
                 {generatePaginationItems()}
-                
+
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
-                    className={pagination.currentPage >= pagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    className={
+                      pagination.currentPage >= pagination.totalPages
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
                   />
                 </PaginationItem>
               </PaginationContent>

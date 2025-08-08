@@ -38,6 +38,7 @@ import {
   CircleAlert,
   Loader2,
 } from "lucide-react";
+import Image from "next/image";
 
 const InstallTaskDetailPage = () => {
   const params = useParams();
@@ -333,11 +334,14 @@ const InstallTaskDetailPage = () => {
                 {/* Device Image */}
                 {newDeviceDetail.photoUrl ? (
                   <div className="md:w-1/3 w-full mb-4 md:mb-0">
-                    <div className="aspect-square rounded-md overflow-hidden border border-green-100 shadow-sm">
-                      <img
+                    <div className="aspect-square rounded-md overflow-hidden border border-green-100 shadow-sm relative">
+                      <Image
                         src={newDeviceDetail.photoUrl}
-                        alt={newDeviceDetail.deviceName}
-                        className="w-full h-full object-cover"
+                        alt={newDeviceDetail.deviceName || "Device image"}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover"
+                        priority={true}
                       />
                     </div>
                   </div>

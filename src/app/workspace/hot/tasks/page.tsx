@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useRouter } from "next/navigation";
 import {
@@ -88,7 +88,7 @@ const TaskManagementPage = () => {
   }, [canAccessWorkspace, router]);
 
   // Fetch Task Groups
-  const fetchTaskGroups = async () => {
+  const fetchTaskGroups = useCallback(async () => {
     try {
       setTaskGroupsLoading(true);
       const response: TASK_GROUP_RESPONSE =
@@ -105,10 +105,10 @@ const TaskManagementPage = () => {
     } finally {
       setTaskGroupsLoading(false);
     }
-  };
+  }, [taskGroupsPage, taskGroupsPageSize]);
 
   // Fetch Single Tasks
-  const fetchSingleTasks = async () => {
+  const fetchSingleTasks = useCallback(async () => {
     try {
       setSingleTasksLoading(true);
       const response: any = await apiClient.task.getSingleTasks(
@@ -134,26 +134,25 @@ const TaskManagementPage = () => {
     } finally {
       setSingleTasksLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (canAccessWorkspace) {
-      fetchTaskGroups();
-    }
-  }, [canAccessWorkspace, taskGroupsPage, taskGroupsPageSize]);
-
-  useEffect(() => {
-    if (canAccessWorkspace) {
-      fetchSingleTasks();
-    }
   }, [
-    canAccessWorkspace,
     singleTasksPage,
     singleTasksPageSize,
     taskTypeFilter,
     statusFilter,
     priorityFilter,
   ]);
+
+  useEffect(() => {
+    if (canAccessWorkspace) {
+      fetchTaskGroups();
+    }
+  }, [canAccessWorkspace, fetchTaskGroups]);
+
+  useEffect(() => {
+    if (canAccessWorkspace) {
+      fetchSingleTasks();
+    }
+  }, [canAccessWorkspace, fetchSingleTasks]);
 
   // Filter functions
   const filteredTaskGroups = useMemo(() => {

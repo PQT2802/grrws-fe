@@ -58,6 +58,30 @@ export default function RequestWithReportList({
     })
   }
 
+  // ✅ Add the same formatting function
+  const formatDateTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      return date.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return "Invalid Date";
+    }
+  };
+
   // Safe translation functions
   const safeTranslateTaskStatus = (status: string) => {
     try {
@@ -340,7 +364,7 @@ export default function RequestWithReportList({
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 text-sm">
-                                        {formatDate(request.createdDate)}
+                                        {formatDateTime(request.createdDate)}
                                       </td>
                                       <td className="px-4 py-3 text-right">
                                         <Button 

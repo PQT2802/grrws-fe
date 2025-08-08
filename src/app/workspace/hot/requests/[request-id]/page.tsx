@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -57,6 +57,7 @@ import AddErrorToRequestModal from "@/components/ErrorTableCpn/AddErrorToRequest
 import { Badge } from "@/components/ui/badge";
 import TechnicalIssueTableCpn from "@/components/TechnicalIssueTableCpn/TechnicalIssueTableCpn";
 import { da } from "date-fns/locale";
+import { apiClient } from "@/lib/api-client";
 
 // Only keep "Lỗi" and "Nhiệm vụ" tabs
 const TAB_CONTENT_LIST = ["Lỗi", "Nhiệm vụ"];
@@ -65,7 +66,6 @@ const RequestDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const requestId = params?.["request-id"] as string;
-  const workspaceId = params?.["workspace-id"] as string;
 
   const [requestDetail, setRequestDetail] = useState<REQUEST_DETAIL_WEB | null>(
     null
@@ -102,21 +102,20 @@ const RequestDetailPage = () => {
     );
   }, [tasks]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
-      const tasksData = await requestService.getTasksByRequestId(requestId);
+      const tasksData = await apiClient.request.getTaskOfRequest(requestId);
       setTasks(tasksData);
     } catch (error) {
       console.error("Failed to fetch tasks:", error);
     }
-  };
+  }, [requestId]);
 
   useEffect(() => {
     const fetchRequestDetail = async () => {
       try {
         setLoading(true);
-        const data = await requestService.getRequestDetail(requestId);
+        const data = await apiClient.request.getRequestDetail(requestId);
         setRequestDetail(data);
       } catch (error) {
         console.error("Failed to fetch request detail:", error);
@@ -135,7 +134,7 @@ const RequestDetailPage = () => {
   useEffect(() => {
     const fetchTechnicalIssues = async () => {
       try {
-        const data = await requestService.getTechnicalIssuesByRequestId(
+        const data = await apiClient.request.getTechnicalIssueOfRequest(
           requestId
         );
         setTechnicalIssues(data);
@@ -252,7 +251,7 @@ const RequestDetailPage = () => {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <Link href={`/workspace/${workspaceId}/requests`}>
+                  <Link href={`/workspace/hot/requests`}>
                     <div className="flex items-center gap-3">
                       <span>Danh sách yêu cầu</span>
                     </div>
@@ -446,7 +445,6 @@ const RequestDetailPage = () => {
                     <TaskTableCpn
                       requestId={requestId}
                       refreshTrigger={refreshTrigger}
-                      workspaceId={workspaceId}
                     />
                   </TabsContent>
                 </>

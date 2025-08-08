@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -74,7 +74,7 @@ const CreateTaskFromErrorsCpn = ({
   const [creating, setCreating] = useState<boolean>(false);
 
   // Fetch functions
-  const fetchErrorGuidelines = async () => {
+  const fetchErrorGuidelines = useCallback(async () => {
     if (availableErrors.length === 0) return;
 
     try {
@@ -106,9 +106,9 @@ const CreateTaskFromErrorsCpn = ({
     } finally {
       setLoadingGuidelines(false);
     }
-  };
+  }, [availableErrors]);
 
-  const fetchMechanics = async () => {
+  const fetchMechanics = useCallback(async () => {
     try {
       setLoadingMechanics(true);
       const mechanicsData = await userService.getUsersByRole(3);
@@ -119,7 +119,7 @@ const CreateTaskFromErrorsCpn = ({
     } finally {
       setLoadingMechanics(false);
     }
-  };
+  }, []);
 
   // Effects
   useEffect(() => {
@@ -132,7 +132,7 @@ const CreateTaskFromErrorsCpn = ({
       setSelectedErrorGuidelines([]);
       setCanProceed(false);
     }
-  }, [open, selectedErrors]);
+  }, [open, fetchErrorGuidelines, fetchMechanics]);
 
   useEffect(() => {
     switch (currentStep) {

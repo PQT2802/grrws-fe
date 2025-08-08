@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -116,12 +117,13 @@ const DeviceInfoCard = ({ deviceDetail, taskDetail }: DeviceInfoCardProps) => {
                 </Badge>
               </div>
             </div>
-
             {deviceDetail.photoUrl && (
               <div className="w-20 h-20 rounded overflow-hidden border border-green-200 flex-shrink-0">
-                <img
+                <Image
                   src={deviceDetail.photoUrl}
                   alt={deviceDetail.deviceName || "Device"}
+                  width={80}
+                  height={80}
                   className="w-full h-full object-cover"
                 />
               </div>

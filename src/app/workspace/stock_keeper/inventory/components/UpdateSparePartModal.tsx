@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Upload, Edit, AlertCircle } from "lucide-react";
+import { X, Upload, Edit } from "lucide-react";
+import Image from "next/image";
 import { sparePartService } from "@/app/service/sparePart.service";
 import { toast } from "react-toastify";
 import { PartType } from "../../type";
@@ -25,7 +26,7 @@ export default function UpdateSparePartModal({
   onClose,
   onSuccess,
   part,
-  originalData
+  originalData,
 }: UpdateSparePartModalProps) {
   // Form state
   const [formData, setFormData] = useState({
@@ -37,7 +38,7 @@ export default function UpdateSparePartModal({
     unitPrice: 0,
     expectedAvailabilityDate: "",
     supplierId: "",
-    category: ""
+    category: "",
   });
 
   // Additional state for UI
@@ -60,20 +61,22 @@ export default function UpdateSparePartModal({
           stockQuantity: originalData.stockQuantity,
           unit: originalData.unit,
           unitPrice: originalData.unitPrice,
-          expectedAvailabilityDate: originalData.expectedAvailabilityDate 
-            ? new Date(originalData.expectedAvailabilityDate).toISOString().split('T')[0] 
+          expectedAvailabilityDate: originalData.expectedAvailabilityDate
+            ? new Date(originalData.expectedAvailabilityDate)
+                .toISOString()
+                .split("T")[0]
             : "",
           supplierId: originalData.supplierId || "",
-          category: originalData.category || ""
+          category: originalData.category || "",
         });
-        
+
         // Set image preview if available
         if (originalData.imgUrl) {
           setImagePreview(originalData.imgUrl);
         } else {
           setImagePreview(null);
         }
-      } 
+      }
       // Otherwise use the part data from PartDetailModal
       else {
         setFormData({
@@ -85,9 +88,9 @@ export default function UpdateSparePartModal({
           unitPrice: part.unitPrice || 0,
           expectedAvailabilityDate: part.expectedAvailabilityDate || "",
           supplierId: part.supplierId || part.supplier || "",
-          category: part.category || ""
+          category: part.category || "",
         });
-        
+
         // Set image preview if available
         if (part.image && part.image !== "/placeholder-part.png") {
           setImagePreview(part.image);
@@ -95,7 +98,7 @@ export default function UpdateSparePartModal({
           setImagePreview(null);
         }
       }
-      
+
       setImageFile(null);
       setErrors({});
       setIsSubmitting(false);
@@ -109,8 +112,14 @@ export default function UpdateSparePartModal({
       setIsLoadingSuppliers(true);
       // Mock suppliers for now
       const mockSuppliers = [
-        { id: "50000000-0000-0000-0000-000000000001", name: "Công ty máy may Juki" },
-        { id: "50000000-0000-0000-0000-000000000002", name: "Công ty máy may gia đình Brother" }
+        {
+          id: "50000000-0000-0000-0000-000000000001",
+          name: "Công ty máy may Juki",
+        },
+        {
+          id: "50000000-0000-0000-0000-000000000002",
+          name: "Công ty máy may gia đình Brother",
+        },
       ];
       setSuppliers(mockSuppliers);
     } catch (error) {
@@ -123,7 +132,9 @@ export default function UpdateSparePartModal({
 
   // Handle input changes
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type } = e.target;
     let parsedValue: string | number = value;
@@ -135,7 +146,7 @@ export default function UpdateSparePartModal({
 
     setFormData((prev) => ({
       ...prev,
-      [name]: parsedValue
+      [name]: parsedValue,
     }));
 
     // Clear error when field is modified
@@ -186,16 +197,16 @@ export default function UpdateSparePartModal({
   // ✅ Enhanced form submission with better success handling
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       console.log("🔄 Updating spare part...");
-      
+
       const apiData = {
         SparepartName: formData.sparepartName,
         Description: formData.description || "",
@@ -205,23 +216,22 @@ export default function UpdateSparePartModal({
         UnitPrice: formData.unitPrice,
         ExpectedAvailabilityDate: formData.expectedAvailabilityDate || null,
         SupplierId: formData.supplierId || null,
-        Category: formData.category || null
+        Category: formData.category || null,
       };
-      
+
       console.log("📤 Sending update data:", apiData);
-      
+
       const result = await sparePartService.updateSparePart(part.id, apiData);
-      
+
       console.log("✅ Update API response:", result);
-      
+
       toast.success("Cập nhật thông tin linh kiện thành công!");
-      
+
       // ✅ Call success callback which will trigger modal refresh
       onSuccess();
-      
+
       // ✅ Close modal after successful update
       onClose();
-      
     } catch (error) {
       console.error("❌ Error updating spare part:", error);
       toast.error("Không thể cập nhật thông tin linh kiện. Vui lòng thử lại.");
@@ -269,13 +279,17 @@ export default function UpdateSparePartModal({
                   value={formData.sparepartName}
                   onChange={handleChange}
                   className={`w-full border ${
-                    errors.sparepartName ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                    errors.sparepartName
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
                   required
                   disabled={isSubmitting}
                 />
                 {errors.sparepartName && (
-                  <p className="mt-1 text-sm text-red-500">{errors.sparepartName}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.sparepartName}
+                  </p>
                 )}
               </div>
 
@@ -292,7 +306,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Thông số kỹ thuật</label>
+                <label className="block text-sm font-medium mb-1">
+                  Thông số kỹ thuật
+                </label>
                 <textarea
                   name="specification"
                   value={formData.specification}
@@ -304,7 +320,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Cập nhật hình ảnh</label>
+                <label className="block text-sm font-medium mb-1">
+                  Cập nhật hình ảnh
+                </label>
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600 hover:border-blue-500 rounded-md p-4 h-24 w-full">
                     <input
@@ -319,13 +337,14 @@ export default function UpdateSparePartModal({
                       <span className="text-sm">Nhấp để tải ảnh mới</span>
                     </div>
                   </label>
-                  
                   {imagePreview && (
                     <div className="relative h-24 w-24 border dark:border-gray-700 rounded-md overflow-hidden">
-                      <img
+                      <Image
                         src={imagePreview}
                         alt="Preview"
-                        className="h-full w-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="96px"
                       />
                       <button
                         type="button"
@@ -348,7 +367,9 @@ export default function UpdateSparePartModal({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Số lượng tồn kho</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Số lượng tồn kho
+                  </label>
                   <input
                     type="number"
                     name="stockQuantity"
@@ -356,17 +377,23 @@ export default function UpdateSparePartModal({
                     onChange={handleChange}
                     min={0}
                     className={`w-full border ${
-                      errors.stockQuantity ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                      errors.stockQuantity
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
                     } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
                     disabled={isSubmitting}
                   />
                   {errors.stockQuantity && (
-                    <p className="mt-1 text-sm text-red-500">{errors.stockQuantity}</p>
+                    <p className="mt-1 text-sm text-red-500">
+                      {errors.stockQuantity}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Đơn vị</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Đơn vị
+                  </label>
                   <select
                     name="unit"
                     value={formData.unit}
@@ -381,7 +408,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Đơn giá</label>
+                <label className="block text-sm font-medium mb-1">
+                  Đơn giá
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2 text-gray-500">₫</span>
                   <input
@@ -392,13 +421,17 @@ export default function UpdateSparePartModal({
                     min={0}
                     step={0.01}
                     className={`w-full pl-7 border ${
-                      errors.unitPrice ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                      errors.unitPrice
+                        ? "border-red-500"
+                        : "border-gray-300 dark:border-gray-600"
                     } rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:bg-slate-700`}
                     disabled={isSubmitting}
                   />
                 </div>
                 {errors.unitPrice && (
-                  <p className="mt-1 text-sm text-red-500">{errors.unitPrice}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.unitPrice}
+                  </p>
                 )}
               </div>
 
@@ -417,7 +450,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Danh mục</label>
+                <label className="block text-sm font-medium mb-1">
+                  Danh mục
+                </label>
                 <input
                   type="text"
                   name="category"
@@ -429,7 +464,9 @@ export default function UpdateSparePartModal({
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Nhà cung cấp</label>
+                <label className="block text-sm font-medium mb-1">
+                  Nhà cung cấp
+                </label>
                 <select
                   name="supplierId"
                   value={formData.supplierId}

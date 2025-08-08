@@ -1,19 +1,20 @@
 "use client";
 
-import { 
-  X, 
-  AlertTriangle, 
-  Package, 
-  Edit, 
+import {
+  X,
+  AlertTriangle,
+  Package,
+  Edit,
   CheckCircle,
   Settings,
   Tag,
   Truck,
   DollarSign,
   FileText,
-  Wrench
+  Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import Image from "next/image"; // ✅ Add import for Next.js Image
 import { PartDetailModalProps, PartType } from "../../type";
 import UpdateQuantityModal from "./UpdateQuantityModal";
 import UpdateSparePartModal from "./UpdateSparePartModal";
@@ -27,13 +28,13 @@ interface PartDetailModalPropsExtended extends PartDetailModalProps {
   isViewOnlyMode?: boolean;
 }
 
-export default function PartDetailModal({ 
-  isOpen, 
-  onClose, 
-  part, 
-  onUpdate, 
+export default function PartDetailModal({
+  isOpen,
+  onClose,
+  part,
+  onUpdate,
   partId,
-  isViewOnlyMode = false
+  isViewOnlyMode = false,
 }: PartDetailModalPropsExtended) {
   const { user } = useAuth();
   const [currentPart, setCurrentPart] = useState<PartType | null>(part || null);
@@ -41,17 +42,23 @@ export default function PartDetailModal({
   const [isOutOfStock, setIsOutOfStock] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showUpdateSpModal, setShowUpdateSpModal] = useState(false);
-  const [originalData, setOriginalData] = useState<SPAREPART_INVENTORY_ITEM | undefined>(undefined);
+  const [originalData, setOriginalData] = useState<
+    SPAREPART_INVENTORY_ITEM | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false); // ✅ Add refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const hasFullAccess = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER;
+  const hasFullAccess =
+    user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER;
 
   // Load part data when partId is provided (for direct access)
   useEffect(() => {
     if (isOpen && partId && !part) {
-      console.log('PartDetailModal: Loading part by ID from direct access:', partId);
+      console.log(
+        "PartDetailModal: Loading part by ID from direct access:",
+        partId
+      );
       fetchPartById(partId);
     }
   }, [isOpen, partId, part]);
@@ -69,7 +76,10 @@ export default function PartDetailModal({
   // Update stock status when currentPart changes
   useEffect(() => {
     if (currentPart) {
-      setIsLowStock(currentPart.quantity > 0 && currentPart.quantity < currentPart.minThreshold);
+      setIsLowStock(
+        currentPart.quantity > 0 &&
+          currentPart.quantity < currentPart.minThreshold
+      );
       setIsOutOfStock(currentPart.quantity === 0);
     }
   }, [currentPart]);
@@ -83,7 +93,7 @@ export default function PartDetailModal({
 
       const response = await apiClient.sparePart.getPartById(id);
       console.log("API response for part by ID:", response);
-      
+
       let partData;
       if (response?.data?.data) {
         partData = response.data.data;
@@ -99,7 +109,10 @@ export default function PartDetailModal({
         const convertedPart: PartType = {
           id: partData.id,
           name: partData.sparepartName,
-          machineType: partData.machineNames?.length > 0 ? partData.machineNames[0] : "Khác",
+          machineType:
+            partData.machineNames?.length > 0
+              ? partData.machineNames[0]
+              : "Khác",
           category: partData.category || "Others",
           quantity: partData.stockQuantity,
           minThreshold: 10,
@@ -111,9 +124,11 @@ export default function PartDetailModal({
           supplier: partData.supplierName || "",
           supplierId: partData.supplierId || "",
           unitPrice: partData.unitPrice || 0,
-          expectedAvailabilityDate: partData.expectedAvailabilityDate 
-            ? new Date(partData.expectedAvailabilityDate).toISOString().split('T')[0]
-            : ""
+          expectedAvailabilityDate: partData.expectedAvailabilityDate
+            ? new Date(partData.expectedAvailabilityDate)
+                .toISOString()
+                .split("T")[0]
+            : "",
         };
 
         setCurrentPart(convertedPart);
@@ -130,7 +145,7 @@ export default function PartDetailModal({
     }
   };
 
-  // ✅ Enhanced refresh function for modal data
+  // Enhanced refresh function for modal data
   const refreshModalData = async (showLoadingState: boolean = true) => {
     if (!currentPart?.id) {
       console.warn("No part ID available for refreshing modal data");
@@ -141,7 +156,7 @@ export default function PartDetailModal({
       if (showLoadingState) {
         setIsRefreshing(true);
       }
-      
+
       console.log(`🔄 Refreshing modal data for part ID: ${currentPart.id}`);
 
       const response = await apiClient.sparePart.getPartById(currentPart.id);
@@ -159,11 +174,13 @@ export default function PartDetailModal({
       }
 
       if (partData && partData.id) {
-        // ✅ Convert fresh API data to PartType
         const refreshedPart: PartType = {
           id: partData.id,
           name: partData.sparepartName,
-          machineType: partData.machineNames?.length > 0 ? partData.machineNames[0] : "Khác",
+          machineType:
+            partData.machineNames?.length > 0
+              ? partData.machineNames[0]
+              : "Khác",
           category: partData.category || "Others",
           quantity: partData.stockQuantity,
           minThreshold: 10,
@@ -175,18 +192,18 @@ export default function PartDetailModal({
           supplier: partData.supplierName || "",
           supplierId: partData.supplierId || "",
           unitPrice: partData.unitPrice || 0,
-          expectedAvailabilityDate: partData.expectedAvailabilityDate 
-            ? new Date(partData.expectedAvailabilityDate).toISOString().split('T')[0]
-            : ""
+          expectedAvailabilityDate: partData.expectedAvailabilityDate
+            ? new Date(partData.expectedAvailabilityDate)
+                .toISOString()
+                .split("T")[0]
+            : "",
         };
 
-        // ✅ Update modal state with fresh data
         setCurrentPart(refreshedPart);
         setOriginalData(partData);
-        
+
         console.log("✅ Modal data refreshed successfully:", refreshedPart);
-        
-        // ✅ Also notify parent component to refresh page-level data
+
         onUpdate?.();
       } else {
         throw new Error("Invalid refreshed part data structure");
@@ -202,29 +219,11 @@ export default function PartDetailModal({
   };
 
   // Fetch original data for both Admin and Stock Keeper
-  useEffect(() => {
-    if (isOpen && currentPart?.id && !originalData && hasFullAccess) {
-      fetchOriginalData();
-    }
-  }, [isOpen, currentPart?.id, hasFullAccess]);
-
-  // Reset state when modal opens/closes
-  useEffect(() => {
-    if (!isOpen) {
-      setOriginalData(undefined);
-      setShowUpdateModal(false);
-      setShowUpdateSpModal(false);
-      setError(null);
-      setIsRefreshing(false); // ✅ Reset refresh state
-      if (partId && !part) {
-        setCurrentPart(null);
-      }
-    }
-  }, [isOpen, partId, part]);
-
-  const fetchOriginalData = async () => {
+  const fetchOriginalData = useCallback(async () => {
     if (!currentPart?.id || !hasFullAccess) {
-      console.warn("PartDetailModal: No part ID available or insufficient permissions");
+      console.warn(
+        "PartDetailModal: No part ID available or insufficient permissions"
+      );
       return;
     }
 
@@ -245,7 +244,28 @@ export default function PartDetailModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPart?.id, hasFullAccess]);
+
+  // Fetch original data when modal opens
+  useEffect(() => {
+    if (isOpen && currentPart?.id && !originalData && hasFullAccess) {
+      fetchOriginalData();
+    }
+  }, [isOpen, currentPart?.id, fetchOriginalData, originalData, hasFullAccess]);
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setOriginalData(undefined);
+      setShowUpdateModal(false);
+      setShowUpdateSpModal(false);
+      setError(null);
+      setIsRefreshing(false);
+      if (partId && !part) {
+        setCurrentPart(null);
+      }
+    }
+  }, [isOpen, partId, part]);
 
   // Close modal on escape key
   useEffect(() => {
@@ -270,8 +290,12 @@ export default function PartDetailModal({
     };
   }, [isOpen]);
 
-  // ✅ Enhanced quantity update with immediate modal refresh
-  const handleUpdateQuantitySubmit = async (data: { date: string; qty: number; method: string }) => {
+  // Enhanced quantity update with immediate modal refresh
+  const handleUpdateQuantitySubmit = async (data: {
+    date: string;
+    qty: number;
+    method: string;
+  }) => {
     if (!hasFullAccess) {
       toast.error("Bạn không có quyền cập nhật số lượng tồn kho");
       return;
@@ -285,28 +309,28 @@ export default function PartDetailModal({
     try {
       console.log("🔄 Updating quantity:", {
         partId: currentPart.id,
-        ...data
+        ...data,
       });
-      
+
       const response = await apiClient.sparePart.updateStockQuantity(
-        currentPart.id, 
-        data.method === 'Adjustment' ? data.qty : (
-          data.method === 'Export' ? Math.max(0, currentPart.quantity - data.qty) : currentPart.quantity + data.qty
-        )
+        currentPart.id,
+        data.method === "Adjustment"
+          ? data.qty
+          : data.method === "Export"
+          ? Math.max(0, currentPart.quantity - data.qty)
+          : currentPart.quantity + data.qty
       );
-      
+
       toast.success(`Đã cập nhật số lượng ${currentPart.name} thành công`);
-      
-      // ✅ Refresh modal data immediately after quantity update
-      await refreshModalData(false); // Don't show loading state for quick refresh
-      
+
+      await refreshModalData(false);
     } catch (error) {
       console.error("Error updating quantity:", error);
       toast.error("Cập nhật số lượng thất bại");
     }
   };
 
-  // ✅ Enhanced general update success handler with immediate modal refresh
+  // Enhanced general update success handler with immediate modal refresh
   const handleUpdateSuccess = async () => {
     if (!hasFullAccess) {
       toast.error("Bạn không có quyền cập nhật thông tin linh kiện");
@@ -315,10 +339,9 @@ export default function PartDetailModal({
 
     console.log("🎉 Part updated successfully, refreshing modal...");
     setShowUpdateSpModal(false);
-    
-    // ✅ Refresh modal data immediately after general update
-    await refreshModalData(true); // Show loading state for this refresh
-    
+
+    await refreshModalData(true);
+
     toast.success("Thông tin linh kiện đã được cập nhật");
   };
 
@@ -349,7 +372,9 @@ export default function PartDetailModal({
         <div className="bg-card rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <span className="ml-4 text-lg text-foreground">Đang tải thông tin linh kiện...</span>
+            <span className="ml-4 text-lg text-foreground">
+              Đang tải thông tin linh kiện...
+            </span>
           </div>
         </div>
       </div>
@@ -393,7 +418,6 @@ export default function PartDetailModal({
             <h2 className="text-xl font-semibold text-foreground">
               {currentPart.name}
             </h2>
-            {/* ✅ Show refresh indicator when updating */}
             {isRefreshing && (
               <div className="flex items-center gap-2 text-blue-600">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
@@ -415,13 +439,16 @@ export default function PartDetailModal({
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-shrink-0">
               <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center">
-                <img
+                <Image
                   src={currentPart.image || "/file.svg"}
                   alt={currentPart.name}
+                  width={192}
+                  height={192}
                   className="max-h-40 max-w-full object-contain"
                   onError={(e) => {
-                    if (!e.currentTarget.src.includes("file.svg")) {
-                      e.currentTarget.src = "/file.svg";
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes("/file.svg")) {
+                      target.src = "/file.svg";
                     }
                   }}
                 />
@@ -430,13 +457,15 @@ export default function PartDetailModal({
 
             <div className="flex-1 space-y-4">
               {/* Stock Status */}
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                isOutOfStock
-                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                  : isLowStock 
-                  ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" 
-                  : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-              }`}>
+              <div
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  isOutOfStock
+                    ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                    : isLowStock
+                    ? "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                    : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                }`}
+              >
                 {isOutOfStock ? (
                   <>
                     <AlertTriangle className="w-4 h-4 mr-1" />
@@ -504,7 +533,7 @@ export default function PartDetailModal({
             <h3 className="text-lg font-medium text-foreground mb-6">
               Thông tin chi tiết
             </h3>
-            
+
             <div className="space-y-6">
               {/* Row 1: Machine Type & Category */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -545,7 +574,9 @@ export default function PartDetailModal({
                     Đơn giá
                   </label>
                   <p className="text-sm text-foreground">
-                    {currentPart.unitPrice ? `${currentPart.unitPrice.toLocaleString('vi-VN')} đ` : "N/A"}
+                    {currentPart.unitPrice
+                      ? `${currentPart.unitPrice.toLocaleString("vi-VN")} đ`
+                      : "N/A"}
                   </p>
                 </div>
               </div>

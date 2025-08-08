@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaimButton";
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
-import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn"; // Add this import
+import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn";
 import CreateReinstallTaskButton from "@/components/warranty/CreateReinstallTaskButton";
 import {
   formatAPIDateToHoChiMinh,
@@ -78,7 +78,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
-
 import {
   translateGroupType,
   translateTaskPriority,
@@ -100,7 +99,6 @@ import WarrantyTab from "@/components/TaskGroupTab/WarrantyTab";
 import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
 import useSignalRStore from "@/store/useSignalRStore";
 import RepairTab from "@/components/TaskGroupTab/RepairTab";
-import { config } from "zod/v4/core";
 import SingleDeviceCard from "@/components/TaskGroupTab/SingleDeviceCard";
 
 const GroupTaskDetailsPage = () => {
@@ -131,8 +129,11 @@ const GroupTaskDetailsPage = () => {
   >(null);
   const [showCreateInstallModal, setShowCreateInstallModal] = useState(false);
 
+  const [installationTasks, setInstallationTasks] = useState<TASK_IN_GROUP[]>(
+    []
+  );
+
   useEffect(() => {
-    // This effect will run when repairTask changes (e.g. after refresh)
     if (taskGroup) {
       const repairTask =
         taskGroup?.tasks.find((task) => task.taskType === "Repair") || null;
@@ -146,17 +147,21 @@ const GroupTaskDetailsPage = () => {
       setRepairTask(repairTask);
       setWarrantyReturnTask(warrantyReturnTask);
       setWarrantySubmissionTask(warrantySubmissionTask);
+      const filtered = taskGroup.tasks.filter(
+        (task) => task.taskType.toLowerCase() === "installation"
+      );
+      setInstallationTasks(filtered);
+    } else {
+      setInstallationTasks([]);
     }
   }, [taskGroup]);
 
-  // Get warranty task detail for footer button
   const warrantyTaskDetailForFooter = warrantySubmissionTask
     ? (dropdownTaskDetails[
         warrantySubmissionTask.taskId
       ] as WARRANTY_TASK_DETAIL | null)
     : null;
 
-  // Add this
   const repairTaskDetail = repairTask
     ? (dropdownTaskDetails[repairTask.taskId] as REPAIR_TASK_DETAIL | null)
     : null;
@@ -164,12 +169,48 @@ const GroupTaskDetailsPage = () => {
   const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
-  // New state for pre-fetched installation task details
   const [installationTaskDetails, setInstallationTaskDetails] = useState<
     Record<string, INSTALL_TASK_DETAIL>
   >({});
 
-  // Device tab specific state
+  // Moved here so it's defined before any use (e.g., in effects and callbacks above)
+  const fetchInstallationTaskDetails = useCallback(
+    async (tasks: TASK_IN_GROUP[]) => {
+      const installationTasks = tasks.filter(
+        (task) => task.taskType.toLowerCase() === "installation"
+      );
+
+      if (installationTasks.length === 0) return;
+
+      const installTaskDetailsMap: Record<string, INSTALL_TASK_DETAIL> = {};
+
+      await Promise.allSettled(
+        installationTasks.map(async (task) => {
+          try {
+            const taskDetail = await apiClient.task.getInstallTaskDetail(
+              task.taskId
+            );
+            if (taskDetail) {
+              installTaskDetailsMap[task.taskId] = taskDetail;
+            }
+          } catch (error) {
+            console.warn(
+              `Could not fetch installation task detail for ${task.taskId}:`,
+              error
+            );
+          }
+        })
+      );
+
+      setInstallationTaskDetails(installTaskDetailsMap);
+
+      if (installationTasks.length > 0) {
+        setSelectedInstallationTaskId(installationTasks[0].taskId);
+      }
+    },
+    [] // state setters are stable; no dependencies needed
+  );
+
   const [deviceTabOldDevice, setDeviceTabOldDevice] =
     useState<DEVICE_WEB | null>(null);
   const [deviceModalOpen, setDeviceModalOpen] = useState<boolean>(false);
@@ -185,197 +226,60 @@ const GroupTaskDetailsPage = () => {
     string | null
   >(null);
 
-  // Get installation tasks for device tab using useEffect
-  const [installationTasks, setInstallationTasks] = useState<TASK_IN_GROUP[]>(
-    []
-  );
-
-  // Check if there are any suggested tasks
   const [suggestedTasks, setSuggestedTasks] = useState<TASK_IN_GROUP[]>([]);
   const hasSuggestedTasks = suggestedTasks.length > 0;
 
-  // Fetch task group details and pre-fetch installation task details
-  useEffect(() => {
-    const fetchTaskGroupDetail = async () => {
+  // Memoized fetchTaskDetail, removing apiClient from dependencies
+  const fetchTaskDetail = useCallback(
+    async (task: TASK_IN_GROUP) => {
       try {
-        setLoading(true);
-        setError(null);
-
-        const response = await apiClient.task.getAllTaskGroups(1, 100);
-        const group = response.data.find((g) => g.taskGroupId === taskGroupId);
-
-        if (group) {
-          setTaskGroup(group);
-
-          // Pre-fetch installation task details
-          await fetchInstallationTaskDetails(group.tasks);
-        } else {
-          setError("Không tìm thấy nhóm nhiệm vụ");
-        }
-      } catch (err) {
-        console.error("Failed to fetch task group:", err);
-        setError("Không thể tải thông tin nhóm nhiệm vụ");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (taskGroupId) {
-      fetchTaskGroupDetail();
-    }
-  }, [taskGroupId]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token && taskGroupId) {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-      const handleFullDataRefresh = async () => {
-        console.log("🔄 Performing full data refresh...");
-        try {
-          const response = await apiClient.task.getAllTaskGroups(1, 100);
-          const group = response.data.find(
-            (g) => g.taskGroupId === taskGroupId
-          );
-
-          if (group) {
-            setTaskGroup(group);
-            await fetchInstallationTaskDetails(group.tasks);
-
-            const warrantyTask = group.tasks.find(
-              (task) => task.taskType === "WarrantySubmission"
+        let taskDetail = null;
+        switch (task.taskType.toLowerCase()) {
+          case "warrantysubmission":
+            taskDetail = await apiClient.task.getWarrantyTaskDetail(
+              task.taskId
             );
-            if (warrantyTask) {
-              setDropdownTaskDetails((prev) => ({
-                ...prev,
-                [warrantyTask.taskId]: null,
-              }));
-              await fetchWarrantyTaskDetailForFooter();
-            }
-            // Add this
-            const repairTaskInGroup = group.tasks.find(
-              (task) => task.taskType === "Repair"
+            break;
+          case "warrantyreturn":
+            taskDetail = await apiClient.task.getWarrantyReturnTaskDetail(
+              task.taskId
             );
-            if (repairTaskInGroup) {
-              setDropdownTaskDetails((prev) => ({
-                ...prev,
-                [repairTaskInGroup.taskId]: null,
-              }));
-            }
-
-            if (selectedTask) {
-              const updatedTask = group.tasks.find(
-                (t) => t.taskId === selectedTask.taskId
+            break;
+          case "repair":
+            taskDetail = await apiClient.task.getRepairTaskDetail(task.taskId);
+            break;
+          case "installation":
+            taskDetail = installationTaskDetails[task.taskId] || null;
+            if (!taskDetail) {
+              taskDetail = await apiClient.task.getInstallTaskDetail(
+                task.taskId
               );
-              if (updatedTask) {
-                setSelectedTask(updatedTask);
-                const taskDetail = await fetchTaskDetail(updatedTask);
-                setSelectedTaskDetail(taskDetail);
-              }
             }
-
-            console.log("✅ Full data refresh completed");
-          }
-        } catch (error) {
-          console.error("❌ Full data refresh failed:", error);
+            break;
+          default:
+            console.warn(`No specific API for task type: ${task.taskType}`);
+            break;
         }
-      };
-
-      const { connect, disconnect } = useSignalRStore.getState();
-
-      // 🔑 Join đúng group bên BE
-      const roleName = "HOT"; // hoặc lấy từ auth user của bạn
-      connect(
-        token,
-        backendUrl,
-        [`role:${roleName}`],
-        async (eventName, data) => {
-          console.log(`📩 SignalR event: ${eventName}`, data);
-          switch (eventName) {
-            case "NotificationReceived":
-              await handleFullDataRefresh();
-              break;
-            default:
-              console.log(`ℹ️ Unhandled SignalR event: ${eventName}`);
-          }
-        }
-      );
-
-      // Force initial data fetch when connected
-      setTimeout(handleFullDataRefresh, 1000);
-
-      return () => disconnect();
-    }
-  }, [taskGroupId]); // Added selectedTask to dependencies
-
-  const refreshRepairTaskDetail = async () => {
-    if (repairTask) {
-      try {
-        const taskDetail = await apiClient.task.getRepairTaskDetail(
-          repairTask.taskId
-        );
-        if (taskDetail) {
-          setDropdownTaskDetails((prev) => ({
-            ...prev,
-            [repairTask.taskId]: taskDetail,
-          }));
-        }
+        return taskDetail;
       } catch (error) {
-        console.error("Failed to refresh repair task detail:", error);
-        toast.error("Không thể tải lại chi tiết nhiệm vụ sửa chữa");
+        console.error("Failed to fetch task detail:", error);
+        toast.error("Không thể tải chi tiết nhiệm vụ");
+        return null;
       }
-    }
-  };
+    },
+    [installationTaskDetails] // Removed apiClient
+  );
 
-  // Pre-fetch installation task details
-  const fetchInstallationTaskDetails = async (tasks: TASK_IN_GROUP[]) => {
-    const installationTasks = tasks.filter(
-      (task) => task.taskType.toLowerCase() === "installation"
-    );
-
-    if (installationTasks.length === 0) return;
-
-    const installTaskDetailsMap: Record<string, INSTALL_TASK_DETAIL> = {};
-
-    // Fetch details for all installation tasks
-    await Promise.allSettled(
-      installationTasks.map(async (task) => {
-        try {
-          const taskDetail = await apiClient.task.getInstallTaskDetail(
-            task.taskId
-          );
-          if (taskDetail) {
-            installTaskDetailsMap[task.taskId] = taskDetail;
-          }
-        } catch (error) {
-          console.warn(
-            `Could not fetch installation task detail for ${task.taskId}:`,
-            error
-          );
-        }
-      })
-    );
-
-    setInstallationTaskDetails(installTaskDetailsMap);
-
-    // Auto-select first installation task for device tab
-    if (installationTasks.length > 0) {
-      setSelectedInstallationTaskId(installationTasks[0].taskId);
-    }
-  };
-
-  const fetchWarrantyTaskDetailForFooter = async () => {
+  // Memoized fetchWarrantyTaskDetailForFooter, removing apiClient from dependencies
+  const fetchWarrantyTaskDetailForFooter = useCallback(async () => {
     if (!warrantySubmissionTask) return null;
 
-    // Check if already cached
     if (dropdownTaskDetails[warrantySubmissionTask.taskId]) {
       return dropdownTaskDetails[
         warrantySubmissionTask.taskId
       ] as WARRANTY_TASK_DETAIL;
     }
 
-    // Fetch if not cached
     try {
       const taskDetail = await apiClient.task.getWarrantyTaskDetail(
         warrantySubmissionTask.taskId
@@ -392,7 +296,124 @@ const GroupTaskDetailsPage = () => {
       toast.error("Không thể tải chi tiết nhiệm vụ bảo hành");
     }
     return null;
-  };
+  }, [warrantySubmissionTask, dropdownTaskDetails]); // Removed apiClient
+
+  // Memoized handleFullDataRefresh to ensure stability
+  const handleFullDataRefresh = useCallback(async () => {
+    console.log("🔄 Performing full data refresh...");
+    try {
+      const response = await apiClient.task.getAllTaskGroups(1, 100);
+      const group = response.data.find((g) => g.taskGroupId === taskGroupId);
+
+      if (group) {
+        setTaskGroup(group);
+        await fetchInstallationTaskDetails(group.tasks);
+
+        const warrantyTask = group.tasks.find(
+          (task) => task.taskType === "WarrantySubmission"
+        );
+        if (warrantyTask) {
+          setDropdownTaskDetails((prev) => ({
+            ...prev,
+            [warrantyTask.taskId]: null,
+          }));
+          await fetchWarrantyTaskDetailForFooter();
+        }
+        const repairTaskInGroup = group.tasks.find(
+          (task) => task.taskType === "Repair"
+        );
+        if (repairTaskInGroup) {
+          setDropdownTaskDetails((prev) => ({
+            ...prev,
+            [repairTaskInGroup.taskId]: null,
+          }));
+        }
+
+        if (selectedTask) {
+          const updatedTask = group.tasks.find(
+            (t) => t.taskId === selectedTask.taskId
+          );
+          if (updatedTask) {
+            setSelectedTask(updatedTask);
+            const taskDetail = await fetchTaskDetail(updatedTask);
+            setSelectedTaskDetail(taskDetail);
+          }
+        }
+
+        console.log("✅ Full data refresh completed");
+      }
+    } catch (error) {
+      console.error("❌ Full data refresh failed:", error);
+    }
+  }, [
+    taskGroupId,
+    fetchInstallationTaskDetails,
+    fetchWarrantyTaskDetailForFooter,
+    selectedTask,
+    setTaskGroup,
+    setDropdownTaskDetails,
+    setSelectedTask,
+    setSelectedTaskDetail,
+    fetchTaskDetail,
+  ]);
+
+  useEffect(() => {
+    const fetchTaskGroupDetail = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiClient.task.getAllTaskGroups(1, 100);
+        const group = response.data.find((g) => g.taskGroupId === taskGroupId);
+
+        if (group) {
+          setTaskGroup(group);
+          await fetchInstallationTaskDetails(group.tasks);
+        } else {
+          setError("Không tìm thấy nhóm nhiệm vụ");
+        }
+      } catch (err) {
+        console.error("Failed to fetch task group:", err);
+        setError("Không thể tải thông tin nhóm nhiệm vụ");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (taskGroupId) {
+      fetchTaskGroupDetail();
+    }
+  }, [taskGroupId, fetchInstallationTaskDetails]);
+
+  // SignalR connection setup
+  useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
+    if (!token || !taskGroupId) return;
+
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const roleName = "HOT";
+    const { connect, disconnect } = useSignalRStore.getState();
+
+    const handleEvent = async (eventName: string, data: any) => {
+      console.log(`📩 SignalR event: ${eventName}`, data);
+      if (
+        eventName === "TaskGroupUpdated" &&
+        data?.taskGroupId === taskGroupId
+      ) {
+        await handleFullDataRefresh();
+      }
+    };
+
+    connect(token, backendUrl, [`role:${roleName}`], handleEvent);
+
+    return () => {
+      disconnect();
+    };
+  }, [taskGroupId, handleFullDataRefresh]);
 
   useEffect(() => {
     const fetchWarrantyTaskDetailOnLoad = async () => {
@@ -424,9 +445,13 @@ const GroupTaskDetailsPage = () => {
 
     fetchWarrantyTaskDetailOnLoad();
     fetchRepairTaskDetailOnLoad();
-  }, [warrantySubmissionTask, dropdownTaskDetails, dropdownTaskDetails]);
+  }, [
+    warrantySubmissionTask,
+    dropdownTaskDetails,
+    fetchWarrantyTaskDetailForFooter,
+    repairTask,
+  ]);
 
-  // Fetch device details for the device tab when installation task is selected
   useEffect(() => {
     const fetchDeviceDetailsForTab = async () => {
       if (
@@ -443,10 +468,14 @@ const GroupTaskDetailsPage = () => {
 
       try {
         // Fetch old device
-        if (installDetail.deviceId) {
+        const oldDeviceId = installDetail?.stockInDeviceId
+        ? installDetail?.stockInDeviceId
+        : installDetail?.deviceId;
+        const newDeviceId = installDetail?.stockOutDeviceId;
+        if (oldDeviceId) {
           try {
             const oldDeviceData = await apiClient.device.getDeviceById(
-              installDetail.deviceId
+              oldDeviceId
             );
             setDeviceTabOldDevice(oldDeviceData);
           } catch (error) {
@@ -456,10 +485,10 @@ const GroupTaskDetailsPage = () => {
         }
 
         // Fetch new device
-        if (installDetail.newDeviceId) {
+        if (newDeviceId) {
           try {
             const newDeviceData = await apiClient.device.getDeviceById(
-              installDetail.newDeviceId
+              newDeviceId
             );
             setDeviceTabNewDevice(newDeviceData);
           } catch (error) {
@@ -488,14 +517,9 @@ const GroupTaskDetailsPage = () => {
 
       if (group) {
         setTaskGroup(group);
-
-        // Clear cached data to ensure fresh fetch
         setDropdownTaskDetails({});
-
-        // Refresh installation task details
         await fetchInstallationTaskDetails(group.tasks);
 
-        // Refresh warranty task detail for footer if exists
         const warrantyTask = group.tasks.find(
           (task) => task.taskType === "WarrantySubmission"
         );
@@ -503,7 +527,6 @@ const GroupTaskDetailsPage = () => {
           await fetchWarrantyTaskDetailForFooter();
         }
 
-        // Refresh selected task detail if one is selected
         if (selectedTask) {
           const updatedTask = group.tasks.find(
             (t) => t.taskId === selectedTask.taskId
@@ -514,12 +537,12 @@ const GroupTaskDetailsPage = () => {
             setSelectedTaskDetail(taskDetail);
           }
         }
-      }
 
-      console.log("✅ Dữ liệu nhóm nhiệm vụ đã được làm mới thành công");
-      toast.success("Đã làm mới dữ liệu thành công", {
-        description: "Thông tin nhóm nhiệm vụ đã được cập nhật",
-      });
+        console.log("✅ Dữ liệu nhóm nhiệm vụ đã được làm mới thành công");
+        toast.success("Đã làm mới dữ liệu thành công", {
+          description: "Thông tin nhóm nhiệm vụ đã được cập nhật",
+        });
+      }
     } catch (error) {
       console.error("❌ Lỗi khi làm mới dữ liệu nhóm nhiệm vụ:", error);
       toast.error("Lỗi khi làm mới dữ liệu", {
@@ -533,7 +556,6 @@ const GroupTaskDetailsPage = () => {
   const refreshTaskDetail = async (taskId: string) => {
     if (!taskId) return;
     try {
-      // Find the task type
       const task = taskGroup?.tasks.find((t) => t.taskId === taskId);
       if (!task) return;
 
@@ -548,7 +570,6 @@ const GroupTaskDetailsPage = () => {
         case "installation":
           detail = await apiClient.task.getInstallTaskDetail(taskId);
           break;
-        // Add other cases if needed
         default:
           break;
       }
@@ -558,7 +579,6 @@ const GroupTaskDetailsPage = () => {
           ...prev,
           [taskId]: detail,
         }));
-        // If this is the currently selected task, update selectedTaskDetail
         if (selectedTask?.taskId === taskId) {
           setSelectedTaskDetail(detail);
         }
@@ -585,49 +605,9 @@ const GroupTaskDetailsPage = () => {
     setDeviceModalTitle("");
   };
 
-  // Dynamic task detail fetching based on taskType (removed device fetching logic)
-  const fetchTaskDetail = async (task: TASK_IN_GROUP) => {
-    try {
-      let taskDetail = null;
-
-      switch (task.taskType.toLowerCase()) {
-        case "warrantysubmission":
-          taskDetail = await apiClient.task.getWarrantyTaskDetail(task.taskId);
-          break;
-        case "warrantyreturn":
-          taskDetail = await apiClient.task.getWarrantyReturnTaskDetail(
-            task.taskId
-          );
-          break;
-        case "repair": // Add this case
-          taskDetail = await apiClient.task.getRepairTaskDetail(task.taskId);
-          break;
-        case "installation":
-          // Use pre-fetched installation task detail
-          taskDetail = installationTaskDetails[task.taskId] || null;
-          if (!taskDetail) {
-            // Fallback: fetch if not pre-fetched
-            taskDetail = await apiClient.task.getInstallTaskDetail(task.taskId);
-          }
-          break;
-        default:
-          console.warn(`No specific API for task type: ${task.taskType}`);
-          break;
-      }
-
-      return taskDetail;
-    } catch (error) {
-      console.error("Failed to fetch task detail:", error);
-      toast.error("Không thể tải chi tiết nhiệm vụ");
-      return null;
-    }
-  };
-
   const handleTaskClick = async (task: TASK_IN_GROUP) => {
     setSelectedTask(task);
     setShowSidePanel(true);
-
-    // Fetch detailed task information (no device fetching here)
     const taskDetail = await fetchTaskDetail(task);
     setSelectedTaskDetail(taskDetail);
   };
@@ -679,17 +659,6 @@ const GroupTaskDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (taskGroup?.tasks) {
-      const filtered = taskGroup.tasks.filter(
-        (task) => task.taskType.toLowerCase() === "installation"
-      );
-      setInstallationTasks(filtered);
-    } else {
-      setInstallationTasks([]);
-    }
-  }, [taskGroup]);
-
-  useEffect(() => {
     const fetchSingleDevice = async () => {
       if (
         installationTasks.length === 0 &&
@@ -704,7 +673,6 @@ const GroupTaskDetailsPage = () => {
           setSingleDevice(deviceObj);
         } catch (error) {
           setSingleDevice(null);
-        } finally {
         }
       } else {
         setSingleDevice(null);
@@ -732,7 +700,6 @@ const GroupTaskDetailsPage = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Quay lại
           </Button>
-          {/* Refresh Button */}
           <Button
             onClick={refreshTaskData}
             variant="outline"
@@ -764,7 +731,6 @@ const GroupTaskDetailsPage = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6 pb-24">
-      {/* Top Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Button
           onClick={handleBack}
@@ -775,8 +741,6 @@ const GroupTaskDetailsPage = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Quay lại
         </Button>
-
-        {/* Apply Suggested Tasks Button */}
         {hasSuggestedTasks && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -838,7 +802,6 @@ const GroupTaskDetailsPage = () => {
         )}
       </div>
 
-      {/* Page Title with Refresh Icon */}
       <div className="flex items-center justify-between">
         <PageTitle
           title={taskGroup.groupName}
@@ -859,7 +822,6 @@ const GroupTaskDetailsPage = () => {
         </Button>
       </div>
 
-      {/* Summary Section - Updated Layout with Warranty Dates */}
       <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -874,7 +836,6 @@ const GroupTaskDetailsPage = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-0 space-y-4">
-          {/* Task Statistics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="flex items-center gap-2">
               <Badge
@@ -908,7 +869,6 @@ const GroupTaskDetailsPage = () => {
             </div>
           </div>
 
-          {/* Warranty Dates Section - Only show if warranty task exists */}
           {warrantySubmissionTask && warrantyTaskDetailForFooter && (
             <div className="border-t pt-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -955,7 +915,6 @@ const GroupTaskDetailsPage = () => {
         </CardContent>
       </Card>
 
-      {/* Suggested Tasks Alert */}
       {hasSuggestedTasks && (
         <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950">
           <CardContent className="p-4">
@@ -975,7 +934,6 @@ const GroupTaskDetailsPage = () => {
         </Card>
       )}
 
-      {/* Main Tabs Navigation */}
       <Tabs
         defaultValue="overview"
         value={activeTab}
@@ -998,7 +956,6 @@ const GroupTaskDetailsPage = () => {
               Bảo hành
             </TabsTrigger>
           )}
-          {/* DeviceTab or SingleDeviceTab */}
           {installationTasks.length > 0 ? (
             <TabsTrigger value="device">
               <Monitor className="h-4 w-4 mr-2" />
@@ -1025,7 +982,11 @@ const GroupTaskDetailsPage = () => {
             <RepairTab
               repairTask={repairTask}
               repairTaskDetail={repairTaskDetail}
-              onErrorsAdded={refreshRepairTaskDetail}
+              onErrorsAdded={() => {
+                if (repairTask) {
+                  refreshTaskDetail(repairTask.taskId);
+                }
+              }}
             />
           </TabsContent>
         ) : (
@@ -1071,18 +1032,16 @@ const GroupTaskDetailsPage = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Task Detail Side Panel */}
       <TaskDetailSidePanel
         isOpen={showSidePanel}
         onClose={handleCloseSidePanel}
         task={selectedTask}
         taskDetail={selectedTaskDetail}
-        oldDevice={null} // Remove device props since they're managed in Device tab
+        oldDevice={null}
         newDevice={null}
         onRefreshTaskDetail={refreshTaskDetail}
       />
 
-      {/* Fixed Footer with Action Buttons */}
       <div className="fixed bottom-0 w-[89%] right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4 z-9">
         <div className="container mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -1097,7 +1056,6 @@ const GroupTaskDetailsPage = () => {
               Quay lại Nhiệm vụ
             </Button>
 
-            {/* Update Warranty Claim Button - Only show if WarrantySubmission task exists */}
             {warrantySubmissionTask &&
               (warrantyTaskDetailForFooter ? (
                 <UpdateWarrantyClaimButton
@@ -1139,27 +1097,6 @@ const GroupTaskDetailsPage = () => {
                 </Button>
               ))}
 
-            {/* Add this: Show CreateInstallUninstallTaskCpn button when warranty return is completed */}
-            {/* {warrantyTaskDetailForFooter?.status?.toLowerCase() ===
-              "completed" && (
-              <>
-                <Button
-                  variant="default"
-                  onClick={() => setShowCreateInstallModal(true)}
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  Tạo nhiệm vụ lắp đặt
-                </Button>
-                <CreateInstallUninstallTaskCpn
-                  open={showCreateInstallModal}
-                  setOpen={setShowCreateInstallModal}
-                  requestId={taskGroup.requestId}
-                  onTaskCreated={refreshTaskData}
-                />
-              </>
-            )} */}
-
-            {/* Add the CreateReinstallTaskButton when warrantyTaskDetailForFooter exists */}
             {warrantyTaskDetailForFooter &&
               warrantyReturnTask?.status == "Completed" && (
                 <CreateReinstallTaskButton
@@ -1170,16 +1107,10 @@ const GroupTaskDetailsPage = () => {
                   onSuccess={refreshTaskData}
                 />
               )}
-
-            {/* <Button variant="default">
-              <Eye className="h-4 w-4 mr-2" />
-              Xem Yêu cầu
-            </Button> */}
           </div>
         </div>
       </div>
 
-      {/* Device Detail Modal */}
       <DeviceDetailModal
         isOpen={deviceModalOpen}
         onClose={handleCloseDeviceModal}
