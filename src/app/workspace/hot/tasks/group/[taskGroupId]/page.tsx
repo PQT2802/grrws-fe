@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,6 +133,8 @@ const GroupTaskDetailsPage = () => {
     []
   );
 
+  const [reInstallTask, setReinstallTask] = useState<TASK_IN_GROUP | null>();
+
   useEffect(() => {
     if (taskGroup) {
       const repairTask =
@@ -150,6 +152,8 @@ const GroupTaskDetailsPage = () => {
       const filtered = taskGroup.tasks.filter(
         (task) => task.taskType.toLowerCase() === "installation"
       );
+      const reinstallTask = filtered.find((task) => task.orderIndex === 4);
+      setReinstallTask(reinstallTask);
       setInstallationTasks(filtered);
     } else {
       setInstallationTasks([]);
@@ -1059,6 +1063,9 @@ const GroupTaskDetailsPage = () => {
             </Button>
 
             {warrantySubmissionTask &&
+              warrantyReturnTask?.status !== "Completed" &&
+              warrantySubmissionTask.status !== "Rejected" &&
+              warrantySubmissionTask.status === "Completed" &&
               (warrantyTaskDetailForFooter ? (
                 <UpdateWarrantyClaimButton
                   taskDetail={warrantyTaskDetailForFooter}
@@ -1079,6 +1086,9 @@ const GroupTaskDetailsPage = () => {
               ))}
 
             {warrantySubmissionTask &&
+              warrantySubmissionTask.status !== "Rejected" &&
+              reInstallTask &&
+              reInstallTask.status !== "Completed" &&
               (warrantyTaskDetailForFooter ? (
                 <CreateWarrantyReturnButton
                   taskDetail={warrantyTaskDetailForFooter}
@@ -1100,12 +1110,13 @@ const GroupTaskDetailsPage = () => {
               ))}
 
             {warrantyTaskDetailForFooter &&
-              warrantyReturnTask?.status == "Completed" && (
+              ((!reInstallTask && warrantyReturnTask?.status === "Completed") ||
+                (reInstallTask && reInstallTask.status !== "Completed")) && (
                 <CreateReinstallTaskButton
                   requestId={taskGroup.requestId}
                   taskGroupId={taskGroupId}
                   deviceId={warrantyTaskDetailForFooter.deviceId}
-                  deviceName={"Thiết bị Bảo hành"}
+                  deviceName="Thiết bị Bảo hành"
                   onSuccess={refreshTaskData}
                 />
               )}
