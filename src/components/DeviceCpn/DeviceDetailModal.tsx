@@ -73,7 +73,7 @@ export default function DeviceDetailModal({
                 document.body.style.overflow = 'auto'
             }
         }
-    }, [])
+    }, [open])
 
     // Additional cleanup when modal closes
     useEffect(() => {

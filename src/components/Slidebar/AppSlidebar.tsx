@@ -66,6 +66,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       items: [],
     },
     {
+      title: "Devices",
+      url: `/workspace/hot/devices`,
+      icon: Wrench,
+      items: [],
+    },
+    {
       title: "Requests",
       url: `/workspace/hot/requests`,
       icon: Frame,
