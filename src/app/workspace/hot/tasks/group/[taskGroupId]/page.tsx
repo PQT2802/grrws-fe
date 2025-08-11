@@ -1090,14 +1090,21 @@ const GroupTaskDetailsPage = () => {
               reInstallTask &&
               reInstallTask.status !== "Completed" &&
               (warrantyTaskDetailForFooter ? (
-                <CreateWarrantyReturnButton
-                  taskDetail={warrantyTaskDetailForFooter}
-                  taskReturnWarranty={warrantyReturnTask}
-                  onSuccess={async () => {
-                    await refreshTaskData();
-                    await fetchWarrantyTaskDetailForFooter();
-                  }}
-                />
+                // Only show CreateWarrantyReturnButton if:
+                // - warrantySubmissionTask is completed
+                // - AND (no warrantyReturnTask exists OR warrantyReturnTask.status === "Delayed")
+                warrantySubmissionTask.status === "Completed" &&
+                  (!warrantyReturnTask ||
+                    warrantyReturnTask.status === "Delayed") && (
+                    <CreateWarrantyReturnButton
+                      taskDetail={warrantyTaskDetailForFooter}
+                      taskReturnWarranty={warrantyReturnTask}
+                      onSuccess={async () => {
+                        await refreshTaskData();
+                        await fetchWarrantyTaskDetailForFooter();
+                      }}
+                    />
+                  )
               ) : (
                 <Button
                   disabled
