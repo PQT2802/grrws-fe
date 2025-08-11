@@ -137,7 +137,13 @@ const CreateTaskCpn = ({
       setCreationMode("");
       setAssigneeId("");
       setSelectedMechanic(null);
-      setStartDate(new Date());
+
+      // Set default time to current time + 1 hour
+      const defaultDate = new Date();
+      defaultDate.setHours(defaultDate.getHours());
+      defaultDate.setMinutes(defaultDate.getMinutes()); // Next hour, 0 minutes
+      setStartDate(defaultDate);
+
       setCanProceed(false);
     }
   }, [open]);

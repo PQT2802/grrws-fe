@@ -43,8 +43,8 @@ export function DateTimeSelector({
   const hours = Array.from({ length: 24 }, (_, i) =>
     i.toString().padStart(2, "0")
   );
-  const minutes = Array.from({ length: 12 }, (_, i) =>
-    (i * 5).toString().padStart(2, "0")
+  const minutes = Array.from({ length: 60 }, (_, i) =>
+    i.toString().padStart(2, "0")
   );
 
   // Sync internal state when props change, but only if actually different
@@ -56,6 +56,24 @@ export function DateTimeSelector({
       prevDateRef.current = date;
     }
   }, [date]);
+
+  // Set a default future time when component mounts
+  useEffect(() => {
+    // Set default time to current time + 1 hour
+    const defaultDate = new Date();
+
+    // Round to the nearest future hour
+    defaultDate.setHours(defaultDate.getHours());
+    defaultDate.setMinutes(defaultDate.getMinutes()); // Start at the top of the hour
+
+    // Update both the local state and parent state
+    setSelectedDate(defaultDate);
+    setHour(defaultDate.getHours().toString().padStart(2, "0"));
+    setMinute("00");
+
+    // Update parent component
+    setDate(defaultDate);
+  }, []);
 
   // Check if date is in the past
   const isDateInPast = (date: Date) => {
