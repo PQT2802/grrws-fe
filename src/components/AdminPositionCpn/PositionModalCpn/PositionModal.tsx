@@ -28,7 +28,7 @@ export default function PositionModal({
   isLoading = false,
   selectedZoneId
 }: PositionModalProps) {
-  const [formData, setFormData] = useState<CreatePositionRequest>({
+  const [formData, setFormData] = useState({
     positionCode: '',
     positionName: '',
     description: '',
@@ -84,8 +84,8 @@ export default function PositionModal({
     if (!validateForm()) return;
 
     const submitData = position 
-      ? { ...formData, id: position.id } as UpdatePositionRequest
-      : formData as CreatePositionRequest;
+      ? { ...formData, id: position.id, index: position.index } as UpdatePositionRequest
+      : { ...formData, index: 0 } as CreatePositionRequest;
 
     onSubmit(submitData);
   };

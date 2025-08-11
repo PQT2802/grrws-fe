@@ -118,11 +118,11 @@ export function NavAdmin() {
           url: `/workspace/admin/requests/staff`,
           icon: Users,
         },
-        {
-          title: "Request History",
-          url: `/workspace/admin/requests/history`,
-          icon: History,
-        },
+        // {
+        //   title: "Request History",
+        //   url: `/workspace/admin/requests/history`,
+        //   icon: History,
+        // },
       ],
     },
   ];

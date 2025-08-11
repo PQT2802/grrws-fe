@@ -790,11 +790,39 @@ class APIClient {
       );
     },
   };
-    location = {
+  location = {
     // Area APIs
     getAreas: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
       console.log(`Fetching areas (page ${pageNumber}, size ${pageSize})`);
       return http.get(`/api/Area/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    // Import areas from Excel file
+    importAreas: async (formData: FormData): Promise<any> => {
+      console.log("Importing areas from Excel file");
+      try {
+        const response = await http.post("/api/Area/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response;
+      } catch (error) {
+        console.error("Error importing areas:", error);
+        throw error;
+      }
+    },
+
+    // Delete area
+    deleteArea: async (areaId: string): Promise<any> => {
+      console.log(`Deleting area with ID: ${areaId}`);
+      try {
+        const response = await http.delete(`/api/Area/${areaId}`);
+        return response;
+      } catch (error) {
+        console.error("Error deleting area:", error);
+        throw error;
+      }
     },
 
     // Zone APIs
@@ -806,6 +834,34 @@ class APIClient {
     getZonesByAreaId: (areaId: string, pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
       console.log(`Fetching zones for area ${areaId} (page ${pageNumber}, size ${pageSize})`);
       return http.get(`/api/Area/${areaId}/zones?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    },
+
+    // Import zones from Excel file
+    importZones: async (formData: FormData): Promise<any> => {
+      console.log("Importing zones from Excel file");
+      try {
+        const response = await http.post("/api/Zone/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response;
+      } catch (error) {
+        console.error("Error importing zones:", error);
+        throw error;
+      }
+    },
+
+    // Delete zone
+    deleteZone: async (zoneId: string): Promise<any> => {
+      console.log(`Deleting zone with ID: ${zoneId}`);
+      try {
+        const response = await http.delete(`/api/Zone/${zoneId}`);
+        return response;
+      } catch (error) {
+        console.error("Error deleting zone:", error);
+        throw error;
+      }
     },
 
     // Position APIs
@@ -822,6 +878,34 @@ class APIClient {
     getPositionsByAreaId: (areaId: string): Promise<any> => {
       console.log(`Fetching positions for area ${areaId}`);
       return http.get(`/api/Position/by-area/${areaId}`);
+    },
+
+    // Import positions from Excel file
+    importPositions: async (formData: FormData): Promise<any> => {
+      console.log("Importing positions from Excel file");
+      try {
+        const response = await http.post("/api/Position/import", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        return response;
+      } catch (error) {
+        console.error("Error importing positions:", error);
+        throw error;
+      }
+    },
+
+    // Delete position
+    deletePosition: async (positionId: string): Promise<any> => {
+      console.log(`Deleting position with ID: ${positionId}`);
+      try {
+        const response = await http.delete(`/api/Position/${positionId}`);
+        return response;
+      } catch (error) {
+        console.error("Error deleting position:", error);
+        throw error;
+      }
     },
   };
 }

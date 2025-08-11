@@ -28,7 +28,7 @@ export default function ZoneModal({
   isLoading = false,
   selectedAreaId
 }: ZoneModalProps) {
-  const [formData, setFormData] = useState<CreateZoneRequest>({
+  const [formData, setFormData] = useState({
     zoneCode: '',
     zoneName: '',
     description: '',
@@ -41,7 +41,7 @@ export default function ZoneModal({
       setFormData({
         zoneCode: zone.zoneCode,
         zoneName: zone.zoneName,
-        description: zone.description || '',
+        description: (zone as any).description || '',
         areaId: zone.areaId
       });
     } else {

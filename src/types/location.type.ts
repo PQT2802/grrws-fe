@@ -1,6 +1,7 @@
 export interface Area {
+  description: string;
   id: string;
-  areaCode: string;      // Added missing field
+  areaCode: string;      
   areaName: string;
   createdDate: string;
   modifiedDate: string;
@@ -9,10 +10,10 @@ export interface Area {
 
 export interface Zone {
   id: string;
-  zoneCode: string;      // Added missing field
+  zoneCode: string;      
   zoneName: string;
   areaId: string;
-  areaCode?: string;     // Added missing field
+  areaCode?: string;    
   areaName?: string;
   createdDate: string;
   modifiedDate: string;
@@ -21,19 +22,19 @@ export interface Zone {
 
 export interface Position {
   id: string;
-  positionCode: string;  // Added missing field
-  positionName: string;  // Added missing field  
+  positionCode: string; 
+  positionName: string;  
   index: number;
   zoneId: string;
-  zoneCode?: string;     // Added missing field
+  zoneCode?: string;    
   zoneName?: string;
-  areaCode?: string;     // Added missing field
+  areaCode?: string;     
   areaName?: string;
-  description?: string;  // Added missing field
+  description?: string;  
   deviceId?: string;
-  deviceCount?: number;  // Added missing field
-  createdDate: string;   // Changed from createdAt
-  modifiedDate: string;  // Changed from modifiedAt
+  deviceCount?: number;  
+  createdDate: string;  
+  modifiedDate: string;  
   device?: {
     id: string;
     deviceName: string;
@@ -80,6 +81,8 @@ export interface PositionWithDeviceAndRequest {
 }
 
 export interface CreateAreaRequest {
+  areaCode: any;
+  description: string | number | readonly string[] | undefined;
   areaName: string;
 }
 
