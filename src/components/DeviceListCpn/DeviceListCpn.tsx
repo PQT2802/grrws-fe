@@ -34,6 +34,7 @@ import {
   Upload,
   Loader2,
   Download,
+  Plus,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "react-toastify";
@@ -46,7 +47,6 @@ import DeviceExportModal from "@/components/DeviceCpn/DeviceExportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
 
-// Updated device status mapping based on backend enum
 type DeviceStatus =
   | "Active"
   | "Inactive"
@@ -60,15 +60,26 @@ interface DeviceListCpnProps {
   onEditDevice?: (device: DEVICE_WEB) => void;
   onDeleteDevice?: (device: DEVICE_WEB) => void;
   onViewDevice?: (device: DEVICE_WEB) => void;
+  onCreateTask?: (device: DEVICE_WEB) => void;
+  showCreateTaskButton?: boolean;
 }
 
-// Add ref interface for parent component access
 export interface DeviceListCpnRef {
   refetchDevices: () => Promise<void>;
 }
 
 const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
-  ({ onCreateDevice, onEditDevice, onDeleteDevice, onViewDevice }, ref) => {
+  (
+    {
+      onCreateDevice,
+      onEditDevice,
+      onDeleteDevice,
+      onViewDevice,
+      onCreateTask,
+      showCreateTaskButton,
+    },
+    ref
+  ) => {
     const { user } = useAuth();
     const [devices, setDevices] = useState<DEVICE_WEB[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -78,17 +89,29 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-
-    // Import modal state
     const [showImportModal, setShowImportModal] = useState(false);
-    // Export modal state
     const [showExportModal, setShowExportModal] = useState(false);
+
+    const hasFullAccess =
+      user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER;
 
     const debouncedSearchTerm = useDebounce(searchTerm, 1000);
 
-    // ✅ Check if user has access - Both Admin and Stock Keeper can access
-    const hasFullAccess =
-      user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.STOCK_KEEPER;
+    // Manage body scroll for modals in this component
+    useEffect(() => {
+      if (showImportModal || showExportModal) {
+        document.body.style.overflow = "hidden";
+        console.log("🔒 DeviceListCpn: Set body overflow to hidden");
+      } else {
+        document.body.style.overflow = "auto";
+        console.log("🔓 DeviceListCpn: Restored body overflow to auto");
+      }
+
+      return () => {
+        document.body.style.overflow = "auto";
+        console.log("🧹 DeviceListCpn: Restored body overflow to auto");
+      };
+    }, [showImportModal, showExportModal]);
 
     const formatDate = (dateString: string | null | undefined) => {
       if (!dateString) return "N/A";
@@ -100,7 +123,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       });
     };
 
-    // ✅ Vietnamese status translations using textTypeTask patterns
     const getStatusDisplayText = (status: string) => {
       switch (status?.toLowerCase()) {
         case "active":
@@ -120,7 +142,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       }
     };
 
-    // Updated status badge colors based on new device status enum
     const getStatusBadgeVariant = (status: string) => {
       switch (status?.toLowerCase()) {
         case "active":
@@ -146,24 +167,20 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
         : "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400";
     };
 
-    // Fetch devices from API
     const fetchDevices = useCallback(async () => {
       try {
         setIsLoading(true);
         setError(null);
-        console.log(
-          `🔄 Đang tải thiết bị (trang ${page}, kích thước ${pageSize})...`
-        );
 
-        const response = await apiClient.device.getDevices(page, pageSize);
-        console.log("📦 Phản hồi API thiết bị:", response);
+        // Only send status if not "all"
+        const statusParam = filterStatus !== "all" ? filterStatus : undefined;
 
-        // Handle different response structures
+        const response = await apiClient.device.getDevices(page, pageSize, statusParam);
+
         let devicesData: DEVICE_WEB[] = [];
         let total = 0;
 
         if (response && typeof response === "object") {
-          // Case 1: Direct array response
           if (Array.isArray(response)) {
             devicesData = response;
             total = response.length;
@@ -184,21 +201,15 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
               (response as any).data.totalCount ||
               (response as any).data.data.length;
           } else {
-            console.error("❌ Cấu trúc phản hồi không mong đợi:", response);
             throw new Error("Cấu trúc phản hồi API không mong đợi");
           }
         } else {
           throw new Error("Phản hồi API không hợp lệ");
         }
 
-        console.log(
-          `📊 Đã trích xuất: ${devicesData.length} thiết bị, tổng: ${total}`
-        );
-
-        // Apply client-side filtering if needed
+        // Remove client-side status filtering, only keep search filtering
         let filteredDevices = devicesData;
 
-        // Apply search filter
         if (debouncedSearchTerm) {
           filteredDevices = filteredDevices.filter(
             (device) =>
@@ -214,19 +225,9 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           );
         }
 
-        // Apply status filter
-        if (filterStatus !== "all") {
-          filteredDevices = filteredDevices.filter(
-            (device) =>
-              device.status?.toLowerCase() === filterStatus.toLowerCase()
-          );
-        }
-
         setDevices(filteredDevices);
         setTotalCount(total);
-        console.log("✅ Thiết bị đã được xử lý thành công");
       } catch (error: any) {
-        console.error("❌ Lỗi khi tải thiết bị:", error);
         setError(
           `Không thể tải thiết bị: ${error.message || "Lỗi không xác định"}`
         );
@@ -237,7 +238,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       }
     }, [page, pageSize, debouncedSearchTerm, filterStatus]);
 
-    // Expose refetch method to parent component
     useImperativeHandle(
       ref,
       () => ({
@@ -250,19 +250,16 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       fetchDevices();
     }, [fetchDevices]);
 
-    // Reset to page 1 when search/filter/pageSize changes
     useEffect(() => {
       if (page !== 1 && (debouncedSearchTerm || filterStatus !== "all")) {
         setPage(1);
       }
     }, [debouncedSearchTerm, filterStatus, page]);
 
-    // Reset to page 1 when page size changes
     useEffect(() => {
       setPage(1);
     }, [pageSize]);
 
-    // ✅ Import/Export handlers - Available for both Admin and Stock Keeper
     const handleImportClick = useCallback(() => {
       if (!hasFullAccess) {
         toast.warning("Bạn không có quyền nhập thiết bị");
@@ -275,7 +272,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       setShowImportModal(false);
     }, []);
 
-    // Handle file import
     const handleFileImport = useCallback(
       async (file: File) => {
         if (!hasFullAccess) {
@@ -289,14 +285,11 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
         console.log(`📂 Đang nhập tệp thiết bị: ${file.name}`);
 
         await apiClient.device.importDevice(formData);
-
-        // Refresh the device list
         await fetchDevices();
       },
       [fetchDevices, hasFullAccess]
     );
 
-    // Export handler
     const handleExportClick = useCallback(() => {
       if (!hasFullAccess) {
         toast.warning("Bạn không có quyền xuất thiết bị");
@@ -318,6 +311,16 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
         }
       },
       [onViewDevice]
+    );
+    const handleCreateTaskByDevice = useCallback(
+      (device: DEVICE_WEB) => {
+        if (onCreateTask) {
+          onCreateTask(device);
+        } else {
+          toast.info("Chức năng xem sẽ được triển khai khi cần thiết.");
+        }
+      },
+      [onCreateTask]
     );
 
     const handleEditDevice = useCallback(
@@ -368,7 +371,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
 
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    // Loading state
     if (isLoading && devices.length === 0) {
       return (
         <Card>
@@ -380,7 +382,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       );
     }
 
-    // Error state
     if (error) {
       return (
         <Card>
@@ -405,7 +406,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
 
     return (
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Quản lý thiết bị</h1>
           {hasFullAccess && (
@@ -431,7 +431,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
 
         <OperationStatsCpn />
 
-        {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex flex-1 gap-2">
             <div className="relative w-1/3">
@@ -466,7 +465,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           </div>
         </div>
 
-        {/* Device Table */}
         <div className="rounded-md border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -581,6 +579,14 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
                               <Eye className="mr-2 h-4 w-4" />
                               Xem chi tiết
                             </DropdownMenuItem>
+                            {showCreateTaskButton && (
+                              <DropdownMenuItem
+                                onClick={() => handleCreateTaskByDevice(device)}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Tạo nhiệm vụ
+                              </DropdownMenuItem>
+                            )}
                             {hasFullAccess && (
                               <>
                                 <DropdownMenuItem
@@ -608,7 +614,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -668,7 +673,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           </div>
         </div>
 
-        {/* ✅ Import Modal - Available for both Admin and Stock Keeper */}
         {hasFullAccess && (
           <ExcelImportModal
             isOpen={showImportModal}
@@ -679,7 +683,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           />
         )}
 
-        {/* ✅ Export Modal - Available for both Admin and Stock Keeper */}
         {hasFullAccess && (
           <DeviceExportModal
             isOpen={showExportModal}

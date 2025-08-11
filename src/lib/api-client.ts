@@ -357,10 +357,11 @@ class APIClient {
   device = {
     getDevices: (
       pageNumber: number,
-      pageSize: number
+      pageSize: number,
+      status?: string
     ): Promise<DEVICE_WEB[]> => {
       return http.get(
-        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${status || ""}`
       ); // ✅ Auto token
     },
 
