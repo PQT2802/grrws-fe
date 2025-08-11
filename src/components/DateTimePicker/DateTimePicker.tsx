@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { add, format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,31 +12,47 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { TimePickerDemo } from "./time-picker-demo";
+import { toast } from "react-toastify";
 
 interface PropType {
   date: Date;
-  setDate: React.Dispatch<React.SetStateAction<Date | undefined>>;
+  setDate: (date: Date | undefined) => void;
+  minDate?: Date;
+  disabled?: (date: Date) => boolean;
 }
 
-export function DateTimePicker(props: PropType) {
-  const { date, setDate } = props;
+export function DateTimePicker({ date, setDate, minDate, disabled }: PropType) {
+  // Function to check if date is in the past
+  const isDateInPast = (date: Date) => {
+    const now = new Date();
+    now.setSeconds(0, 0);
+    date.setSeconds(0, 0);
+    return date < now;
+  };
 
-  //   const [date, setDate] = React.useState<Date>();
+  // Create a default minDate if not provided (current date)
+  const defaultMinDate = React.useMemo(() => new Date(), []);
 
-  /**
-   * carry over the current time when a user clicks a new day
-   * instead of resetting to 00:00
-   */
-  const handleSelect = (newDay: Date | undefined) => {
-    if (!newDay) return;
-    if (!date) {
-      setDate(newDay);
+  // Handle date selection
+  const handleSelect = (selectedDate: Date | undefined) => {
+    if (!selectedDate) return;
+
+    // Copy time from current selection to new date
+    if (date) {
+      selectedDate.setHours(
+        date.getHours(),
+        date.getMinutes(),
+        date.getSeconds()
+      );
+    }
+
+    // Validate the date is not in the past
+    if (isDateInPast(new Date(selectedDate.getTime()))) {
+      toast.error("Không thể chọn thời gian trong quá khứ");
       return;
     }
-    const diff = newDay.getTime() - date.getTime();
-    const diffInDays = diff / (1000 * 60 * 60 * 24);
-    const newDateFull = add(date, { days: Math.ceil(diffInDays) });
-    setDate(newDateFull);
+
+    setDate(selectedDate);
   };
 
   return (
@@ -51,7 +66,7 @@ export function DateTimePicker(props: PropType) {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP HH:mm:ss") : <span>Pick a date</span>}
+          {date ? format(date, "dd/MM/yyyy HH:mm") : <span>Chọn ngày</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
@@ -60,6 +75,21 @@ export function DateTimePicker(props: PropType) {
           selected={date}
           onSelect={(d) => handleSelect(d)}
           initialFocus
+          disabled={(date) => {
+            // Combine both disabled functions
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // If custom disabled function provided, use it
+            if (disabled && disabled(date)) return true;
+
+            // Otherwise use minDate or default minDate
+            const minDateToUse = minDate || defaultMinDate;
+            const minDateCopy = new Date(minDateToUse);
+            minDateCopy.setHours(0, 0, 0, 0);
+
+            return date < minDateCopy;
+          }}
         />
         <div className="p-3 border-t border-border">
           <TimePickerDemo setDate={setDate} date={date} />
