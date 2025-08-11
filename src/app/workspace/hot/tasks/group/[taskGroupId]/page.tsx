@@ -134,6 +134,7 @@ const GroupTaskDetailsPage = () => {
   );
 
   const [reInstallTask, setReinstallTask] = useState<TASK_IN_GROUP | null>();
+  const [stockinTask, setStockinTask] = useState<TASK_IN_GROUP | null>(null);
 
   useEffect(() => {
     if (taskGroup) {
@@ -146,7 +147,10 @@ const GroupTaskDetailsPage = () => {
         taskGroup?.tasks.find(
           (task) => task.taskType === "WarrantySubmission"
         ) || null;
+      const stockinTask =
+        taskGroup?.tasks.find((task) => task.taskType === "StockIn") || null;
       setRepairTask(repairTask);
+      setStockinTask(stockinTask);
       setWarrantyReturnTask(warrantyReturnTask);
       setWarrantySubmissionTask(warrantySubmissionTask);
       const filtered = taskGroup.tasks.filter(
@@ -666,16 +670,22 @@ const GroupTaskDetailsPage = () => {
 
   useEffect(() => {
     const fetchSingleDevice = async () => {
-      if (
-        installationTasks.length === 0 &&
-        repairTaskDetail &&
-        repairTaskDetail.machineActionConfirmations.length > 0 &&
-        repairTaskDetail.machineActionConfirmations[0].deviceId
-      ) {
+      if (installationTasks.length === 0) {
         try {
-          const deviceObj = await apiClient.device.getDeviceById(
-            repairTaskDetail.machineActionConfirmations[0].deviceId
-          );
+          let deviceObj: DEVICE_WEB | null = null;
+          if (stockinTask) {
+            deviceObj = await apiClient.device.getDeviceById(
+              warrantyTaskDetailForFooter?.deviceId || ""
+            );
+          } else if (
+            repairTaskDetail &&
+            repairTaskDetail.machineActionConfirmations?.[0]?.deviceId
+          ) {
+            deviceObj = await apiClient.device.getDeviceById(
+              repairTaskDetail.machineActionConfirmations[0].deviceId
+            );
+          }
+          console.log("ron cai lon");
           setSingleDevice(deviceObj);
         } catch (error) {
           setSingleDevice(null);
@@ -685,7 +695,7 @@ const GroupTaskDetailsPage = () => {
       }
     };
     fetchSingleDevice();
-  }, [installationTasks, repairTaskDetail]);
+  }, [installationTasks, repairTaskDetail, stockinTask, warrantyTaskDetailForFooter]);
 
   if (loading) {
     return <SkeletonCard />;

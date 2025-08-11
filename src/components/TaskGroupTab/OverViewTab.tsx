@@ -54,6 +54,8 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
         return <Package className="h-4 w-4 text-green-500" />;
       case "repair":
         return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case "stockin":
+        return <Package className="h-4 w-4 text-blue-500" />;
       case "warrantysubmission":
       case "warrantyreturn":
       case "warranty":
