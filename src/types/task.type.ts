@@ -13,6 +13,14 @@ export interface CREATE_REPAIR_TASK {
   AssigneeId: string; // User ID of the assignee
   ErrorGuidelineIds: string[]; // Required - List of error IDs
 }
+
+export interface CREATE_SINGLE_TASK {
+  DeviceId: string; // Device ID to which the task is related
+  AssigneeId?: string | null; // User ID of the assignee, can be null if not assigned yet
+  StartDate: string; // ISO string format
+  TaskType: "Repair" | "Warranty" | "Replacement"; // Type of the task (e.g., "Uninstallation", "Installation", "Repair")
+}
+
 export interface CREATE_WARRANTY_TASK {
   RequestId: string;
   StartDate: string; // ISO string format
@@ -189,7 +197,7 @@ export interface STAFF_TASK {
   taskName: string;
   taskDescription: string;
   taskType: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  priority: "Low" | "Medium" | "High" | "Urgent";
   status: string;
   startTime: string;
   expectedTime: string;
@@ -210,24 +218,29 @@ export interface STAFF_TASK_RESPONSE {
 }
 
 // Define allowed task types
-export type TaskType = 
-  | 'Warranty' 
-  | 'WarrantySubmission' 
-  | 'WarrantyReturn' 
-  | 'Repair' 
-  | 'Replacement' 
-  | 'Installation' 
-  | 'Uninstallation';
+export type TaskType =
+  | "Warranty"
+  | "WarrantySubmission"
+  | "WarrantyReturn"
+  | "Repair"
+  | "Replacement"
+  | "Installation"
+  | "Uninstallation";
 
 // Task type mapping for tabs with proper typing
 export const TASK_TYPE_MAPPING: Record<string, TaskType[]> = {
-  warranty: ['Warranty', 'WarrantySubmission', 'WarrantyReturn'],
-  repair: ['Repair'],
-  replace: ['Replacement'],
-  install_uninstall: ['Installation', 'Uninstallation']
+  warranty: ["Warranty", "WarrantySubmission", "WarrantyReturn"],
+  repair: ["Repair"],
+  replace: ["Replacement"],
+  install_uninstall: ["Installation", "Uninstallation"],
 };
 
-export type TaskTabType = 'all' | 'warranty' | 'repair' | 'replace' | 'install_uninstall';
+export type TaskTabType =
+  | "all"
+  | "warranty"
+  | "repair"
+  | "replace"
+  | "install_uninstall";
 
 export interface REPAIR_TASK_DETAIL {
   taskId: string;
@@ -272,7 +285,6 @@ export interface MachineActionConfirmation {
   deviceCondition: string | null;
   sparePartUsages: SparePartUsage[];
 }
-
 
 export interface ErrorDetail {
   errorId: string;

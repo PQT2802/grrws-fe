@@ -19,6 +19,7 @@ import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import {
   CREATE_INSTALL_TASK,
   CREATE_REPAIR_TASK,
+  CREATE_SINGLE_TASK,
   CREATE_UNINSTALL_TASK,
   CREATE_WARRANTY_TASK,
   CreateWarrantyReturn,
@@ -169,11 +170,16 @@ class APIClient {
     createInstallTask: (data: CREATE_INSTALL_TASK): Promise<any> => {
       return http.post("/api/Task/install", data);
     },
+    createSingleTask: (data: CREATE_SINGLE_TASK): Promise<any> => {
+      return http.post("/api/Task/single-task", data);
+    },
 
     createWarrantyReturnTask: (data: CreateWarrantyReturn): Promise<any> => {
       return http.post("/api/Task/warranty-task/return", data);
     },
-    createWarrantyReturnTaskAfterDelayed: (data: CreateWarrantyReturnAfterDelayed): Promise<any> => {
+    createWarrantyReturnTaskAfterDelayed: (
+      data: CreateWarrantyReturnAfterDelayed
+    ): Promise<any> => {
       return http.post("/api/Task/delayed-return/create", data);
     },
     getTaskGroups: (
@@ -361,7 +367,9 @@ class APIClient {
       status?: string
     ): Promise<DEVICE_WEB[]> => {
       return http.get(
-        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${status || ""}`
+        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${
+          status || ""
+        }`
       ); // ✅ Auto token
     },
 
@@ -791,33 +799,58 @@ class APIClient {
       );
     },
   };
-    location = {
+  location = {
     // Area APIs
     getAreas: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
       console.log(`Fetching areas (page ${pageNumber}, size ${pageSize})`);
-      return http.get(`/api/Area/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+      return http.get(
+        `/api/Area/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     // Zone APIs
     getZones: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
       console.log(`Fetching zones (page ${pageNumber}, size ${pageSize})`);
-      return http.get(`/api/Zone/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+      return http.get(
+        `/api/Zone/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
-    getZonesByAreaId: (areaId: string, pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
-      console.log(`Fetching zones for area ${areaId} (page ${pageNumber}, size ${pageSize})`);
-      return http.get(`/api/Area/${areaId}/zones?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    getZonesByAreaId: (
+      areaId: string,
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
+      console.log(
+        `Fetching zones for area ${areaId} (page ${pageNumber}, size ${pageSize})`
+      );
+      return http.get(
+        `/api/Area/${areaId}/zones?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     // Position APIs
-    getPositions: (pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
+    getPositions: (
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
       console.log(`Fetching positions (page ${pageNumber}, size ${pageSize})`);
-      return http.get(`/api/Position/search?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+      return http.get(
+        `/api/Position/search?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
-    getPositionsByZoneId: (zoneId: string, pageNumber: number = 1, pageSize: number = 10): Promise<any> => {
-      console.log(`Fetching positions for zone ${zoneId} (page ${pageNumber}, size ${pageSize})`);
-      return http.get(`/api/Zone/${zoneId}/positions-and-devices?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+    getPositionsByZoneId: (
+      zoneId: string,
+      pageNumber: number = 1,
+      pageSize: number = 10
+    ): Promise<any> => {
+      console.log(
+        `Fetching positions for zone ${zoneId} (page ${pageNumber}, size ${pageSize})`
+      );
+      return http.get(
+        `/api/Zone/${zoneId}/positions-and-devices?pageNumber=${pageNumber}&pageSize=${pageSize}`
+      );
     },
 
     getPositionsByAreaId: (areaId: string): Promise<any> => {
