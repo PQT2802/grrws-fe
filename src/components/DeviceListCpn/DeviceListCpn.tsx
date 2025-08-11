@@ -171,12 +171,11 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       try {
         setIsLoading(true);
         setError(null);
-        console.log(
-          `🔄 Đang tải thiết bị (trang ${page}, kích thước ${pageSize})...`
-        );
 
-        const response = await apiClient.device.getDevices(page, pageSize);
-        console.log("📦 Phản hồi API thiết bị:", response);
+        // Only send status if not "all"
+        const statusParam = filterStatus !== "all" ? filterStatus : undefined;
+
+        const response = await apiClient.device.getDevices(page, pageSize, statusParam);
 
         let devicesData: DEVICE_WEB[] = [];
         let total = 0;
@@ -202,17 +201,13 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
               (response as any).data.totalCount ||
               (response as any).data.data.length;
           } else {
-            console.error("❌ Cấu trúc phản hồi không mong đợi:", response);
             throw new Error("Cấu trúc phản hồi API không mong đợi");
           }
         } else {
           throw new Error("Phản hồi API không hợp lệ");
         }
 
-        console.log(
-          `📊 Đã trích xuất: ${devicesData.length} thiết bị, tổng: ${total}`
-        );
-
+        // Remove client-side status filtering, only keep search filtering
         let filteredDevices = devicesData;
 
         if (debouncedSearchTerm) {
@@ -230,18 +225,9 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           );
         }
 
-        if (filterStatus !== "all") {
-          filteredDevices = filteredDevices.filter(
-            (device) =>
-              device.status?.toLowerCase() === filterStatus.toLowerCase()
-          );
-        }
-
         setDevices(filteredDevices);
         setTotalCount(total);
-        console.log("✅ Thiết bị đã được xử lý thành công");
       } catch (error: any) {
-        console.error("❌ Lỗi khi tải thiết bị:", error);
         setError(
           `Không thể tải thiết bị: ${error.message || "Lỗi không xác định"}`
         );
