@@ -159,7 +159,7 @@ const GroupTaskDetailsPage = () => {
       const filtered = taskGroup.tasks.filter(
         (task) => task.taskType.toLowerCase() === "installation"
       );
-      const reinstallTask = filtered.find((task) => task.orderIndex === 4);
+      const reinstallTask = filtered.find((task) => task.taskType === "Installation" && task.orderIndex !== 1);
       setReinstallTask(reinstallTask);
       setInstallationTasks(filtered);
     } else {
@@ -688,7 +688,6 @@ const GroupTaskDetailsPage = () => {
               repairTaskDetail.machineActionConfirmations[0].deviceId
             );
           }
-          console.log("ron cai lon");
           setSingleDevice(deviceObj);
         } catch (error) {
           setSingleDevice(null);
@@ -1134,13 +1133,18 @@ const GroupTaskDetailsPage = () => {
                 </Button>
               ))}
 
-            {warrantyTaskDetailForFooter &&
+            {(warrantyTaskDetailForFooter || repairTask) &&
               ((!reInstallTask && warrantyReturnTask?.status === "Completed") ||
-                (reInstallTask && reInstallTask.status !== "Completed")) && (
+                (reInstallTask && reInstallTask.status !== "Completed") ||
+                (repairTask && repairTask.status === "Completed"&& !reInstallTask )) && (
                 <CreateReinstallTaskButton
                   requestId={taskGroup.requestId}
                   taskGroupId={taskGroupId}
-                  deviceId={warrantyTaskDetailForFooter.deviceId}
+                  deviceId={
+                    warrantyTaskDetailForFooter?.deviceId ||
+                    repairTaskDetail?.machineActionConfirmations[0].deviceId ||
+                    ""
+                  }
                   deviceName="Thiết bị Bảo hành"
                   onSuccess={refreshTaskData}
                 />

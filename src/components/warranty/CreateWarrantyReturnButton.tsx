@@ -221,7 +221,7 @@ const CreateWarrantyReturnButton = ({
           ActualReturnDate: combinedDateTime.toISOString(),
           IsEarlyReturn: isEarlyReturn,
           WarrantyNotes: values.warrantyNotes || "",
-          IsWarrantyFailed: false,
+          IsWarrantyFailed: isFailed ?? false,
           IsReInstallOldDevice: false, // Default to true if not provided
         };
          console.log("Trường hợp bình thường: ",submitData)
