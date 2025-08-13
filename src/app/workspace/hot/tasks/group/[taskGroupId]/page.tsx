@@ -100,6 +100,7 @@ import OverviewTab from "@/components/TaskGroupTab/OverViewTab";
 import useSignalRStore from "@/store/useSignalRStore";
 import RepairTab from "@/components/TaskGroupTab/RepairTab";
 import SingleDeviceCard from "@/components/TaskGroupTab/SingleDeviceCard";
+import Link from "next/link";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -108,6 +109,7 @@ const GroupTaskDetailsPage = () => {
   const workspaceId = params?.["workspace-id"] as string;
 
   const [taskGroup, setTaskGroup] = useState<TASK_GROUP_WEB | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [applyingTasks, setApplyingTasks] = useState<boolean>(false);
@@ -149,6 +151,7 @@ const GroupTaskDetailsPage = () => {
         ) || null;
       const stockinTask =
         taskGroup?.tasks.find((task) => task.taskType === "StockIn") || null;
+      setRequestId(taskGroup.requestId || null);
       setRepairTask(repairTask);
       setStockinTask(stockinTask);
       setWarrantyReturnTask(warrantyReturnTask);
@@ -695,7 +698,12 @@ const GroupTaskDetailsPage = () => {
       }
     };
     fetchSingleDevice();
-  }, [installationTasks, repairTaskDetail, stockinTask, warrantyTaskDetailForFooter]);
+  }, [
+    installationTasks,
+    repairTaskDetail,
+    stockinTask,
+    warrantyTaskDetailForFooter,
+  ]);
 
   if (loading) {
     return <SkeletonCard />;
@@ -1104,17 +1112,17 @@ const GroupTaskDetailsPage = () => {
                 // - warrantySubmissionTask is completed
                 // - AND (no warrantyReturnTask exists OR warrantyReturnTask.status === "Delayed")
                 warrantySubmissionTask.status === "Completed" &&
-                  (!warrantyReturnTask ||
-                    warrantyReturnTask.status === "Delayed") && (
-                    <CreateWarrantyReturnButton
-                      taskDetail={warrantyTaskDetailForFooter}
-                      taskReturnWarranty={warrantyReturnTask}
-                      onSuccess={async () => {
-                        await refreshTaskData();
-                        await fetchWarrantyTaskDetailForFooter();
-                      }}
-                    />
-                  )
+                (!warrantyReturnTask ||
+                  warrantyReturnTask.status === "Delayed") && (
+                  <CreateWarrantyReturnButton
+                    taskDetail={warrantyTaskDetailForFooter}
+                    taskReturnWarranty={warrantyReturnTask}
+                    onSuccess={async () => {
+                      await refreshTaskData();
+                      await fetchWarrantyTaskDetailForFooter();
+                    }}
+                  />
+                )
               ) : (
                 <Button
                   disabled
@@ -1137,6 +1145,14 @@ const GroupTaskDetailsPage = () => {
                   onSuccess={refreshTaskData}
                 />
               )}
+            {requestId && (
+              <Link href={`/workspace/hot/requests/${requestId}`}>
+                <Button variant="secondary" size="sm" className="ml-2">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Xem chi tiết yêu cầu
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -60,7 +60,7 @@ import { da } from "date-fns/locale";
 import { apiClient } from "@/lib/api-client";
 
 // Only keep "Lỗi" and "Nhiệm vụ" tabs
-const TAB_CONTENT_LIST = ["Lỗi", "Nhiệm vụ"];
+const TAB_CONTENT_LIST = ["Nhiệm vụ","Lỗi"];
 
 const RequestDetailPage = () => {
   const params = useParams();
@@ -71,7 +71,7 @@ const RequestDetailPage = () => {
     null
   );
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<string>("errors");
+  const [activeTab, setActiveTab] = useState<string>("tasks");
   const [selectedErrors, setSelectedErrors] = useState<
     ERROR_FOR_REQUEST_DETAIL_WEB[]
   >([]);
