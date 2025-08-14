@@ -88,7 +88,13 @@ export function WorkspaceSwitcher() {
               if (workspaceId) handleChangeWorkspace(workspaceId as string);
             }}
           >
-            <Image src="/logo.png" width={80} height={80} alt="app-logo" />
+            <Image
+              src="/logosew.png"
+              width={80}
+              height={80}
+              alt="app-logo"
+              className="border border-gray-300 rounded-3xl"
+            />
             <h1 className="max-w-[160px] truncate text-[1.2rem] font-bold text-primary hover:cursor-pointer">
               {process.env.NEXT_PUBLIC_APP_NAME
                 ? process.env.NEXT_PUBLIC_APP_NAME

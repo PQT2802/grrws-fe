@@ -12,7 +12,7 @@ export default function NotFound() {
         Oops...page not found
       </p>
 
-      <Image src="/logo.png" width={300} height={300} alt="app-logo" />
+      <Image src="/logosew.png" width={300} height={300} alt="app-logo" />
 
       <Link href="/">
         <Button className="text-white">
