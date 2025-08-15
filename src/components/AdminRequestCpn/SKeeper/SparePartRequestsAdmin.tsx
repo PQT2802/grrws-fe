@@ -84,12 +84,13 @@ export default function SparePartRequestsAdmin() {
           `Fetching spare part requests for page ${page}, size ${pageSize}`
         );
 
+        // ✅ Use backend filtering for SparePartRequest only
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           false,
           statusFilter !== "all" ? statusFilter : undefined,
-          "SparePartRequest"
+          "SparePartRequest" // ✅ Backend filter
         );
 
         let machineActionData: any[] = [];
@@ -100,12 +101,12 @@ export default function SparePartRequestsAdmin() {
         if (response?.data?.data && Array.isArray(response.data.data)) {
           machineActionData = response.data.data;
           totalItems = response.data.totalCount || 0;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.data.pageNumber || page;
         } else if (Array.isArray(response?.data)) {
           machineActionData = response.data;
           totalItems = response.totalCount || response.data.length;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.pageNumber || page;
         } else if (Array.isArray(response)) {
           machineActionData = response;
@@ -113,38 +114,31 @@ export default function SparePartRequestsAdmin() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-          .filter((req) => req.actionType?.toLowerCase() === "sparepartrequest")
-          .map((req) => ({
-            id: req.id,
-            type: "machineAction" as const,
-            title: req.confirmationCode,
-            description: `${safeTranslateActionType(req.actionType)} - ${
-              req.notes || "Không có ghi chú"
-            }`,
-            requestDate: req.startDate,
-            status: req.status,
-            assigneeName: req.assigneeName,
-            actionType: req.actionType,
-            confirmationCode: req.confirmationCode,
-            mechanicConfirm: req.mechanicConfirm,
-            stockkeeperConfirm: req.stockkeeperConfirm,
-            originalData: req,
-          }));
-
-        console.log(
-          `Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`
-        );
+        // ✅ Remove frontend filtering - backend already filtered
+        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData.map((req) => ({
+          id: req.id,
+          type: "machineAction" as const,
+          title: req.confirmationCode,
+          description: `${safeTranslateActionType(req.actionType)} - ${
+            req.notes || "Không có ghi chú"
+          }`,
+          requestDate: req.startDate,
+          status: req.status,
+          assigneeName: req.assigneeName,
+          actionType: req.actionType,
+          confirmationCode: req.confirmationCode,
+          mechanicConfirm: req.mechanicConfirm,
+          stockkeeperConfirm: req.stockkeeperConfirm,
+          originalData: req,
+        }));
 
         setRequests(sparePartRequests);
+        // ✅ Use backend pagination
         setPagination({
           currentPage,
           pageSize,
-          totalItems: sparePartRequests.length,
-          totalPages: Math.max(
-            1,
-            Math.ceil(sparePartRequests.length / pageSize)
-          ),
+          totalItems,
+          totalPages,
         });
       } catch (error) {
         console.error("Failed to fetch spare part requests:", error);
@@ -215,12 +209,9 @@ export default function SparePartRequestsAdmin() {
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || request.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-  }, [requests, searchTerm, statusFilter]);
+  }, [requests, searchTerm]);
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {

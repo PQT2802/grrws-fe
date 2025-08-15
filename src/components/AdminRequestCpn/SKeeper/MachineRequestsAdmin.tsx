@@ -91,12 +91,18 @@ export default function MachineRequestsAdmin() {
           `Fetching machine requests for page ${page}, size ${pageSize}`
         );
 
+        let actionTypeParam = undefined;
+        if (actionTypeFilter !== "all") {
+          actionTypeParam = actionTypeFilter;
+        }
+        // ✅ When "all" is selected, let backend return all, then filter out SparePartRequest
+
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           false,
           statusFilter !== "all" ? statusFilter : undefined,
-          actionTypeFilter !== "all" ? actionTypeFilter : undefined
+          actionTypeParam
         );
 
         let machineActionData: any[] = [];
@@ -107,12 +113,12 @@ export default function MachineRequestsAdmin() {
         if (response?.data?.data && Array.isArray(response.data.data)) {
           machineActionData = response.data.data;
           totalItems = response.data.totalCount || 0;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.data.pageNumber || page;
         } else if (Array.isArray(response?.data)) {
           machineActionData = response.data;
           totalItems = response.totalCount || response.data.length;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.pageNumber || page;
         } else if (Array.isArray(response)) {
           machineActionData = response;
@@ -120,8 +126,14 @@ export default function MachineRequestsAdmin() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
+        // ✅ Filter out SparePartRequest only when showing "all"
         const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-          .filter((req) => req.actionType?.toLowerCase() !== "sparepartrequest")
+          .filter((req) => {
+            if (actionTypeFilter === "all") {
+              return req.actionType?.toLowerCase() !== "sparepartrequest";
+            }
+            return true;
+          })
           .map((req) => ({
             id: req.id,
             type: "machineAction" as const,
@@ -139,16 +151,13 @@ export default function MachineRequestsAdmin() {
             originalData: req,
           }));
 
-        console.log(
-          `Processed machine data: ${machineRequests.length} items, ${totalItems} total, ${totalPages} pages`
-        );
-
         setRequests(machineRequests);
+        // ✅ Use backend pagination
         setPagination({
           currentPage,
           pageSize,
-          totalItems: machineRequests.length,
-          totalPages: Math.max(1, Math.ceil(machineRequests.length / pageSize)),
+          totalItems,
+          totalPages,
         });
       } catch (error) {
         console.error("Failed to fetch machine requests:", error);
@@ -246,14 +255,9 @@ export default function MachineRequestsAdmin() {
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || request.status === statusFilter;
-      const matchesActionType =
-        actionTypeFilter === "all" || request.actionType === actionTypeFilter;
-
-      return matchesSearch && matchesStatus && matchesActionType;
+      return matchesSearch;
     });
-  }, [requests, searchTerm, statusFilter, actionTypeFilter]);
+  }, [requests, searchTerm]);
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {

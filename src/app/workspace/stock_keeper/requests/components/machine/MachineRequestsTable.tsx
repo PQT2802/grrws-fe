@@ -69,13 +69,22 @@ export default function MachineRequestsTable() {
           `Fetching machine requests for page ${page}, size ${pageSize}`
         );
 
-        // Fetch from unified API - exclude spare part requests
+        // ✅ Build actionType filter to exclude SparePartRequest
+        let actionTypeParam = undefined;
+        if (actionTypeFilter !== "all") {
+          actionTypeParam = actionTypeFilter;
+        } else {
+          // ✅ When showing "all", we want all EXCEPT SparePartRequest
+          // Let backend handle this or pass multiple actionTypes
+          actionTypeParam = undefined; // Will be handled in response filtering
+        }
+
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           false, // newest first
           statusFilter !== "all" ? statusFilter : undefined,
-          actionTypeFilter !== "all" ? actionTypeFilter : undefined
+          actionTypeParam
         );
 
         let machineActionData: any[] = [];
@@ -86,12 +95,12 @@ export default function MachineRequestsTable() {
         if (response?.data?.data && Array.isArray(response.data.data)) {
           machineActionData = response.data.data;
           totalItems = response.data.totalCount || 0;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.data.pageNumber || page;
         } else if (Array.isArray(response?.data)) {
           machineActionData = response.data;
           totalItems = response.totalCount || response.data.length;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages = response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.pageNumber || page;
         } else if (Array.isArray(response)) {
           machineActionData = response;
@@ -99,9 +108,16 @@ export default function MachineRequestsTable() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // Transform to unified format - exclude spare part requests
+        // ✅ Only filter out SparePartRequest if actionTypeFilter is "all"
         const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-          .filter((req) => req.actionType?.toLowerCase() !== "sparepartrequest")
+          .filter((req) => {
+            if (actionTypeFilter === "all") {
+              // Exclude SparePartRequest when showing "all"
+              return req.actionType?.toLowerCase() !== "sparepartrequest";
+            }
+            // If specific actionType is selected, backend already filtered
+            return true;
+          })
           .map((req) => ({
             id: req.id,
             type: "machineAction" as const,
@@ -124,11 +140,12 @@ export default function MachineRequestsTable() {
         );
 
         setRequests(machineRequests);
+        // ✅ Use backend pagination data
         setPagination({
           currentPage,
           pageSize,
-          totalItems: machineRequests.length,
-          totalPages: Math.max(1, Math.ceil(machineRequests.length / pageSize)),
+          totalItems,
+          totalPages,
         });
       } catch (error) {
         console.error("Failed to fetch machine requests:", error);
@@ -253,31 +270,12 @@ export default function MachineRequestsTable() {
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || request.status === statusFilter;
-      const matchesActionType =
-        actionTypeFilter === "all" || request.actionType === actionTypeFilter;
+      // ✅ Remove status and actionType filtering - handled by backend
+      // ✅ Remove date filtering - add to backend API if needed
 
-      // Date range filtering
-      let matchesDateRange = true;
-      if (fromDate || toDate) {
-        const requestDate = new Date(request.requestDate);
-        if (fromDate) {
-          const from = new Date(fromDate);
-          matchesDateRange = matchesDateRange && requestDate >= from;
-        }
-        if (toDate) {
-          const to = new Date(toDate);
-          to.setHours(23, 59, 59, 999); // Include the entire end date
-          matchesDateRange = matchesDateRange && requestDate <= to;
-        }
-      }
-
-      return (
-        matchesSearch && matchesStatus && matchesActionType && matchesDateRange
-      );
+      return matchesSearch;
     });
-  }, [requests, searchTerm, statusFilter, actionTypeFilter, fromDate, toDate]);
+  }, [requests, searchTerm]); // ✅ Remove other filter dependencies
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {

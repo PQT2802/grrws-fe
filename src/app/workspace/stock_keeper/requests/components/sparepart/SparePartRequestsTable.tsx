@@ -61,13 +61,13 @@ export default function SparePartRequestsTable() {
           `Fetching spare part requests for page ${page}, size ${pageSize}`
         );
 
-        // Fetch from unified API with filter for spare part requests
+        // ✅ Use backend filtering and pagination - pass "SparePartRequest" as actionType filter
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           false, // newest first
           statusFilter !== "all" ? statusFilter : undefined,
-          "SparePartRequest" // Filter for spare part requests only
+          "SparePartRequest" // ✅ Backend will filter and paginate correctly
         );
 
         let machineActionData: any[] = [];
@@ -78,12 +78,14 @@ export default function SparePartRequestsTable() {
         if (response?.data?.data && Array.isArray(response.data.data)) {
           machineActionData = response.data.data;
           totalItems = response.data.totalCount || 0;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages =
+            response.data.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.data.pageNumber || page;
         } else if (Array.isArray(response?.data)) {
           machineActionData = response.data;
           totalItems = response.totalCount || response.data.length;
-          totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+          totalPages =
+            response.totalPages || Math.max(1, Math.ceil(totalItems / pageSize));
           currentPage = response.pageNumber || page;
         } else if (Array.isArray(response)) {
           machineActionData = response;
@@ -91,10 +93,9 @@ export default function SparePartRequestsTable() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // Transform to unified format - only spare part requests
-        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-          .filter((req) => req.actionType?.toLowerCase() === "sparepartrequest")
-          .map((req) => ({
+        // ✅ Remove frontend filtering - backend already filtered by SparePartRequest
+        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData.map(
+          (req) => ({
             id: req.id,
             type: "machineAction" as const,
             title: req.confirmationCode,
@@ -109,21 +110,20 @@ export default function SparePartRequestsTable() {
             mechanicConfirm: req.mechanicConfirm,
             stockkeeperConfirm: req.stockkeeperConfirm,
             originalData: req,
-          }));
+          })
+        );
 
         console.log(
           `Processed spare part data: ${sparePartRequests.length} items, ${totalItems} total, ${totalPages} pages`
         );
 
         setRequests(sparePartRequests);
+        // ✅ Use backend pagination data
         setPagination({
           currentPage,
           pageSize,
-          totalItems: sparePartRequests.length,
-          totalPages: Math.max(
-            1,
-            Math.ceil(sparePartRequests.length / pageSize)
-          ),
+          totalItems,
+          totalPages,
         });
       } catch (error) {
         console.error("Failed to fetch spare part requests:", error);
@@ -140,7 +140,7 @@ export default function SparePartRequestsTable() {
         setIsLoading(false);
       }
     },
-    [statusFilter]
+    [statusFilter] // ✅ Keep statusFilter dependency
   );
   useEffect(() => {
     fetchRequests(1, pagination.pageSize);
@@ -213,27 +213,12 @@ export default function SparePartRequestsTable() {
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || request.status === statusFilter;
+      // ✅ Remove status filtering - handled by backend
+      // ✅ Remove date filtering - add to backend API if needed
 
-      // Date range filtering
-      let matchesDateRange = true;
-      if (fromDate || toDate) {
-        const requestDate = new Date(request.requestDate);
-        if (fromDate) {
-          const from = new Date(fromDate);
-          matchesDateRange = matchesDateRange && requestDate >= from;
-        }
-        if (toDate) {
-          const to = new Date(toDate);
-          to.setHours(23, 59, 59, 999); // Include the entire end date
-          matchesDateRange = matchesDateRange && requestDate <= to;
-        }
-      }
-
-      return matchesSearch && matchesStatus && matchesDateRange;
+      return matchesSearch;
     });
-  }, [requests, searchTerm, statusFilter, fromDate, toDate]);
+  }, [requests, searchTerm]); // ✅ Remove statusFilter, fromDate, toDate dependencies
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {
