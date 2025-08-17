@@ -91,11 +91,25 @@ export default function MachineRequestsAdmin() {
           `Fetching machine requests for page ${page}, size ${pageSize}`
         );
 
+        // ✅ FIXED: Always exclude SparePartRequest from machine requests
         let actionTypeParam = undefined;
+
         if (actionTypeFilter !== "all") {
-          actionTypeParam = actionTypeFilter;
+          // If specific type selected, use it (but never SparePartRequest)
+          if (actionTypeFilter.toLowerCase() !== "sparepartrequest") {
+            actionTypeParam = actionTypeFilter;
+          } else {
+            // If somehow SparePartRequest is selected, show no results
+            setRequests([]);
+            setPagination({
+              currentPage: 1,
+              pageSize,
+              totalItems: 0,
+              totalPages: 1,
+            });
+            return;
+          }
         }
-        // ✅ When "all" is selected, let backend return all, then filter out SparePartRequest
 
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
@@ -126,13 +140,11 @@ export default function MachineRequestsAdmin() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // ✅ Filter out SparePartRequest only when showing "all"
+        // ✅ FIXED: Always filter out SparePartRequest for machine requests
         const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
           .filter((req) => {
-            if (actionTypeFilter === "all") {
-              return req.actionType?.toLowerCase() !== "sparepartrequest";
-            }
-            return true;
+            // ALWAYS exclude SparePartRequest from machine requests
+            return req.actionType?.toLowerCase() !== "sparepartrequest";
           })
           .map((req) => ({
             id: req.id,
@@ -152,12 +164,16 @@ export default function MachineRequestsAdmin() {
           }));
 
         setRequests(machineRequests);
-        // ✅ Use backend pagination
+
+        // ✅ FIXED: Use filtered count for pagination
+        const filteredTotal = machineRequests.length;
+        const recalculatedPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+
         setPagination({
           currentPage,
           pageSize,
-          totalItems,
-          totalPages,
+          totalItems: filteredTotal,
+          totalPages: recalculatedPages,
         });
       } catch (error) {
         console.error("Failed to fetch machine requests:", error);
@@ -338,7 +354,7 @@ export default function MachineRequestsAdmin() {
     switch (status.toLowerCase()) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed":
+      case "approved":
       case "inprogress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "completed":

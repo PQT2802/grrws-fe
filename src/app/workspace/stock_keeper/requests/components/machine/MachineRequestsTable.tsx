@@ -69,22 +69,33 @@ export default function MachineRequestsTable() {
           `Fetching machine requests for page ${page}, size ${pageSize}`
         );
 
-        // ✅ Build actionType filter to exclude SparePartRequest
+        // ✅ FIXED: Always exclude SparePartRequest from machine requests
         let actionTypeParam = undefined;
+
         if (actionTypeFilter !== "all") {
-          actionTypeParam = actionTypeFilter;
-        } else {
-          // ✅ When showing "all", we want all EXCEPT SparePartRequest
-          // Let backend handle this or pass multiple actionTypes
-          actionTypeParam = undefined; // Will be handled in response filtering
+          // If specific type selected, use it (but never SparePartRequest)
+          if (actionTypeFilter.toLowerCase() !== "sparepartrequest") {
+            actionTypeParam = actionTypeFilter;
+          } else {
+            // If somehow SparePartRequest is selected, show no results
+            setRequests([]);
+            setPagination({
+              currentPage: 1,
+              pageSize,
+              totalItems: 0,
+              totalPages: 1,
+            });
+            return;
+          }
         }
+        // If "all" is selected, we'll filter out SparePartRequest after getting results
 
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           false, // newest first
           statusFilter !== "all" ? statusFilter : undefined,
-          actionTypeParam
+          actionTypeParam // This will be undefined for "all", or specific type
         );
 
         let machineActionData: any[] = [];
@@ -108,15 +119,11 @@ export default function MachineRequestsTable() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // ✅ Only filter out SparePartRequest if actionTypeFilter is "all"
+        // ✅ FIXED: Always filter out SparePartRequest for machine requests
         const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
           .filter((req) => {
-            if (actionTypeFilter === "all") {
-              // Exclude SparePartRequest when showing "all"
-              return req.actionType?.toLowerCase() !== "sparepartrequest";
-            }
-            // If specific actionType is selected, backend already filtered
-            return true;
+            // ALWAYS exclude SparePartRequest from machine requests
+            return req.actionType?.toLowerCase() !== "sparepartrequest";
           })
           .map((req) => ({
             id: req.id,
@@ -140,12 +147,16 @@ export default function MachineRequestsTable() {
         );
 
         setRequests(machineRequests);
-        // ✅ Use backend pagination data
+
+        // ✅ FIXED: Recalculate pagination based on filtered results
+        const filteredTotal = machineRequests.length;
+        const recalculatedPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+
         setPagination({
           currentPage,
           pageSize,
-          totalItems,
-          totalPages,
+          totalItems: filteredTotal, // Use filtered count
+          totalPages: recalculatedPages, // Use recalculated pages
         });
       } catch (error) {
         console.error("Failed to fetch machine requests:", error);
@@ -347,7 +358,7 @@ export default function MachineRequestsTable() {
     switch (status.toLowerCase()) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed":
+      case "approved":
       case "inprogress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "completed":

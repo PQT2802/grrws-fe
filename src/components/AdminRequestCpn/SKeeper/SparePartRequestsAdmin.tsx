@@ -81,10 +81,10 @@ export default function SparePartRequestsAdmin() {
       try {
         setIsLoading(true);
         console.log(
-          `Fetching spare part requests for page ${page}, size ${pageSize}`
+          `Fetching spare part requests for admin page ${page}, size ${pageSize}`
         );
 
-        // ✅ Use backend filtering for SparePartRequest only
+        // ✅ FIXED: Use backend filtering for SparePartRequest only
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
@@ -114,8 +114,21 @@ export default function SparePartRequestsAdmin() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // ✅ Remove frontend filtering - backend already filtered
-        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData.map((req) => ({
+        // ✅ FIXED: Add explicit frontend filtering as backup + logging
+        console.log("Admin - Raw backend response data:", machineActionData);
+        
+        const filteredData = machineActionData.filter((req) => {
+          const isSparePartRequest = req.actionType?.toLowerCase() === "sparepartrequest";
+          if (!isSparePartRequest) {
+            console.warn("Admin - Non-SparePartRequest found in response:", req.actionType, req.id);
+          }
+          return isSparePartRequest;
+        });
+
+        console.log(`Admin - Filtered data: ${filteredData.length} SparePartRequest items out of ${machineActionData.length} total`);
+
+        // ✅ Transform filtered data
+        const sparePartRequests: UNIFIED_SKEEPER_REQUEST[] = filteredData.map((req) => ({
           id: req.id,
           type: "machineAction" as const,
           title: req.confirmationCode,
@@ -133,12 +146,16 @@ export default function SparePartRequestsAdmin() {
         }));
 
         setRequests(sparePartRequests);
-        // ✅ Use backend pagination
+        
+        // ✅ FIXED: Use filtered count for pagination
+        const actualTotal = sparePartRequests.length;
+        const recalculatedPages = Math.max(1, Math.ceil(actualTotal / pageSize));
+        
         setPagination({
           currentPage,
           pageSize,
-          totalItems,
-          totalPages,
+          totalItems: actualTotal,
+          totalPages: recalculatedPages,
         });
       } catch (error) {
         console.error("Failed to fetch spare part requests:", error);
@@ -292,7 +309,7 @@ export default function SparePartRequestsAdmin() {
     switch (status.toLowerCase()) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed":
+      case "approved":
       case "inprogress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "completed":

@@ -99,13 +99,20 @@ export default function RequestSummaryAdmin() {
       try {
         setIsLoadingRequests(true);
 
-        // Fetch unified machine action confirmations
+        // ✅ FIXED: Handle action type filtering correctly
+        let actionTypeParam = undefined;
+
+        if (actionTypeFilter !== "all") {
+          actionTypeParam = actionTypeFilter;
+        }
+        // For "all", we get everything then filter by what we want to show
+
         const response = await apiClient.machineActionConfirmation.getAll(
           page,
           pageSize,
           isAscending,
           statusFilter !== "all" ? statusFilter : undefined,
-          actionTypeFilter !== "all" ? actionTypeFilter : undefined
+          actionTypeParam
         );
 
         let machineActionData: any[] = [];
@@ -129,7 +136,7 @@ export default function RequestSummaryAdmin() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // Transform to unified format
+        // Transform to unified format (no filtering here since this shows ALL types)
         const unifiedRequests: UNIFIED_SKEEPER_REQUEST[] =
           machineActionData.map((req) => ({
             id: req.id,
@@ -283,7 +290,7 @@ export default function RequestSummaryAdmin() {
     switch (status.toLowerCase()) {
       case "pending":
         return <Clock className="h-4 w-4 text-yellow-500" />;
-      case "confirmed":
+      case "approved":
       case "inprogress":
         return <CheckCircle className="h-4 w-4 text-blue-500" />;
       case "completed":
@@ -300,7 +307,7 @@ export default function RequestSummaryAdmin() {
     switch (status.toLowerCase()) {
       case "pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "confirmed":
+      case "approved":
       case "inprogress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "completed":
