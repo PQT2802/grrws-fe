@@ -80,7 +80,6 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
               <TableHead>Tên nhiệm vụ</TableHead>
               <TableHead>Loại</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead>Mức độ ưu tiên</TableHead>
               <TableHead>Người được giao</TableHead>
               <TableHead>Thời gian</TableHead>
             </TableRow>
@@ -130,13 +129,6 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
                   <TableCell>
                     <Badge className={`${getStatusColor(task.status)} text-xs`}>
                       {translateTaskStatus(task.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={`${getPriorityColor(task.priority)} text-xs`}
-                    >
-                      {translateTaskPriority(task.priority)}
                     </Badge>
                   </TableCell>
                   <TableCell>

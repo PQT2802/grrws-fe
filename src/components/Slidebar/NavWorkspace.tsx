@@ -90,12 +90,12 @@ export function WorkspaceSwitcher() {
           >
             <Image
               src="/logosew.png"
-              width={80}
-              height={80}
+              width={60}
+              height={60}
               alt="app-logo"
-              className="border border-gray-300 rounded-3xl"
+              className="border border-gray-300 rounded-3xl mr-4"
             />
-            <h1 className="max-w-[160px] truncate text-[1.2rem] font-bold text-primary hover:cursor-pointer">
+            <h1 className="max-w-[160px] truncate text-[1.5rem] font-bold text-primary hover:cursor-pointer">
               {process.env.NEXT_PUBLIC_APP_NAME
                 ? process.env.NEXT_PUBLIC_APP_NAME
                 : "Jira Clone"}

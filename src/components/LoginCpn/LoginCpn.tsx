@@ -178,7 +178,7 @@ const LoginCpn = ({
   return (
     <div className={cn("flex flex-col gap-3", className)} {...props}>
       <div className="w-full flex items-center justify-center gap-1">
-        <Image src="/logosew.png" width={80} height={80} alt="app-logo" />
+        <Image src="/logosew.png" width={60} height={60} alt="app-logo" />
         <h1 className="font-bold text-[1.2rem] uppercase">
           {process.env.NEXT_PUBLIC_APP_NAME || "Jira Clone"}
         </h1>
