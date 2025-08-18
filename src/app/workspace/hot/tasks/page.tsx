@@ -456,17 +456,6 @@ const TaskManagementPage = () => {
                   <SelectItem value="Completed">Hoàn thành</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Mức độ ưu tiên" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="High">Cao</SelectItem>
-                  <SelectItem value="Medium">Trung bình</SelectItem>
-                  <SelectItem value="Low">Thấp</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -481,7 +470,6 @@ const TaskManagementPage = () => {
                       <TableHead>Tên Nhiệm vụ</TableHead>
                       <TableHead>Loại</TableHead>
                       <TableHead>Trạng thái</TableHead>
-                      <TableHead>Mức độ ưu tiên</TableHead>
                       <TableHead>Người được giao</TableHead>
                       <TableHead>Thời gian dự kiến</TableHead>
                     </TableRow>
@@ -510,15 +498,6 @@ const TaskManagementPage = () => {
                               )} text-xs`}
                             >
                               {translateTaskStatus(task.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={`${getPriorityColor(
-                                task.priority
-                              )} text-xs`}
-                            >
-                              {translateTaskPriority(task.priority)}
                             </Badge>
                           </TableCell>
                           <TableCell>

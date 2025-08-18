@@ -2,8 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation"; // ✅ Add useParams
-import Link from "next/link"; // ✅ Add Link import
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -25,14 +25,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   formatAPIDateToHoChiMinh,
-  formatTimeStampDate,
   getFirstLetterUppercase,
 } from "@/lib/utils";
 import { TASK_GROUP_WEB, TASK_IN_GROUP } from "@/types/task.type";
 import {
   Clock,
   Calendar,
-  User,
   CheckCircle,
   AlertCircle,
   Package,
@@ -40,8 +38,8 @@ import {
   MoreHorizontal,
   Check,
   Loader2,
-  ExternalLink, // ✅ Add ExternalLink icon
-  Shield, // ✅ Add Shield icon for warranty
+  ExternalLink,
+  Shield,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,12 +61,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
+import {  translateTaskType } from "@/utils/textTypeTask";
 
 interface TaskGroupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taskGroup: TASK_GROUP_WEB | null;
-  onTaskGroupUpdated?: () => void; // Callback to refresh the parent component
+  onTaskGroupUpdated?: () => void;
 }
 
 const TaskGroupModal = ({
@@ -77,21 +76,19 @@ const TaskGroupModal = ({
   taskGroup,
   onTaskGroupUpdated,
 }: TaskGroupModalProps) => {
-  const params = useParams(); // ✅ Get params for workspace ID
-  const workspaceId = params?.["workspace-id"] as string; // ✅ Extract workspace ID
+  const params = useParams();
+  const workspaceId = params?.["workspace-id"] as string;
 
   const [selectedTask, setSelectedTask] = useState<TASK_IN_GROUP | null>(null);
   const [applyingTasks, setApplyingTasks] = useState<boolean>(false);
 
   if (!taskGroup) return null;
 
-  // Check if there are any suggested tasks
   const suggestedTasks = taskGroup.tasks.filter(
     (task) => task.status.toLowerCase() === "suggested"
   );
   const hasSuggestedTasks = suggestedTasks.length > 0;
 
-  // ✅ Function to get the route path based on task type
   const getTaskRoute = (taskType: string) => {
     switch (taskType.toLowerCase()) {
       case "uninstallation":
@@ -105,11 +102,10 @@ const TaskGroupModal = ({
       case "repair":
         return "repair";
       default:
-        return null; // Return null for unsupported types
+        return null;
     }
   };
 
-  // ✅ Function to build the full task detail URL
   const getTaskDetailUrl = (task: TASK_IN_GROUP) => {
     const route = getTaskRoute(task.taskType);
     if (!route || !workspaceId) return null;
@@ -117,7 +113,6 @@ const TaskGroupModal = ({
     return `/workspace/${workspaceId}/tasks/${route}/${task.taskId}`;
   };
 
-  // ✅ Function to check if task type is supported for detail view
   const isTaskTypeSupported = (taskType: string) => {
     return getTaskRoute(taskType) !== null;
   };
@@ -132,19 +127,6 @@ const TaskGroupModal = ({
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "suggested":
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "high":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "low":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
@@ -177,19 +159,17 @@ const TaskGroupModal = ({
       await apiClient.task.applySuggestedGroupTasks(taskGroup.taskGroupId);
 
       toast.success(
-        `Successfully applied ${suggestedTasks.length} suggested task(s)!`
+        `Đã áp dụng thành công ${suggestedTasks.length} nhiệm vụ được đề xuất!`
       );
 
-      // Close the modal and trigger refresh
       onOpenChange(false);
 
-      // Call the callback to refresh the parent component
       if (onTaskGroupUpdated) {
         onTaskGroupUpdated();
       }
     } catch (error) {
       console.error("Failed to apply suggested tasks:", error);
-      toast.error("Failed to apply suggested tasks. Please try again.");
+      toast.error("Không thể áp dụng nhiệm vụ được đề xuất. Vui lòng thử lại.");
     } finally {
       setApplyingTasks(false);
     }
@@ -205,12 +185,11 @@ const TaskGroupModal = ({
               <div>
                 <DialogTitle>{taskGroup.groupName}</DialogTitle>
                 <DialogDescription>
-                  Task group details and individual tasks breakdown
+                  Chi tiết nhóm nhiệm vụ và phân tích nhiệm vụ cá nhân
                 </DialogDescription>
               </div>
             </div>
 
-            {/* Apply Suggested Tasks Button */}
             {hasSuggestedTasks && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -225,20 +204,21 @@ const TaskGroupModal = ({
                     ) : (
                       <Check className="h-4 w-4" />
                     )}
-                    Apply All Suggested Tasks ({suggestedTasks.length})
+                    Áp dụng tất cả nhiệm vụ ({suggestedTasks.length})
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Apply Suggested Tasks</AlertDialogTitle>
+                    <AlertDialogTitle>Áp dụng nhiệm vụ</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to apply all {suggestedTasks.length}{" "}
-                      suggested task(s)? This will change their status from
-                      &quot;Suggested&quot; to &quot;Pending&quot; and they will
-                      be assigned to mechanics.
+                      Bạn có chắc chắn muốn áp dụng tất cả{" "}
+                      {suggestedTasks.length} nhiệm vụ được đề xuất? Điều này sẽ
+                      thay đổi trạng thái của chúng từ &quot;Được đề xuất&quot;
+                      thành &quot;Đang chờ xử lý&quot; và chúng sẽ được giao cho
+                      kỹ thuật viên.
                       <br />
                       <br />
-                      <strong>Suggested Tasks:</strong>
+                      <strong>Nhiệm vụ được đề xuất:</strong>
                       <ul className="mt-2 space-y-1">
                         {suggestedTasks.map((task) => (
                           <li key={task.taskId} className="text-sm">
@@ -249,7 +229,7 @@ const TaskGroupModal = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>Hủy</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleApplySuggestedTasks}
                       disabled={applyingTasks}
@@ -257,12 +237,12 @@ const TaskGroupModal = ({
                       {applyingTasks ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Applying...
+                          Đang áp dụng...
                         </>
                       ) : (
                         <>
                           <Check className="h-4 w-4 mr-2" />
-                          Apply Tasks
+                          Áp dụng nhiệm vụ
                         </>
                       )}
                     </AlertDialogAction>
@@ -274,7 +254,6 @@ const TaskGroupModal = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Summary Cards */}
           {hasSuggestedTasks && (
             <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950">
               <CardContent className="p-4">
@@ -282,11 +261,10 @@ const TaskGroupModal = ({
                   <AlertCircle className="h-5 w-5 text-purple-600" />
                   <div>
                     <h4 className="font-medium text-purple-800 dark:text-purple-200">
-                      Suggested Tasks Available
+                      Có nhiệm vụ được đề xuất
                     </h4>
                     <p className="text-sm text-purple-600 dark:text-purple-300">
-                      {suggestedTasks.length} task(s) are suggested and ready to
-                      be applied.
+                      {suggestedTasks.length} nhiệm vụ sẵn sàng để áp dụng.
                     </p>
                   </div>
                 </div>
@@ -294,25 +272,23 @@ const TaskGroupModal = ({
             </Card>
           )}
 
-          {/* Tasks Table */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Tasks in Group ({taskGroup.tasks.length})
+                Nhiệm vụ trong nhóm ({taskGroup.tasks.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Task Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Assignee</TableHead>
-                    <TableHead>Timeline</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Thứ tự</TableHead>
+                    <TableHead>Tên nhiệm vụ</TableHead>
+                    <TableHead>Loại</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Người thực hiện</TableHead>
+                    <TableHead>Thời gian</TableHead>
+                    <TableHead>Hành động</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -345,7 +321,7 @@ const TaskGroupModal = ({
                                     variant="outline"
                                     className="text-purple-600 border-purple-300"
                                   >
-                                    New
+                                    Mới
                                   </Badge>
                                 )}
                               </div>
@@ -358,8 +334,7 @@ const TaskGroupModal = ({
                             <div className="flex items-center gap-2">
                               {getTaskTypeIcon(task.taskType)}
                               <div className="flex flex-col">
-                                <span className="text-sm">{task.taskType}</span>
-                                {/* ✅ Show route info with support status */}
+                                <span className="text-sm">{translateTaskType(task.taskType)}</span>
                                 <span
                                   className={`text-xs ${
                                     isSupported
@@ -369,7 +344,7 @@ const TaskGroupModal = ({
                                 >
                                   {isSupported
                                     ? `/${getTaskRoute(task.taskType)}/`
-                                    : "Detail not available"}
+                                    : "Không khả dụng"}
                                 </span>
                               </div>
                             </div>
@@ -381,15 +356,6 @@ const TaskGroupModal = ({
                               )} text-xs`}
                             >
                               {task.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={`${getPriorityColor(
-                                task.priority
-                              )} text-xs`}
-                            >
-                              {task.priority}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -411,7 +377,7 @@ const TaskGroupModal = ({
                               {task.startTime && (
                                 <div className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  Start:{" "}
+                                  Bắt đầu:{" "}
                                   {formatAPIDateToHoChiMinh(
                                     task.startTime,
                                     "datetime"
@@ -421,7 +387,7 @@ const TaskGroupModal = ({
                               {task.expectedTime && (
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
-                                  Expected:{" "}
+                                  Dự kiến:{" "}
                                   {formatAPIDateToHoChiMinh(
                                     task.expectedTime,
                                     "datetime"
@@ -431,7 +397,7 @@ const TaskGroupModal = ({
                               {task.endTime && (
                                 <div className="flex items-center gap-1">
                                   <CheckCircle className="h-3 w-3 text-green-500" />
-                                  Ended:{" "}
+                                  Kết thúc:{" "}
                                   {formatAPIDateToHoChiMinh(
                                     task.endTime,
                                     "datetime"
@@ -448,18 +414,17 @@ const TaskGroupModal = ({
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>Hành động</DropdownMenuLabel>
 
-                                {/* ✅ View Details with Link - only if supported and URL exists */}
                                 {isSupported && taskDetailUrl ? (
                                   <DropdownMenuItem asChild>
                                     <Link
                                       href={taskDetailUrl}
-                                      onClick={() => onOpenChange(false)} // Close modal
+                                      onClick={() => onOpenChange(false)}
                                       className="flex items-center gap-2 w-full cursor-pointer"
                                     >
                                       <Eye className="h-4 w-4" />
-                                      View Details
+                                      Xem chi tiết
                                       <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
                                     </Link>
                                   </DropdownMenuItem>
@@ -469,40 +434,27 @@ const TaskGroupModal = ({
                                     className="flex items-center gap-2 text-gray-400"
                                   >
                                     <Eye className="h-4 w-4" />
-                                    View Details
+                                    Xem chi tiết
                                     <span className="text-xs ml-auto">
-                                      Not available
+                                      Không khả dụng
                                     </span>
                                   </DropdownMenuItem>
                                 )}
 
-                                {/* ✅ Show route info - only if supported
-                                {isSupported && (
-                                  <DropdownMenuItem
-                                    disabled
-                                    className="text-xs text-gray-400 font-mono"
-                                  >
-                                    Route: /tasks/{getTaskRoute(task.taskType)}/
-                                    {task.taskId}
-                                  </DropdownMenuItem>
-                                )} */}
-
-                                {/* Apply single task for suggested tasks */}
                                 {task.status.toLowerCase() === "suggested" && (
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      // Single task apply logic could be added here
                                       console.log(
                                         "Apply single task:",
                                         task.taskId
                                       );
                                       toast.info(
-                                        "Single task apply feature coming soon!"
+                                        "Tính năng áp dụng nhiệm vụ đơn lẻ sắp ra mắt!"
                                       );
                                     }}
                                   >
                                     <Check className="h-4 w-4 mr-2" />
-                                    Apply This Task
+                                    Áp dụng nhiệm vụ này
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
