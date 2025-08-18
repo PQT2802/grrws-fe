@@ -6,6 +6,7 @@ import React, {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  useMemo, 
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,139 +66,140 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
     const [totalItems, setTotalItems] = useState(0);
     const itemsPerPage = 10;
 
-    // Enhanced mock data with more entries and better dark theme compatibility
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const mockIssues: ISSUE_WEB[] = [
-      {
-        id: "1",
-        title: "Production Line A Malfunction",
-        description:
-          "Machine stopped working unexpectedly during shift, causing production delays",
-        severity: "Critical",
-        status: "Open",
-        reportedBy: "John Smith",
-        reportedByEmail: "john.smith@company.com",
-        assignedTo: "Jane Doe",
-        assignedToEmail: "jane.doe@company.com",
-        reportedDate: "2024-01-15T08:30:00Z",
-        category: "Equipment",
-        location: "Factory Floor A",
-        estimatedResolutionTime: "4 hours",
-        tags: ["production", "urgent", "machinery"],
-      },
-      {
-        id: "2",
-        title: "Quality Control Issue",
-        description:
-          "Defective products found in batch #1234, quality standards not met",
-        severity: "High",
-        status: "InProgress",
-        reportedBy: "Mike Johnson",
-        reportedByEmail: "mike.johnson@company.com",
-        assignedTo: "Sarah Wilson",
-        assignedToEmail: "sarah.wilson@company.com",
-        reportedDate: "2024-01-14T14:20:00Z",
-        category: "Quality",
-        location: "Quality Control Lab",
-        estimatedResolutionTime: "2 hours",
-        tags: ["quality", "batch", "inspection"],
-      },
-      {
-        id: "3",
-        title: "Safety Concern in Workshop",
-        description:
-          "Unsafe working conditions reported, potential hazard for workers",
-        severity: "Medium",
-        status: "Resolved",
-        reportedBy: "Emily Davis",
-        reportedByEmail: "emily.davis@company.com",
-        resolvedDate: "2024-01-13T16:45:00Z",
-        reportedDate: "2024-01-12T09:15:00Z",
-        category: "Safety",
-        location: "Workshop B",
-        actualResolutionTime: "6 hours",
-        tags: ["safety", "workplace", "hazard"],
-      },
-      {
-        id: "4",
-        title: "Network Connectivity Issues",
-        description:
-          "Intermittent network failures affecting multiple departments",
-        severity: "High",
-        status: "InProgress",
-        reportedBy: "David Brown",
-        reportedByEmail: "david.brown@company.com",
-        assignedTo: "IT Support Team",
-        reportedDate: "2024-01-13T10:00:00Z",
-        category: "IT Infrastructure",
-        location: "Building C",
-        estimatedResolutionTime: "3 hours",
-        tags: ["network", "connectivity", "infrastructure"],
-      },
-      {
-        id: "5",
-        title: "HVAC System Malfunction",
-        description:
-          "Air conditioning system not working properly, temperature control issues",
-        severity: "Medium",
-        status: "Open",
-        reportedBy: "Lisa Anderson",
-        reportedByEmail: "lisa.anderson@company.com",
-        reportedDate: "2024-01-12T15:30:00Z",
-        category: "Facilities",
-        location: "Office Building",
-        estimatedResolutionTime: "5 hours",
-        tags: ["hvac", "climate", "facilities"],
-      },
-      {
-        id: "6",
-        title: "Chemical Spill in Storage Area",
-        description:
-          "Minor chemical spill requiring immediate cleanup and safety assessment",
-        severity: "Critical",
-        status: "Resolved",
-        reportedBy: "Mark Thompson",
-        reportedByEmail: "mark.thompson@company.com",
-        assignedTo: "Emergency Response Team",
-        reportedDate: "2024-01-11T11:45:00Z",
-        resolvedDate: "2024-01-11T14:30:00Z",
-        category: "Environmental",
-        location: "Chemical Storage",
-        actualResolutionTime: "2 hours 45 minutes",
-        tags: ["chemical", "spill", "emergency", "safety"],
-      },
-      {
-        id: "7",
-        title: "Elevator Service Interruption",
-        description:
-          "Main elevator out of service, affecting multi-floor access",
-        severity: "Medium",
-        status: "InProgress",
-        reportedBy: "Robert Wilson",
-        reportedByEmail: "robert.wilson@company.com",
-        assignedTo: "Maintenance Team",
-        reportedDate: "2024-01-10T09:20:00Z",
-        category: "Facilities",
-        location: "Main Building",
-        estimatedResolutionTime: "1 day",
-        tags: ["elevator", "access", "maintenance"],
-      },
-      {
-        id: "8",
-        title: "Fire Alarm System False Triggers",
-        description:
-          "Fire alarm system triggering false alarms, disrupting operations",
-        severity: "High",
-        status: "Open",
-        reportedBy: "Jennifer Lee",
-        reportedByEmail: "jennifer.lee@company.com",
-        reportedDate: "2024-01-09T13:15:00Z",
-        category: "Safety",
-        location: "Multiple Buildings",
-        estimatedResolutionTime: "4 hours",
-        tags: ["fire-alarm", "safety", "false-trigger"],
-      },
-    ];
+    const mockIssues: ISSUE_WEB[] = useMemo(
+      () => [
+        {
+          id: "1",
+          title: "Production Line A Malfunction",
+          description:
+            "Machine stopped working unexpectedly during shift, causing production delays",
+          severity: "Critical" as const,
+          status: "Open" as const,
+          reportedBy: "John Smith",
+          reportedByEmail: "john.smith@company.com",
+          assignedTo: "Jane Doe",
+          assignedToEmail: "jane.doe@company.com",
+          reportedDate: "2024-01-15T08:30:00Z",
+          category: "Equipment",
+          location: "Factory Floor A",
+          estimatedResolutionTime: "4 hours",
+          tags: ["production", "urgent", "machinery"],
+        },
+        {
+          id: "2",
+          title: "Quality Control Issue",
+          description:
+            "Defective products found in batch #1234, quality standards not met",
+          severity: "High" as const,
+          status: "InProgress" as const,
+          reportedBy: "Mike Johnson",
+          reportedByEmail: "mike.johnson@company.com",
+          assignedTo: "Sarah Wilson",
+          assignedToEmail: "sarah.wilson@company.com",
+          reportedDate: "2024-01-14T14:20:00Z",
+          category: "Quality",
+          location: "Quality Control Lab",
+          estimatedResolutionTime: "2 hours",
+          tags: ["quality", "batch", "inspection"],
+        },
+        {
+          id: "3",
+          title: "Safety Concern in Workshop",
+          description:
+            "Unsafe working conditions reported, potential hazard for workers",
+          severity: "Medium" as const,
+          status: "Resolved" as const,
+          reportedBy: "Emily Davis",
+          reportedByEmail: "emily.davis@company.com",
+          resolvedDate: "2024-01-13T16:45:00Z",
+          reportedDate: "2024-01-12T09:15:00Z",
+          category: "Safety",
+          location: "Workshop B",
+          actualResolutionTime: "6 hours",
+          tags: ["safety", "workplace", "hazard"],
+        },
+        {
+          id: "4",
+          title: "Network Connectivity Issues",
+          description:
+            "Intermittent network failures affecting multiple departments",
+          severity: "High" as const,
+          status: "InProgress" as const,
+          reportedBy: "David Brown",
+          reportedByEmail: "david.brown@company.com",
+          assignedTo: "IT Support Team",
+          reportedDate: "2024-01-13T10:00:00Z",
+          category: "IT Infrastructure",
+          location: "Building C",
+          estimatedResolutionTime: "3 hours",
+          tags: ["network", "connectivity", "infrastructure"],
+        },
+        {
+          id: "5",
+          title: "HVAC System Malfunction",
+          description:
+            "Air conditioning system not working properly, temperature control issues",
+          severity: "Medium" as const,
+          status: "Open" as const,
+          reportedBy: "Lisa Anderson",
+          reportedByEmail: "lisa.anderson@company.com",
+          reportedDate: "2024-01-12T15:30:00Z",
+          category: "Facilities",
+          location: "Office Building",
+          estimatedResolutionTime: "5 hours",
+          tags: ["hvac", "climate", "facilities"],
+        },
+        {
+          id: "6",
+          title: "Chemical Spill in Storage Area",
+          description:
+            "Minor chemical spill requiring immediate cleanup and safety assessment",
+          severity: "Critical" as const,
+          status: "Resolved" as const,
+          reportedBy: "Mark Thompson",
+          reportedByEmail: "mark.thompson@company.com",
+          assignedTo: "Emergency Response Team",
+          reportedDate: "2024-01-11T11:45:00Z",
+          resolvedDate: "2024-01-11T14:30:00Z",
+          category: "Environmental",
+          location: "Chemical Storage",
+          actualResolutionTime: "2 hours 45 minutes",
+          tags: ["chemical", "spill", "emergency", "safety"],
+        },
+        {
+          id: "7",
+          title: "Elevator Service Interruption",
+          description:
+            "Main elevator out of service, affecting multi-floor access",
+          severity: "Medium" as const,
+          status: "InProgress" as const,
+          reportedBy: "Robert Wilson",
+          reportedByEmail: "robert.wilson@company.com",
+          assignedTo: "Maintenance Team",
+          reportedDate: "2024-01-10T09:20:00Z",
+          category: "Facilities",
+          location: "Main Building",
+          estimatedResolutionTime: "1 day",
+          tags: ["elevator", "access", "maintenance"],
+        },
+        {
+          id: "8",
+          title: "Fire Alarm System False Triggers",
+          description:
+            "Fire alarm system triggering false alarms, disrupting operations",
+          severity: "High" as const,
+          status: "Open" as const,
+          reportedBy: "Jennifer Lee",
+          reportedByEmail: "jennifer.lee@company.com",
+          reportedDate: "2024-01-09T13:15:00Z",
+          category: "Safety",
+          location: "Multiple Buildings",
+          estimatedResolutionTime: "4 hours",
+          tags: ["fire-alarm", "safety", "false-trigger"],
+        },
+      ],
+      []
+    ); // ✅ Empty dependency array
 
     const fetchIssues = useCallback(async () => {
       try {
@@ -207,7 +209,7 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
         // const response = await apiClient.issue.getIssues(currentPage, itemsPerPage);
 
         // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 800)); // ✅ Reduced delay
 
         // Filter by search term
         const filteredIssues = mockIssues.filter(
@@ -221,7 +223,12 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
             issue.location?.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        setIssues(filteredIssues);
+        // ✅ Apply pagination to filtered results
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedIssues = filteredIssues.slice(startIndex, endIndex);
+
+        setIssues(paginatedIssues);
         setTotalItems(filteredIssues.length);
         setTotalPages(Math.ceil(filteredIssues.length / itemsPerPage));
       } catch (error) {
@@ -230,7 +237,7 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
       } finally {
         setLoading(false);
       }
-    }, [mockIssues, searchTerm]);
+    }, [mockIssues, searchTerm, currentPage]); // ✅ Added currentPage dependency
 
     useEffect(() => {
       fetchIssues();

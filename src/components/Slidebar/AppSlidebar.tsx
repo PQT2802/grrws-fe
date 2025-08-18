@@ -76,18 +76,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       url: `/workspace/hot/requests`,
       icon: Frame,
       items: [],
+    }, 
+    {
+      title: "Reports",
+      url: `/workspace/hot/reports`,
+      icon: PieChart,
+      items: [],
     },
     {
       title: "Calendar",
       url: `/workspace/calendar`,
       icon: Map,
       items: PROJECT_ITEMS,
-    },
-    {
-      title: "Reports",
-      url: `/workspace/reports`,
-      icon: PieChart,
-      items: [],
     },
     {
       title: "Incident Tracking",

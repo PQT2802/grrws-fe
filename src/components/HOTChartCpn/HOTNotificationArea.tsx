@@ -61,14 +61,14 @@ export default function HOTNotificationArea() {
   const handleRequestClick = useCallback(
     (requestId: string) => {
       // ✅ Navigate to clean URL without workspaceId
-      router.push(`/workspace/hot/requests/${requestId}`);
+      router.push(`/workspace/hot/reports/${requestId}`);
     },
     [router] // ✅ Remove workspaceId from dependencies
   );
 
   const handleViewAllRequests = useCallback(() => {
     // ✅ Navigate to clean URL without workspaceId
-    router.push(`/workspace/hot/requests`);
+    router.push(`/workspace/hot/reports`);
   }, [router]); // ✅ Remove workspaceId from dependencies
 
   // Fetch creator name for a request

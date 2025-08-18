@@ -237,7 +237,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
 
   const handleViewDetail = (request: REQUEST_SUMMARY | REQUEST_ITEM) => {
     const requestId = "requestId" in request ? request.requestId : request.id;
-    router.push(`/workspace/hot/requests/${requestId}`);
+    router.push(`/workspace/hot/reports/${requestId}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -357,7 +357,7 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             className="h-auto p-0 font-medium text-base" // Made text bigger
           >
-            Tiêu đề yêu cầu
+            Tiêu đề báo cáo
             {column.getIsSorted() === "asc" ? (
               <ArrowUp className="ml-2 h-4 w-4" />
             ) : column.getIsSorted() === "desc" ? (
@@ -415,23 +415,6 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
               )}
             </div>
           </div>
-        );
-      },
-    },
-    {
-      accessorKey: "priority",
-      header: "Độ ưu tiên",
-      cell: ({ row }) => {
-        const priority = row.getValue("priority") as string;
-        if (!priority) return <span className="text-gray-400">---</span>;
-
-        return (
-          <Badge
-            variant="secondary"
-            className={`${getPriorityColor(priority)} border-0`}
-          >
-            {safeTranslateTaskPriority(priority)}
-          </Badge>
         );
       },
     },
@@ -560,20 +543,6 @@ const RequestTableCpn = ({ requestSummary, loading }: RequestTableCpnProps) => {
             className="pl-10"
           />
         </div>
-
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Lọc theo độ ưu tiên" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả độ ưu tiên</SelectItem>
-            {availablePriorities.map((priority) => (
-              <SelectItem key={priority} value={priority}>
-                {safeTranslateTaskPriority(priority)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-48">
