@@ -316,7 +316,6 @@ export default function RequestWithoutReportList({
                                   <tr className="border-b bg-muted/30">
                                       <th className="px-4 py-3 text-left text-sm font-medium">Tiêu đề yêu cầu</th>
                                       <th className="px-4 py-3 text-left text-sm font-medium">Người tạo</th>
-                                      <th className="px-4 py-3 text-left text-sm font-medium w-[100px]">Độ ưu tiên</th>
                                       <th className="px-4 py-3 text-left text-sm font-medium">Trạng thái</th>
                                       <th className="px-4 py-3 text-left text-sm font-medium">Ngày tạo</th>
                                       <th className="pr-4 py-3 text-right text-sm font-medium w-[80px]">Thao tác</th>
@@ -349,14 +348,6 @@ export default function RequestWithoutReportList({
                                             </div>
                                           </div>
                                         </div>
-                                      </td>
-                                      <td className="px-4 py-3">
-                                        <Badge 
-                                          variant="secondary" 
-                                          className={`${getPriorityColor(request.priority)} border-0`}
-                                        >
-                                          {safeTranslateTaskPriority(request.priority)}
-                                        </Badge>
                                       </td>
                                       <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">

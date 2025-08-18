@@ -510,7 +510,7 @@ export default function RequestListPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search requests..."
+                placeholder="Tìm yêu cầu..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -530,28 +530,11 @@ export default function RequestListPage() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filterPriority}
-              onValueChange={(value) =>
-                setFilterPriority(value as RequestPriority)
-              }
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="all">Trạng thái</SelectItem>
+                <SelectItem value="pending">Đang chờ</SelectItem>
+                <SelectItem value="approved">Đã phê duyệt</SelectItem>
+                <SelectItem value="rejected">Đã từ chối</SelectItem>
+                <SelectItem value="completed">Đã hoàn thành</SelectItem>
               </SelectContent>
             </Select>
           </div>

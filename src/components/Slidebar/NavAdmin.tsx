@@ -100,7 +100,7 @@ export function NavAdmin() {
       items: [
         {
           title: "HOD Requests",
-          url: `/workspace/admin/requestList`,
+          url: `/workspace/admin/requests/hod`,
           icon: AlertCircle,
         },
         {

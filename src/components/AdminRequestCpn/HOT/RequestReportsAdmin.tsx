@@ -480,19 +480,6 @@ export default function RequestReportsAdmin({
               </SelectContent>
             </Select>
 
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Ưu tiên" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả mức độ</SelectItem>
-                <SelectItem value="low">Thấp</SelectItem>
-                <SelectItem value="medium">Trung bình</SelectItem>
-                <SelectItem value="high">Cao</SelectItem>
-                <SelectItem value="urgent">Khẩn cấp</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Reset Filters Button */}
             <Button
               variant="outline"
@@ -524,7 +511,6 @@ export default function RequestReportsAdmin({
                 <TableHead>Mã yêu cầu</TableHead>
                 <TableHead>Loại báo cáo</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead className="w-[100px]">Độ ưu tiên</TableHead>
                 <TableHead>Thiết bị</TableHead>
                 <TableHead>Người tạo</TableHead>
                 <TableHead>Ngày tạo</TableHead>
@@ -561,11 +547,6 @@ export default function RequestReportsAdmin({
                     <TableCell>
                       <Badge className={getStatusColor(request.status)}>
                         {translateTaskStatus(request.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getPriorityColor(request.priority)}>
-                        {translateTaskPriority(request.priority)}
                       </Badge>
                     </TableCell>
                     <TableCell>

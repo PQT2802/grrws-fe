@@ -491,19 +491,6 @@ export default function StaffTasksAdmin({
               </SelectContent>
             </Select>
 
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue placeholder="Ưu tiên" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả mức độ</SelectItem>
-                <SelectItem value="Low">Thấp</SelectItem>
-                <SelectItem value="Medium">Trung bình</SelectItem>
-                <SelectItem value="High">Cao</SelectItem>
-                <SelectItem value="Urgent">Khẩn cấp</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Reset Filters Button */}
             <Button
               variant="outline"
@@ -535,11 +522,10 @@ export default function StaffTasksAdmin({
                 <TableHead>Chi tiết công việc</TableHead>
                 <TableHead>Loại công việc</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead>Ưu tiên</TableHead>
                 <TableHead>Phân công</TableHead>
                 <TableHead>Thời gian thực hiện</TableHead>
                 <TableHead>Thời gian</TableHead>
-                <TableHead className="w-[100px]">Thao tác</TableHead>
+                {/* <TableHead>Thao tác</TableHead> */}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -575,11 +561,6 @@ export default function StaffTasksAdmin({
                       >
                         {getStatusIcon(task.status)}
                         {formatVietnameseStatus(task.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getPriorityColor(task.priority)}>
-                        {formatVietnamesePriority(task.priority)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -631,7 +612,7 @@ export default function StaffTasksAdmin({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -647,7 +628,7 @@ export default function StaffTasksAdmin({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </TableCell>
+                    </TableCell> */}
                   </TableRow>
                 );
               })}

@@ -195,7 +195,7 @@ export default function RequestDetailModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-slate-800 dark:text-slate-200">
               Chi tiết yêu cầu
@@ -271,19 +271,6 @@ export default function RequestDetailModal({
 
               {/* Status Information Grid - Moved from Header */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Priority Badge */}
-                <div className="flex flex-col space-y-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Độ ưu tiên
-                  </span>
-                  <Badge
-                    className={`${getPriorityColor(
-                      request.priority
-                    )} w-fit px-3 py-1`}
-                  >
-                    {safeTranslateTaskPriority(request.priority)}
-                  </Badge>
-                </div>
 
                 {/* Status Badge */}
                 <div className="flex flex-col space-y-2">

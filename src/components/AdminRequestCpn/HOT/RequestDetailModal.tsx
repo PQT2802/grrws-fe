@@ -333,19 +333,6 @@ export default function RequestDetailModal({
                             {safeTranslateTaskStatus(request.status)}
                           </Badge>
                         </div>
-                        {/* Priority Badge */}
-                        <div className="flex flex-col space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">
-                            Độ ưu tiên
-                          </span>
-                          <Badge
-                            className={`${getPriorityColor(
-                              request.priority
-                            )} w-fit px-3 py-1`}
-                          >
-                            {safeTranslateTaskPriority(request.priority)}
-                          </Badge>
-                        </div>
                       </div>
                     </div>
 
@@ -577,7 +564,6 @@ export default function RequestDetailModal({
                                     <TableHead>Công việc</TableHead>
                                     <TableHead>Loại</TableHead>
                                     <TableHead>Trạng thái</TableHead>
-                                    <TableHead>Ưu tiên</TableHead>
                                     <TableHead>Người thực hiện</TableHead>
                                     <TableHead>Thời gian</TableHead>
                                   </TableRow>
@@ -637,17 +623,6 @@ export default function RequestDetailModal({
                                               <StatusIcon className="h-3 w-3" />
                                               {safeTranslateTaskStatus(
                                                 task.status
-                                              )}
-                                            </Badge>
-                                          </TableCell>
-                                          <TableCell>
-                                            <Badge
-                                              className={getPriorityColor(
-                                                task.priority
-                                              )}
-                                            >
-                                              {safeTranslateTaskPriority(
-                                                task.priority
                                               )}
                                             </Badge>
                                           </TableCell>
@@ -767,7 +742,7 @@ export default function RequestDetailModal({
 
       {/* Image Preview Modal - Removed Custom Close Button */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Xem hình ảnh</DialogTitle>
           </DialogHeader>
