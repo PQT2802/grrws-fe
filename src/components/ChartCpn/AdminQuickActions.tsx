@@ -25,7 +25,7 @@ export default function AdminQuickActions() {
       label: 'Requests',
       icon: FileText,
       color: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
-      action: () => router.push(`/workspace/admin/requestList`)
+      action: () => router.push(`/workspace/admin/requests/hod`)
     },
     {
       label: 'Devices',

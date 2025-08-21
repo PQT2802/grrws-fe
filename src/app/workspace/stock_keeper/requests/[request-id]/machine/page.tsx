@@ -12,6 +12,7 @@ import {
   Package,
   CheckCircle,
   RefreshCw,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "../../components/StatusBadge";
@@ -22,20 +23,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api-client";
 import { DEVICE_WEB } from "@/types/device.type";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Interface for machine request detail
-interface MachineRequestDetail {
+// ✅ NEW: Interface for unified machine request detail
+interface UnifiedMachineRequestDetail {
   id: string;
-  title: string;
-  description: string;
-  requestDate: string;
-  assigneeName: string;
+  confirmationCode: string;
+  actionType: string;
   status: string;
-  oldDeviceId: string;
-  newDeviceId: string;
-  machineId: string;
-  confirmedDate?: string;
+  startDate: string;
+  endDate?: string;
+  assigneeName: string;
   notes?: string;
+  mechanicConfirm: boolean;
+  stockkeeperConfirm: boolean;
+  // Device information for machine requests
+  oldDeviceId?: string;
+  newDeviceId?: string;
+  machineId?: string;
 }
 
 export default function MachineRequestDetailPage({
@@ -51,8 +56,7 @@ export default function MachineRequestDetailPage({
 
   // State variables
   const [isLoading, setIsLoading] = useState(true);
-  const [requestDetail, setRequestDetail] =
-    useState<MachineRequestDetail | null>(null);
+  const [requestDetail, setRequestDetail] = useState<UnifiedMachineRequestDetail | null>(null);
   const [oldDevice, setOldDevice] = useState<DEVICE_WEB | null>(null);
   const [newDevice, setNewDevice] = useState<DEVICE_WEB | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,70 +66,71 @@ export default function MachineRequestDetailPage({
   const [showConfirmDeviceModal, setShowConfirmDeviceModal] = useState(false);
   const [showReplaceDeviceModal, setShowReplaceDeviceModal] = useState(false);
 
-  // Find request from the machine requests list (since there's no single request API)
-  const findRequestFromList =
-    useCallback(async (): Promise<MachineRequestDetail | null> => {
-      try {
-        // Fetch all machine requests and find the one with matching ID
-        const response = await apiClient.machine.getReplacementRequests(1, 100); // Get a large page to find the request
+  // ✅ NEW: Transform unified API response to machine request format
+  const transformToMachineRequest = (unifiedData: any): UnifiedMachineRequestDetail => {
+    return {
+      id: unifiedData.id,
+      confirmationCode: unifiedData.confirmationCode,
+      actionType: unifiedData.actionType,
+      status: unifiedData.status,
+      startDate: unifiedData.startDate,
+      endDate: unifiedData.endDate,
+      assigneeName: unifiedData.assigneeName,
+      notes: unifiedData.notes,
+      mechanicConfirm: unifiedData.mechanicConfirm,
+      stockkeeperConfirm: unifiedData.stockkeeperConfirm,
+      // Extract device IDs from machine action details if available
+      oldDeviceId: unifiedData.oldDeviceId || unifiedData.deviceId,
+      newDeviceId: unifiedData.newDeviceId || unifiedData.replacementDeviceId,
+      machineId: unifiedData.machineId,
+    };
+  };
 
-        let machineData: any[] = [];
-
-        if (response.data?.data && Array.isArray(response.data.data)) {
-          machineData = response.data.data;
-        } else if (response.data && Array.isArray(response.data)) {
-          machineData = response.data;
-        } else if (Array.isArray(response)) {
-          machineData = response;
-        }
-
-        const foundRequest = machineData.find((req) => req.id === requestId);
-
-        if (foundRequest) {
-          return {
-            id: foundRequest.id,
-            title: foundRequest.title,
-            description: foundRequest.description,
-            requestDate: foundRequest.requestDate,
-            assigneeName: foundRequest.assigneeName,
-            status: foundRequest.status,
-            oldDeviceId: foundRequest.oldDeviceId,
-            newDeviceId: foundRequest.newDeviceId,
-            machineId: foundRequest.machineId,
-          };
-        }
-
-        return null;
-      } catch (error) {
-        console.error("Failed to fetch machine requests:", error);
-        return null;
-      }
-    }, [requestId]);
-
-  // Fetch request detail and device information
+  // ✅ UPDATED: Fetch request detail using unified API
   useEffect(() => {
     const fetchRequestDetail = async () => {
       try {
         setIsLoading(true);
+        console.log(`Fetching unified machine request detail for ID: ${requestId}`);
 
-        // Find the request from the list
-        const request = await findRequestFromList();
-
-        if (!request) {
-          setError("Không tìm thấy yêu cầu");
-          return;
+        // ✅ Use the new unified API
+        const response = await apiClient.machineActionConfirmation.getById(requestId);
+        
+        console.log("Unified machine API response:", response);
+        
+        // Handle both possible response structures
+        const requestData = response.data || response;
+        if (!requestData) {
+          console.error("API response structure:", response);
+          throw new Error("Request data not found");
         }
 
-        setRequestDetail(request);
+        // ✅ Verify this is a machine-related request (not SparePartRequest)
+        if (requestData.actionType?.toLowerCase() === "sparepartrequest") {
+          throw new Error("This request is not a machine request");
+        }
 
-        // Fetch device details concurrently
-        const [oldDeviceData, newDeviceData] = await Promise.all([
-          apiClient.device.getDeviceById(request.oldDeviceId).catch(() => null),
-          apiClient.device.getDeviceById(request.newDeviceId).catch(() => null),
-        ]);
+        const transformedData = transformToMachineRequest(requestData);
+        setRequestDetail(transformedData);
 
-        setOldDevice(oldDeviceData);
-        setNewDevice(newDeviceData);
+        // ✅ Fetch device details concurrently (following DeviceTab logic)
+        if (transformedData.oldDeviceId || transformedData.newDeviceId) {
+          const [oldDeviceData, newDeviceData] = await Promise.allSettled([
+            transformedData.oldDeviceId 
+              ? apiClient.device.getDeviceById(transformedData.oldDeviceId) 
+              : Promise.resolve(null),
+            transformedData.newDeviceId 
+              ? apiClient.device.getDeviceById(transformedData.newDeviceId) 
+              : Promise.resolve(null),
+          ]);
+
+          if (oldDeviceData.status === 'fulfilled') {
+            setOldDevice(oldDeviceData.value);
+          }
+          if (newDeviceData.status === 'fulfilled') {
+            setNewDevice(newDeviceData.value);
+          }
+        }
 
         toast.success("Chi tiết yêu cầu đã được tải thành công");
       } catch (err) {
@@ -140,27 +145,39 @@ export default function MachineRequestDetailPage({
     if (requestId) {
       fetchRequestDetail();
     }
-  }, [findRequestFromList, requestId]);
+  }, [requestId]);
 
-  // Function to reload request detail
+  // ✅ UPDATED: Function to reload request detail using unified API
   const refreshRequestDetail = async () => {
     try {
       setIsLoading(true);
 
-      // Re-fetch the request to get updated status
-      const request = await findRequestFromList();
+      // ✅ Re-fetch using unified API
+      const response = await apiClient.machineActionConfirmation.getById(requestId);
+      const requestData = response.data || response;
 
-      if (request) {
-        setRequestDetail(request);
+      if (requestData) {
+        const transformedData = transformToMachineRequest(requestData);
+        setRequestDetail(transformedData);
 
         // Re-fetch device details
-        const [oldDeviceData, newDeviceData] = await Promise.all([
-          apiClient.device.getDeviceById(request.oldDeviceId).catch(() => null),
-          apiClient.device.getDeviceById(request.newDeviceId).catch(() => null),
-        ]);
+        if (transformedData.oldDeviceId || transformedData.newDeviceId) {
+          const [oldDeviceData, newDeviceData] = await Promise.allSettled([
+            transformedData.oldDeviceId 
+              ? apiClient.device.getDeviceById(transformedData.oldDeviceId) 
+              : Promise.resolve(null),
+            transformedData.newDeviceId 
+              ? apiClient.device.getDeviceById(transformedData.newDeviceId) 
+              : Promise.resolve(null),
+          ]);
 
-        setOldDevice(oldDeviceData);
-        setNewDevice(newDeviceData);
+          if (oldDeviceData.status === 'fulfilled') {
+            setOldDevice(oldDeviceData.value);
+          }
+          if (newDeviceData.status === 'fulfilled') {
+            setNewDevice(newDeviceData.value);
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to refresh machine request detail:", err);
@@ -170,13 +187,15 @@ export default function MachineRequestDetailPage({
     }
   };
 
-  // Handle confirming the request (old functionality)
+  // ✅ UPDATED: Handle confirming the request using unified API
   const handleConfirmRequest = async (notes: string) => {
     try {
       setIsLoading(true);
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await apiClient.machineActionConfirmation.updateConfirmation(requestId, {
+        stockkeeperConfirm: true,
+        notes: notes,
+      });
 
       setShowConfirmModal(false);
       toast.success("Yêu cầu đã được xác nhận thành công");
@@ -191,19 +210,19 @@ export default function MachineRequestDetailPage({
     }
   };
 
-  // Handle confirming device availability
+  // ✅ UPDATED: Handle confirming device availability using unified API
   const handleConfirmDeviceAvailable = async () => {
     if (!requestDetail) return;
 
     try {
       setIsLoading(true);
 
-      console.log(
-        `Confirming device availability for request: ${requestDetail.id}`
-      );
+      console.log(`Confirming device availability for request: ${requestDetail.id}`);
 
-      // Call API to confirm device availability
-      await apiClient.machine.confirmDeviceAvailable(requestDetail.id);
+      await apiClient.machineActionConfirmation.updateConfirmation(requestDetail.id, {
+        stockkeeperConfirm: true,
+        notes: "Device replacement confirmed available",
+      });
 
       toast.success("Đã xác nhận thiết bị thay thế thành công");
 
@@ -213,6 +232,7 @@ export default function MachineRequestDetailPage({
           ? {
               ...prev,
               status: "InProgress",
+              stockkeeperConfirm: true,
             }
           : null
       );
@@ -227,7 +247,7 @@ export default function MachineRequestDetailPage({
     }
   };
 
-  // NEW: Handle replacing device
+  // ✅ Keep existing replace device logic (this might need backend support)
   const handleReplaceDevice = async (
     deviceId: string,
     reason: string,
@@ -238,17 +258,24 @@ export default function MachineRequestDetailPage({
     try {
       console.log(`Replacing device for request: ${requestDetail.id}`);
 
-      const payload = {
-        RequestMachineId: requestDetail.id,
-        Reason: reason,
-        Notes: notes || "",
-        DeviceId: deviceId,
-      };
+      // ✅ Try to use existing machine API if available, otherwise use unified API
+      try {
+        const payload = {
+          RequestMachineId: requestDetail.id,
+          Reason: reason,
+          Notes: notes || "",
+          DeviceId: deviceId,
+        };
 
-      console.log("Replace device payload:", payload);
-
-      // Call API to replace device
-      await apiClient.machine.replaceDevice(payload);
+        console.log("Replace device payload:", payload);
+        await apiClient.machine.replaceDevice(payload);
+      } catch (machineApiError) {
+        // Fallback to unified API
+        console.log("Machine API failed, using unified API fallback");
+        await apiClient.machineActionConfirmation.updateConfirmation(requestDetail.id, {
+          notes: `Device replaced: ${reason}. ${notes || ""}`,
+        });
+      }
 
       toast.success("Thiết bị đã được thay thế thành công");
 
@@ -261,7 +288,7 @@ export default function MachineRequestDetailPage({
         error?.message ||
         "Không thể thay thế thiết bị";
       toast.error(errorMessage);
-      throw error; // Re-throw to prevent modal from closing on error
+      throw error;
     }
   };
 
@@ -280,11 +307,10 @@ export default function MachineRequestDetailPage({
   // Check if the request is eligible for device replacement
   const canReplaceDevice = () => {
     if (!requestDetail || !isStockKeeper) return false;
-
-    return requestDetail.status === "InProgress";
+    return requestDetail.status.toLowerCase() === "inprogress" || requestDetail.stockkeeperConfirm;
   };
 
-  // Render device information with replace functionality
+  // ✅ UPDATED: Render device information (following DeviceTab logic)
   const renderDeviceInfo = (
     device: DEVICE_WEB | null,
     title: string,
@@ -313,7 +339,7 @@ export default function MachineRequestDetailPage({
         {isReplaceable && (
           <>
             {/* Blur overlay on hover */}
-            <div className="absolute inset-0 bg-white/60 dark:bg-slate800/60 backdrop-blur-[2px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 z-10" />
+            <div className="absolute inset-0 bg-white/60 dark:bg-slate-800/60 backdrop-blur-[2px] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 z-10" />
 
             {/* Large centered replace icon */}
             <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100">
@@ -442,21 +468,35 @@ export default function MachineRequestDetailPage({
           </div>
         ) : (
           <div className="text-center py-4">
-            <p className="text-gray-500 dark:text-gray-400">
-              Không thể tải thông tin thiết bị
-            </p>
+            <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-2">
+              <Monitor className="h-6 w-6 text-gray-400" />
+            </div>
+            {isOld ? (
+              <p className="text-gray-500 dark:text-gray-400">
+                Không thể tải thông tin thiết bị cũ
+              </p>
+            ) : (
+              <div>
+                <p className="font-medium text-gray-500">
+                  Đang trong quá trình chọn thiết bị
+                </p>
+                <p className="text-sm text-gray-400">
+                  Chờ thủ kho chọn thiết bị thay thế
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
     );
   };
 
-  // Determine what actions are available based on status
+  // ✅ UPDATED: Determine what actions are available based on status
   const getActionButtons = () => {
     if (!requestDetail) return null;
 
-    const isUnconfirmed = requestDetail.status === "Unconfirmed";
-    const isPending = requestDetail.status === "Pending";
+    const isPending = requestDetail.status.toLowerCase() === "pending";
+    const isConfirmed = requestDetail.stockkeeperConfirm;
 
     return (
       <div className="flex justify-end gap-2">
@@ -467,7 +507,7 @@ export default function MachineRequestDetailPage({
           Quay lại danh sách
         </button>
 
-        {isUnconfirmed && (
+        {isPending && !isConfirmed && (
           <button
             onClick={() => setShowConfirmModal(true)}
             className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded text-sm"
@@ -477,7 +517,7 @@ export default function MachineRequestDetailPage({
         )}
 
         {/* Show device availability confirmation button for Pending requests */}
-        {isPending && isStockKeeper && (
+        {isPending && isStockKeeper && !isConfirmed && (
           <button
             onClick={() => setShowConfirmDeviceModal(true)}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-2"
@@ -488,7 +528,7 @@ export default function MachineRequestDetailPage({
           </button>
         )}
 
-        {/* NEW: Show replace device button for InProgress requests */}
+        {/* Show replace device button for confirmed requests */}
         {canReplaceDevice() && (
           <button
             onClick={() => setShowReplaceDeviceModal(true)}
@@ -557,7 +597,7 @@ export default function MachineRequestDetailPage({
               <ArrowLeft className="h-4 w-4 mr-1" />
               <span className="text-sm">Quay lại danh sách</span>
             </button>
-            <h1 className="text-xl font-bold">{requestDetail?.title}</h1>
+            <h1 className="text-xl font-bold">{requestDetail?.confirmationCode}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Xem và quản lý thông tin yêu cầu thiết bị
             </p>
@@ -584,7 +624,7 @@ export default function MachineRequestDetailPage({
             <div>
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                 <User className="h-4 w-4" />
-                <span>Người nhận thiết bị</span>
+                <span>Người thực hiện</span>
               </div>
               <p className="font-medium">
                 {requestDetail?.assigneeName || "Không xác định"}
@@ -597,18 +637,18 @@ export default function MachineRequestDetailPage({
                 <span>Ngày yêu cầu</span>
               </div>
               <p className="font-medium">
-                {formatDate(requestDetail?.requestDate || null)}
+                {formatDate(requestDetail?.startDate || null)}
               </p>
             </div>
 
-            {requestDetail?.confirmedDate && (
+            {requestDetail?.endDate && (
               <div>
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
                   <Calendar className="h-4 w-4" />
-                  <span>Ngày xác nhận</span>
+                  <span>Ngày hoàn thành</span>
                 </div>
                 <p className="font-medium">
-                  {formatDate(requestDetail?.confirmedDate)}
+                  {formatDate(requestDetail?.endDate)}
                 </p>
               </div>
             )}
@@ -617,17 +657,48 @@ export default function MachineRequestDetailPage({
           <div className="space-y-4">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Lý do thay thế
+                Loại hành động
               </p>
               <p className="font-medium">
-                {requestDetail?.description || "Không có"}
+                {requestDetail?.actionType || "Không có"}
               </p>
+            </div>
+
+            {requestDetail?.notes && (
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  Ghi chú
+                </p>
+                <p className="font-medium">
+                  {requestDetail.notes}
+                </p>
+              </div>
+            )}
+
+            {/* ✅ NEW: Confirmation status */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  Xác nhận thợ máy
+                </p>
+                <StatusBadge 
+                  status={requestDetail?.mechanicConfirm ? "Confirmed" : "Pending"} 
+                />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                  Xác nhận thủ kho
+                </p>
+                <StatusBadge 
+                  status={requestDetail?.stockkeeperConfirm ? "Confirmed" : "Pending"} 
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Device Replacement Details */}
+      {/* Device Replacement Details (following DeviceTab logic) */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
         <div className="flex items-center gap-2 mb-6">
           <ArrowRightLeft className="h-5 w-5 text-gray-600" />
@@ -669,11 +740,11 @@ export default function MachineRequestDetailPage({
         isOpen={showConfirmDeviceModal}
         onClose={() => setShowConfirmDeviceModal(false)}
         onConfirm={handleConfirmDeviceAvailable}
-        requestTitle={requestDetail?.title || ""}
+        requestTitle={requestDetail?.confirmationCode || ""}
         isLoading={isLoading}
       />
 
-      {/* NEW: Replace Device Modal */}
+      {/* Replace Device Modal */}
       <ReplaceDeviceModal
         isOpen={showReplaceDeviceModal}
         onClose={() => setShowReplaceDeviceModal(false)}

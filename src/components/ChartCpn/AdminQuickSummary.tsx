@@ -109,7 +109,7 @@ export default function AdminQuickSummary() {
       value: summaryData.totalRequests,
       icon: FileText,
       color: "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:hover:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800",
-      action: () => router.push(`/workspace/admin/requestList`),
+      action: () => router.push(`/workspace/admin/requests/hod`),
       clickable: true
     },
   ];

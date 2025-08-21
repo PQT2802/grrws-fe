@@ -137,6 +137,9 @@ class APIClient {
     getRequestDetail: (requestId: string): Promise<any> => {
       return http.get(`/api/Request/detail/${requestId}`); // ✅ Auto token
     },
+    getRequestByDeviceId: (deviceId: string): Promise<any> => {
+      return http.get(`/api/Request/deviceId?id=${deviceId}`);
+    },
     getErrorOfRequest: (requestId: string): Promise<any> => {
       return http.get(`/api/Request/errors/${requestId}`); // ✅ Auto token
     },

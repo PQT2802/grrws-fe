@@ -1150,7 +1150,7 @@ const GroupTaskDetailsPage = () => {
                 />
               )}
             {requestId && (
-              <Link href={`/workspace/hot/requests/${requestId}`}>
+              <Link href={`/workspace/hot/reports/${requestId}`}>
                 <Button variant="secondary" size="sm" className="ml-2">
                   <Eye className="h-4 w-4 mr-2" />
                   Xem chi tiết yêu cầu
