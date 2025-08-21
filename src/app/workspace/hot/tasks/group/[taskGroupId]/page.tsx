@@ -91,7 +91,6 @@ import {
   getStatusColor,
 } from "@/utils/colorUtils";
 import TaskDetailSidePanel from "@/components/TaskGroupModal/TaskDetailSidePanel";
-import DeviceDetailModal from "@/components/DeviceCpn/DeviceModel";
 import useNotificationStore from "@/store/notifications";
 import TimelineTab from "@/components/TaskGroupTab/TimelineTab";
 import DeviceTab from "@/components/TaskGroupTab/DeviceTab";
@@ -101,6 +100,7 @@ import useSignalRStore from "@/store/useSignalRStore";
 import RepairTab from "@/components/TaskGroupTab/RepairTab";
 import SingleDeviceCard from "@/components/TaskGroupTab/SingleDeviceCard";
 import Link from "next/link";
+import DeviceDetailModal from "@/components/DeviceCpn/DeviceDetailModal";
 
 const GroupTaskDetailsPage = () => {
   const params = useParams();
@@ -159,7 +159,9 @@ const GroupTaskDetailsPage = () => {
       const filtered = taskGroup.tasks.filter(
         (task) => task.taskType.toLowerCase() === "installation"
       );
-      const reinstallTask = filtered.find((task) => task.taskType === "Installation" && task.orderIndex !== 1);
+      const reinstallTask = filtered.find(
+        (task) => task.taskType === "Installation" && task.orderIndex !== 1
+      );
       setReinstallTask(reinstallTask);
       setInstallationTasks(filtered);
     } else {
@@ -612,11 +614,22 @@ const GroupTaskDetailsPage = () => {
     setDeviceModalOpen(true);
   };
 
-  const handleCloseDeviceModal = () => {
-    setDeviceModalOpen(false);
-    setSelectedDeviceForModal(null);
-    setDeviceModalTitle("");
-  };
+  const handleDetailModalClose = useCallback((open: boolean) => {
+    setDeviceModalOpen(open);
+
+    if (!open) {
+      // Immediate cleanup
+      if (typeof document !== "undefined") {
+        document.body.style.pointerEvents = "auto";
+        document.body.style.overflow = "auto";
+      }
+
+      // Clear selected device after a short delay
+      setTimeout(() => {
+        setSelectedDeviceForModal(null);
+      }, 100);
+    }
+  }, []);
 
   const handleTaskClick = async (task: TASK_IN_GROUP) => {
     setSelectedTask(task);
@@ -1136,7 +1149,9 @@ const GroupTaskDetailsPage = () => {
             {(warrantyTaskDetailForFooter || repairTask) &&
               ((!reInstallTask && warrantyReturnTask?.status === "Completed") ||
                 (reInstallTask && reInstallTask.status !== "Completed") ||
-                (repairTask && repairTask.status === "Completed"&& !reInstallTask )) && (
+                (repairTask &&
+                  repairTask.status === "Completed" &&
+                  !reInstallTask)) && (
                 <CreateReinstallTaskButton
                   requestId={taskGroup.requestId}
                   taskGroupId={taskGroupId}
@@ -1160,12 +1175,10 @@ const GroupTaskDetailsPage = () => {
           </div>
         </div>
       </div>
-
       <DeviceDetailModal
-        isOpen={deviceModalOpen}
-        onClose={handleCloseDeviceModal}
+        open={deviceModalOpen}
+        onOpenChange={handleDetailModalClose}
         device={selectedDeviceForModal}
-        title={deviceModalTitle}
       />
     </div>
   );

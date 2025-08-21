@@ -248,6 +248,7 @@ export interface REPAIR_TASK_DETAIL {
   taskName: string;
   taskDescription: string;
   priority: string;
+  isUninstall: boolean; 
   status: string;
   startTime: string;
   expectedTime: string;
@@ -290,6 +291,8 @@ export interface ErrorDetail {
   errorId: string;
   errorCode: string;
   errorName: string;
+  isDeleted: boolean;
+  isFixed: boolean;
   spareParts: SparePartUsage[];
 }
 
