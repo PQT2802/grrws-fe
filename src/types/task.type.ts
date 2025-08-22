@@ -293,6 +293,7 @@ export interface ErrorDetail {
   errorName: string;
   isDeleted: boolean;
   isFixed: boolean;
+  completedDate: string;
   spareParts: SparePartUsage[];
 }
 
