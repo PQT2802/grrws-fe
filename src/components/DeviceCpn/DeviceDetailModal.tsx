@@ -40,18 +40,44 @@ import {
   User,
   StickyNote,
   Truck,
-  QrCode
+  QrCode,
+  Wrench,
+  Package,
+  ArrowUpDown,
+  CheckCircle,
+  XCircle,
+  Timer,
+  Activity
 } from "lucide-react"
 import { DEVICE_WEB } from "@/types/device.type"
 import { WarrantyInfo, WARRANTY_HISTORY_LIST } from "@/types/warranty.type"
 import { apiClient } from "@/lib/api-client"
 import QRCodeSection from "@/components/QRCodeCpn/QRCodeSection"
-import { translateTaskStatus } from "@/utils/textTypeTask"
+import { translateTaskStatus, translateTaskType } from "@/utils/textTypeTask"
 
 interface DeviceDetailModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     device: DEVICE_WEB | null
+}
+
+// ✅ NEW: Streamlined interface for device history timeline
+interface DeviceHistoryRequest {
+    id: string
+    requestCode: string
+    requestDate: string
+    requesterName: string
+    status: string
+    actions: DeviceAction[]
+}
+
+interface DeviceAction {
+    id: string
+    type: string
+    displayLabel: string
+    date: string
+    status: string
+    assigneeName: string // ✅ Added assigneeName field
 }
 
 export default function DeviceDetailModal({
@@ -64,6 +90,10 @@ export default function DeviceDetailModal({
     const [isLoadingWarranties, setIsLoadingWarranties] = useState(false)
     const [isLoadingWarrantyHistory, setIsLoadingWarrantyHistory] = useState(false)
     const [showOtherWarranties, setShowOtherWarranties] = useState(false)
+    
+    // ✅ NEW: Streamlined device history state
+    const [deviceHistory, setDeviceHistory] = useState<DeviceHistoryRequest[]>([])
+    const [isLoadingDeviceHistory, setIsLoadingDeviceHistory] = useState(false)
 
     // Clean up any potential body style issues when component unmounts
     useEffect(() => {
@@ -87,14 +117,16 @@ export default function DeviceDetailModal({
         }
     }, [open])
 
-    // Fetch warranties and warranty history when device changes
+    // Fetch warranties, warranty history, and device history when device changes
     useEffect(() => {
         if (open && device?.id) {
             fetchWarranties(device.id)
             fetchWarrantyHistory(device.id)
+            fetchDeviceHistory(device.id)
         } else {
             setWarranties([])
             setWarrantyHistory([])
+            setDeviceHistory([])
         }
     }, [open, device?.id])
 
@@ -134,6 +166,228 @@ export default function DeviceDetailModal({
             setWarrantyHistory([])
         } finally {
             setIsLoadingWarrantyHistory(false)
+        }
+    }
+
+    // ✅ FIXED: Updated fetchDeviceHistory to handle the correct API response structure
+    const fetchDeviceHistory = async (deviceId: string) => {
+        setIsLoadingDeviceHistory(true)
+        setDeviceHistory([])
+        
+        try {
+            console.log(`🔄 Fetching device history for: ${deviceId}`)
+            
+            // Step 1: Get all requests for this device
+            let requests = []
+            try {
+                const requestsResponse = await apiClient.request.getRequestByDeviceId(deviceId)
+                console.log("📋 Requests response:", requestsResponse)
+                
+                // Handle different response structures
+                if (requestsResponse?.data) {
+                    if (Array.isArray(requestsResponse.data)) {
+                        requests = requestsResponse.data
+                    } else if (requestsResponse.data.data && Array.isArray(requestsResponse.data.data)) {
+                        requests = requestsResponse.data.data
+                    } else if (requestsResponse.data.items && Array.isArray(requestsResponse.data.items)) {
+                        requests = requestsResponse.data.items
+                    } else {
+                        requests = [requestsResponse.data]
+                    }
+                } else if (Array.isArray(requestsResponse)) {
+                    requests = requestsResponse
+                } else if (requestsResponse && typeof requestsResponse === 'object') {
+                    requests = [requestsResponse]
+                } else if (requestsResponse?.items && Array.isArray(requestsResponse.items)) {
+                    requests = requestsResponse.items
+                }
+                
+                if (requests.length === 0) {
+                    console.log("ℹ️ No requests found for this device")
+                    return
+                }
+            } catch (error) {
+                console.error("❌ Error fetching requests:", error)
+                return
+            }
+            
+            // Step 2: Process each request to build timeline
+            const historyRequests: DeviceHistoryRequest[] = []
+            
+            for (const request of requests) {
+                const requestId = request.id || request.requestId || request.Id || request.requestID
+                const requestCode = request.requestCode || request.code || request.Code || request.confirmationCode || request.requestNumber || request.requestTitle || `REQ-${requestId.slice(0, 8)}`
+                const requestDate = request.createdDate || request.startDate || request.requestDate || new Date().toISOString()
+                const status = request.status || "Unknown"
+                
+                // ✅ Get requester name by fetching user details
+                let requesterName = "Unknown"
+                if (request.createdBy) {
+                    try {
+                        const userResponse = await apiClient.user.getUserById(request.createdBy)
+                        if (userResponse && userResponse.fullName) {
+                            requesterName = userResponse.fullName
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Could not fetch user details for ${request.createdBy}`)
+                        // Fallback to other fields if available
+                        requesterName = request.assigneeName || request.requestedBy || request.assignee || "Unknown"
+                    }
+                } else {
+                    // Fallback to other available name fields
+                    requesterName = request.assigneeName || request.requestedBy || request.assignee || "Unknown"
+                }
+                
+                // ✅ Get tasks for this request and build action timeline
+                const actions: DeviceAction[] = []
+                
+                try {
+                    console.log(`🔄 Fetching tasks for request: ${requestId}`)
+                    const tasksResponse = await apiClient.task.getTaskGroups(requestId, 1, 100)
+                    console.log(`📋 Full tasks response for request ${requestId}:`, tasksResponse)
+                    
+                    let taskGroups = []
+                    if (tasksResponse?.data?.data) {
+                        taskGroups = tasksResponse.data.data
+                    } else if (tasksResponse?.data?.items) {
+                        taskGroups = tasksResponse.data.items
+                    } else if (tasksResponse?.data) {
+                        taskGroups = Array.isArray(tasksResponse.data) ? tasksResponse.data : [tasksResponse.data]
+                    } else if (Array.isArray(tasksResponse)) {
+                        taskGroups = tasksResponse
+                    } else if (tasksResponse?.items) {
+                        taskGroups = tasksResponse.items
+                    }
+                    
+                    console.log(`📊 Found ${taskGroups.length} task groups for request ${requestId}:`, taskGroups)
+                    
+                    // ✅ UPDATED: Process task groups with new structure
+                    if (taskGroups.length > 0) {
+                        for (const taskGroup of taskGroups) {
+                            console.log(`🔄 Processing task group:`, taskGroup)
+                            
+                            // ✅ NEW: Handle the flat tasks array structure
+                            if (taskGroup.tasks && Array.isArray(taskGroup.tasks)) {
+                                console.log(`Found ${taskGroup.tasks.length} tasks in group`)
+                                
+                                for (const task of taskGroup.tasks) {
+                                    console.log(`Processing task:`, task)
+                                    
+                                    // ✅ Map taskType to display labels
+                                    let displayLabel = "";
+                                    switch (task.taskType?.toLowerCase()) {
+                                        case "repair":
+                                            displayLabel = "Ngày sửa máy";
+                                            break;
+                                        case "installation":
+                                            displayLabel = "Ngày lắp máy";
+                                            break;
+                                        case "uninstallation":
+                                            displayLabel = "Ngày tháo máy";
+                                            break;
+                                        case "warranty":
+                                            displayLabel = "Ngày bảo hành máy";
+                                            break;
+                                        case "warrantyreturn":
+                                            displayLabel = "Ngày trả bảo hành";
+                                            break;
+                                        case "stockin":
+                                            displayLabel = "Ngày trả kho";
+                                            break;
+                                        default:
+                                            displayLabel = `Ngày ${task.taskType || 'hoạt động'}`;
+                                    }
+                                    
+                                    // ✅ UPDATED: Use startTime as the primary date field
+                                    const taskDate = task.startTime || task.createdDate || task.endTime || task.expectedTime
+                                    
+                                    if (taskDate) {
+                                        const action = {
+                                            id: task.taskId || `task-${task.taskType}-${actions.length}`,
+                                            type: task.taskType?.toLowerCase() || "unknown",
+                                            displayLabel: displayLabel,
+                                            date: taskDate,
+                                            status: task.status || "Unknown",
+                                            assigneeName: task.assigneeName || "Unknown" // ✅ Added assigneeName
+                                        };
+                                        
+                                        actions.push(action);
+                                        console.log(`➕ Added action:`, action);
+                                    }
+                                }
+                            }
+                            
+                            // ✅ LEGACY: Keep the old structure handling as fallback
+                            else {
+                                console.log(`Using legacy task structure for group:`, taskGroup);
+                                
+                                const taskTypeMap = [
+                                    { key: 'repairTasks', type: 'repair', label: 'Ngày sửa máy' },
+                                    { key: 'uninstallTasks', type: 'uninstallation', label: 'Ngày tháo máy' },
+                                    { key: 'installTasks', type: 'installation', label: 'Ngày lắp máy' },
+                                    { key: 'warrantyTasks', type: 'warranty', label: 'Ngày bảo hành máy' },
+                                    { key: 'warrantyReturnTasks', type: 'warrantyreturn', label: 'Ngày trả bảo hành' },
+                                    { key: 'storageReturnTasks', type: 'stockin', label: 'Ngày trả kho' }
+                                ]
+                                
+                                for (const { key, type, label } of taskTypeMap) {
+                                    const tasks = taskGroup[key]
+                                    if (tasks && Array.isArray(tasks) && tasks.length > 0) {
+                                        for (const task of tasks) {
+                                            const taskDate = task.startTime || task.createdDate || task.startDate || task.completedDate || task.expectedStartDate
+                                            
+                                            if (taskDate) {
+                                                actions.push({
+                                                    id: task.id || `task-${type}-${actions.length}`,
+                                                    type,
+                                                    displayLabel: label,
+                                                    date: taskDate,
+                                                    status: task.status || "Unknown",
+                                                    assigneeName: task.assigneeName || "Unknown"
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // ✅ Sort actions chronologically (earliest → latest as specified)
+                    actions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    console.log(`📊 Final actions for request ${requestId}:`, actions)
+                    
+                } catch (error) {
+                    console.warn(`⚠️ Could not fetch tasks for request ${requestId}:`, error)
+                    // Continue processing other requests even if this one fails
+                }
+                
+                // ✅ Add request to history
+                const historyRequest = {
+                    id: requestId,
+                    requestCode,
+                    requestDate,
+                    requesterName,
+                    status,
+                    actions
+                };
+                
+                historyRequests.push(historyRequest);
+                console.log(`➕ Added request to history:`, historyRequest);
+            }
+            
+            // ✅ Sort requests by date (earliest first)
+            historyRequests.sort((a, b) => 
+                new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime()
+            )
+            
+            console.log(`📊 Final device history (${historyRequests.length} requests):`, historyRequests)
+            setDeviceHistory(historyRequests)
+            
+        } catch (error) {
+            console.error("❌ Error in fetchDeviceHistory:", error)
+        } finally {
+            setIsLoadingDeviceHistory(false)
         }
     }
 
@@ -255,6 +509,26 @@ export default function DeviceDetailModal({
         return "bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400"
     }
 
+    // ✅ Get badge variant for task status
+    const getTaskStatusBadgeVariant = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "completed":
+            case "done":
+                return "bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400"
+            case "inprogress":
+            case "active":
+                return "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
+            case "pending":
+            case "waiting":
+                return "bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-400"
+            case "cancelled":
+            case "failed":
+                return "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-400"
+            default:
+                return "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400"
+        }
+    }
+
     const handleOpenChange = (newOpen: boolean) => {
         onOpenChange(newOpen)
 
@@ -302,13 +576,15 @@ export default function DeviceDetailModal({
                     </div>
 
                     <Tabs defaultValue="details">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-5">
                             <TabsTrigger value="details">Thông tin thiết bị</TabsTrigger>
                             <TabsTrigger value="qrcode">Mã QR</TabsTrigger>
                             <TabsTrigger value="warranty">Phiếu bảo hành</TabsTrigger>
-                            <TabsTrigger value="history">Lịch sử bảo hành</TabsTrigger>
+                            <TabsTrigger value="warranty-history">Lịch sử bảo hành</TabsTrigger>
+                            <TabsTrigger value="device-history">Lịch sử</TabsTrigger>
                         </TabsList>
 
+                        {/* Device Details Tab */}
                         <TabsContent value="details" className="space-y-4">
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div className="space-y-1">
@@ -460,7 +736,7 @@ export default function DeviceDetailModal({
                             </Card>
                         </TabsContent>
 
-                        {/* WARRANTY TAB */}
+                        {/* WARRANTY TAB - Keep existing implementation */}
                         <TabsContent value="warranty" className="space-y-4">
                             {isLoadingWarranties ? (
                                 <Card>
@@ -679,9 +955,8 @@ export default function DeviceDetailModal({
                             )}
                         </TabsContent>
 
-                        {/* WARRANTY HISTORY TAB */}
-                        
-                        <TabsContent value="history" className="space-y-4">
+                        {/* WARRANTY HISTORY TAB - Keep existing implementation */}
+                        <TabsContent value="warranty-history" className="space-y-4">
                             {isLoadingWarrantyHistory ? (
                                 <Card>
                                     <CardContent className="flex items-center justify-center py-8">
@@ -787,7 +1062,6 @@ export default function DeviceDetailModal({
                                                                 const receiveDate = new Date(historyItem.receiveDate)
                                                                 const diffTime = Math.abs(receiveDate.getTime() - sendDate.getTime())
                                                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                                                                // return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
                                                                 return `${diffDays} ngày`
                                                             })()}
                                                         </p>
@@ -799,9 +1073,205 @@ export default function DeviceDetailModal({
                                 </div>
                             )}
                         </TabsContent>
+
+                        {/* ✅ STREAMLINED: DEVICE HISTORY TAB */}
+                        <TabsContent value="device-history" className="space-y-4">
+                            {isLoadingDeviceHistory ? (
+                                <Card>
+                                    <CardContent className="flex items-center justify-center p-6">
+                                        <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                                        <p>Đang tải lịch sử thiết bị...</p>
+                                    </CardContent>
+                                </Card>
+                            ) : deviceHistory.length === 0 ? (
+                                <Card>
+                                    <CardContent className="flex flex-col items-center justify-center p-8 text-center">
+                                        <History className="h-12 w-12 text-muted-foreground mb-2 opacity-50" />
+                                        <p className="text-lg font-medium">
+                                            Thiết bị này chưa có hoạt động nào được ghi nhận.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Summary Statistics */}
+                                    <Card>
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-base">Tổng quan hoạt động</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-4 gap-4 text-center">
+                                                <div>
+                                                    <span className="text-muted-foreground">Yêu cầu</span>
+                                                    <p className="font-medium">{deviceHistory.length}</p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Sửa chữa</span>
+                                                    <p className="font-medium">
+                                                        {deviceHistory.reduce((count, req) => 
+                                                            count + req.actions.filter(a => a.type === 'repair').length, 0
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Bảo hành</span>
+                                                    <p className="font-medium">
+                                                        {deviceHistory.reduce((count, req) => 
+                                                            count + req.actions.filter(a => a.type === 'warranty').length, 0
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Lắp/Tháo</span>
+                                                    <p className="font-medium">
+                                                        {deviceHistory.reduce((count, req) => 
+                                                            count + req.actions.filter(a => 
+                                                                a.type === 'installation' || a.type === 'uninstallation'
+                                                            ).length, 0
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* ✅ STREAMLINED: Request Timeline with Action Timeline */}
+                                    <div className="space-y-4">
+                                        {deviceHistory.map((request) => (
+                                            <Card key={request.id} className="overflow-hidden">
+                                                {/* ✅ Request Header - Clean design with essential info only */}
+                                                <CardHeader className="bg-muted/30 pb-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <FileText className="h-5 w-5 text-blue-600" />
+                                                            <div>
+                                                                <h4 className="text-base font-medium">{request.requestCode}</h4>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {formatDate(request.requestDate)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <Badge variant="outline" className={getTaskStatusBadgeVariant(request.status)}>
+                                                            {translateTaskStatus(request.status)}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground mt-1">
+                                                        Người yêu cầu: <span className="font-medium text-foreground">{request.requesterName}</span>
+                                                    </div>
+                                                </CardHeader>
+
+                                                {/* ✅ Action Timeline - Focus only on actions and dates */}
+                                                <CardContent className="pt-3 pb-3">
+                                                    {request.actions.length === 0 ? (
+                                                        <div className="text-sm text-center text-muted-foreground py-2">
+                                                            Không có hoạt động được ghi nhận
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            {request.actions.map((action, index) => (
+                                                                <div key={action.id} className="p-3 rounded-lg bg-muted/20 border border-muted/30">
+                                                                    <div className="flex justify-between items-start">
+                                                                        {/* ✅ Left side: Action info with enhanced formatting */}
+                                                                        <div className="flex items-start gap-3 flex-1">
+                                                                            <div className={`rounded-full h-3 w-3 mt-1 ${
+                                                                                action.type === 'repair' ? 'bg-orange-500' :
+                                                                                action.type === 'installation' ? 'bg-green-500' :
+                                                                                action.type === 'uninstallation' ? 'bg-red-500' :
+                                                                                action.type === 'warranty' ? 'bg-blue-500' :
+                                                                                action.type === 'warrantyreturn' ? 'bg-purple-500' :
+                                                                                'bg-gray-500'
+                                                                            }`} />
+                                                                            <div className="flex-1">
+                                                                                {/* ✅ Enhanced action header with date and time */}
+                                                                                <div className="flex items-center gap-2 mb-1">
+                                                                                    <p className="text-sm font-medium">
+                                                                                        {action.displayLabel}
+                                                                                    </p>
+                                                                                    <span className="text-muted-foreground">•</span>
+                                                                                    <span className="text-xs text-muted-foreground">
+                                                                                        {formatDateOnly(action.date)}
+                                                                                    </span>
+                                                                                    <span className="text-muted-foreground">•</span>
+                                                                                    <span className="text-xs text-muted-foreground">
+                                                                                        {formatTimeOnly(action.date)}
+                                                                                    </span>
+                                                                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                                                                        <Clock className="h-3 w-3" />
+                                                                                        <span className="text-xs">
+                                                                                            {getTimeAgo(action.date)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                
+                                                                                {/* ✅ Assignee information */}
+                                                                                <div className="text-xs text-muted-foreground">
+                                                                                    Người thực hiện: <span className="font-medium text-foreground">{action.assigneeName}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        {/* ✅ Right side: Status badge */}
+                                                                        <Badge variant="outline" className={getTaskStatusBadgeVariant(action.status)}>
+                                                                            {translateTaskStatus(action.status)}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </TabsContent>
                     </Tabs>
                 </div>
             </DialogContent>
         </Dialog>
     )
+}
+
+// ✅ NEW: Helper function to calculate time ago
+const getTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const taskDate = new Date(dateString)
+    const diffMs = now.getTime() - taskDate.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    
+    if (diffDays > 1) {
+        return "Trên 1 ngày"
+    } else if (diffDays === 1) {
+        return "1 ngày trước"
+    } else if (diffHours > 0) {
+        return `${diffHours} giờ trước`
+    } else if (diffMinutes > 0) {
+        return `${diffMinutes} phút trước`
+    } else {
+        return "Vừa xong"
+    }
+}
+
+// ✅ NEW: Helper function to format date only
+const formatDateOnly = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A"
+    const date = new Date(dateString)
+    return date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    })
+}
+
+// ✅ NEW: Helper function to format time only
+const formatTimeOnly = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A"
+    const date = new Date(dateString)
+    return date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+    })
 }

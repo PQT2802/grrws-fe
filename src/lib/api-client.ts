@@ -138,6 +138,7 @@ class APIClient {
       return http.get(`/api/Request/detail/${requestId}`); // ✅ Auto token
     },
     getRequestByDeviceId: (deviceId: string): Promise<any> => {
+      console.log(`🔍 API Client: Fetching requests for device ID: ${deviceId}`);
       return http.get(`/api/Request/deviceId?id=${deviceId}`);
     },
     getErrorOfRequest: (requestId: string): Promise<any> => {
