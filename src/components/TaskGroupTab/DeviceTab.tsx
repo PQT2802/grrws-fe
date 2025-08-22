@@ -109,7 +109,7 @@ const DeviceTab = ({
                 >
                   <CardHeader className="text-center pb-3">
                     <CardTitle className="text-sm text-red-700 dark:text-red-300">
-                      Thiết bị bảo hành (Tháo)
+                      Thiết bị bị thay thế (Tháo dỡ)
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -167,7 +167,7 @@ const DeviceTab = ({
                 >
                   <CardHeader className="text-center pb-3">
                     <CardTitle className="text-sm text-green-700 dark:text-green-300">
-                      Thiết bị thay thế (Lắp)
+                      Thiết bị thay thế (Lắp đặt)
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">

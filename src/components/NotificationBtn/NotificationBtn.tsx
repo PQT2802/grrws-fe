@@ -129,6 +129,12 @@ const NotificationBtn = () => {
           }
         }
 
+        if (notification.type === NotificationType.ErrorFixed) {
+          if (data.TaskGroupId) {
+            return `/workspace/hot/tasks/group/${data.TaskGroupId}`;
+          }
+        }
+
         if (data.url) {
           return data.url;
         }

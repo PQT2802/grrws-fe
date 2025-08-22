@@ -33,37 +33,40 @@ export interface Notification {
 }
 
 export enum NotificationType {
-  // Thông báo chung cho tất cả các vai trò
-  General = 0, // Thông báo chung không phân loại
+ General = 0, // Thông báo chung không phân loại
 
-  // Head of Department (Trưởng bộ phận)
-  RequestCreated = 1, // Yêu cầu mới được tạo
-  ProgressUpdate = 2, // Cập nhật tiến độ xử lý yêu cầu
-  Completed = 3, // Thông báo yêu cầu đã hoàn thành
-  FeedbackRequest = 4, // Yêu cầu phản hồi sau khi yêu cầu hoàn thành
+        //  Head of Department (Trưởng bộ phận)
+        RequestCreated = 1, // Yêu cầu mới được tạo
+        ProgressUpdate = 2, // Cập nhật tiến độ xử lý yêu cầu
+        Completed = 3, // Thông báo yêu cầu đã hoàn thành
+        FeedbackRequest = 4, // Yêu cầu phản hồi sau khi yêu cầu hoàn thành
 
-  // System Handler (Điều phối hệ thống)
-  StockQuantityChanged = 5, // Thay đổi số lượng tồn kho
-  WarrantyStatusUpdate = 6, // Cập nhật trạng thái bảo hành thiết bị
-  PartReplacementInitiated = 7, // Bắt đầu quy trình thay thế linh kiện
-  SystemSuggestion = 13, // Gợi ý hệ thống về lỗi phổ biến, phụ tùng hoặc nhân sự
-  SparePartOutOfStock = 14, // Thông báo linh kiện đã hết
-  LowSparePartWarning = 15, // Cảnh báo linh kiện sắp hết
+        //  System Handler (Điều phối hệ thống)
+        StockQuantityChanged = 5, // Thay đổi số lượng tồn kho
+        WarrantyStatusUpdate = 6, // Cập nhật trạng thái bảo hành thiết bị
+        PartReplacementInitiated = 7, // Bắt đầu quy trình thay thế linh kiện
+        SystemSuggestion = 13, // Gợi ý hệ thống về lỗi phổ biến, phụ tùng hoặc nhân sự
+        SparePartOutOfStock = 14, // Thông báo linh kiện đã hết
+        LowSparePartWarning = 15, // Cảnh báo linh kiện sắp hết
 
-  // Mechanic (Thợ máy)
-  MechanicTaskAssigned = 8, // Thông báo công việc được giao cho thợ máy
-  MechanicReportProgress = 16, // Thợ máy báo cáo tiến độ
-  MechanicTaskCompleted = 17, // Thợ máy thông báo hoàn thành công việc
+        //  Mechanic (Thợ máy)
+        MechanicTaskAssigned = 8, // Thông báo công việc được giao cho thợ máy
+        MechanicReportProgress = 16, // Thợ máy báo cáo tiến độ
+        MechanicTaskCompleted = 17, // Thợ máy thông báo hoàn thành công việc
 
-  // Stock Keeper (Quản lý kho)
-  StockRequest = 9, // Yêu cầu xuất kho linh kiện
+        //  Stock Keeper (Quản lý kho)
+        StockRequest = 9, // Yêu cầu xuất kho linh kiện
 
-  // Head of Technical (Trưởng bộ phận kỹ thuật)
-  WarrantyCollectionReminder = 10, // Nhắc nhở thu hồi thiết bị từ trung tâm bảo hành
-  WarrantyDelayUpdate = 11, // Cập nhật tình trạng trễ của thiết bị bảo hành
-  EquipmentReturnedIssue = 12, // Thông báo thiết bị trả về từ bảo hành bị lỗi
+        // Head of Technical (Trưởng bộ phận kỹ thuật)
+        WarrantyCollectionReminder = 10, // Nhắc nhở thu hồi thiết bị từ trung tâm bảo hành
+        WarrantyDelayUpdate = 11, // Cập nhật tình trạng trễ của thiết bị bảo hành
+        EquipmentReturnedIssue = 12, // Thông báo thiết bị trả về từ bảo hành bị lỗi,,,,,
+        TaskCompleted = 18, // Thông báo công việc đã hoàn thành
 
-  TaskCompleted = 18, 
+        StockOutRequest = 19, // Yêu cầu xuất kho thiết bị
+        StockInRequest = 20, // Yêu cầu nhập kho thiết bị
+        InstallationConfirmation = 21, // Xác nhận lắp đặt thiết bị
+        ErrorFixed = 22, // Thông báo lỗi đã được sửa chữa
 }
 
 export enum NotificationChannel {
