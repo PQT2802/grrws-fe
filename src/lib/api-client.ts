@@ -57,6 +57,7 @@ import {
   NOTIFICATION_RESPONSE,
   NotificationResponse,
 } from "@/types/notification.type";
+import { IssueResponse, TechnicalIssueResponse, ErrorIncidentResponse } from "@/types/incident.type";
 
 class APIClient {
   // Auth methods - these are public (no token needed)
@@ -371,8 +372,7 @@ class APIClient {
       status?: string
     ): Promise<DEVICE_WEB[]> => {
       return http.get(
-        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${
-          status || ""
+        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${status || ""
         }`
       ); // ✅ Auto token
     },
@@ -946,6 +946,65 @@ class APIClient {
       }
     },
   };
+
+  incident = {
+    // Issue APIs
+    getIssues: (
+      pageIndex: number = 1,
+      pageSize: number = 10,
+      searchByName?: string
+    ): Promise<IssueResponse> => {
+      const params = new URLSearchParams({
+        pageIndex: pageIndex.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchByName) {
+        params.append('searchByName', searchByName);
+      }
+
+      console.log(`Fetching issues: ${params.toString()}`);
+      return http.get<IssueResponse>(`/api/Issue/all?${params.toString()}`);
+    },
+
+    // Technical Issue APIs
+    getTechnicalIssues: (
+      pageNumber: number = 1,
+      pageSize: number = 10,
+      searchByName?: string
+    ): Promise<TechnicalIssueResponse> => {
+      const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchByName) {
+        params.append('searchByName', searchByName);
+      }
+
+      console.log(`Fetching technical issues: ${params.toString()}`);
+      return http.get<TechnicalIssueResponse>(`/api/TechinicalSymtom/all?${params.toString()}`);
+    },
+
+    // Error APIs
+    getErrors: (
+      pageNumber: number = 1,
+      pageSize: number = 10,
+      searchByName?: string
+    ): Promise<ErrorIncidentResponse> => {
+      const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchByName) {
+        params.append('searchByName', searchByName);
+      }
+
+      console.log(`Fetching errors: ${params.toString()}`);
+      return http.get<ErrorIncidentResponse>(`/api/Error/all?${params.toString()}`);
+    },
+  }
 }
 
 export const apiClient = new APIClient();
