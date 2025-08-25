@@ -101,7 +101,7 @@ import RepairTab from "@/components/TaskGroupTab/RepairTab";
 import SingleDeviceCard from "@/components/TaskGroupTab/SingleDeviceCard";
 import Link from "next/link";
 import DeviceDetailModal from "@/components/DeviceCpn/DeviceDetailModal";
-
+import CreateRepairAfterWarrantyModal from "@/components/warranty/CreateRepairAfterWarrantyModal";
 const GroupTaskDetailsPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -137,7 +137,7 @@ const GroupTaskDetailsPage = () => {
 
   const [reInstallTask, setReinstallTask] = useState<TASK_IN_GROUP | null>();
   const [stockinTask, setStockinTask] = useState<TASK_IN_GROUP | null>(null);
-
+  const [showCreateRepairModal, setShowCreateRepairModal] = useState(false);
   useEffect(() => {
     if (taskGroup) {
       const repairTask =
@@ -1120,13 +1120,22 @@ const GroupTaskDetailsPage = () => {
               ))}
 
             {warrantySubmissionTask &&
+              warrantySubmissionTask.status === "Rejected" && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowCreateRepairModal(true)}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Tạo nhiệm vụ sửa chữa
+                </Button>
+              )}
+
+            {warrantySubmissionTask &&
               warrantySubmissionTask.status !== "Rejected" &&
               reInstallTask &&
               reInstallTask.status !== "Completed" &&
               (warrantyTaskDetailForFooter ? (
-                // Only show CreateWarrantyReturnButton if:
-                // - warrantySubmissionTask is completed
-                // - AND (no warrantyReturnTask exists OR warrantyReturnTask.status === "Delayed")
                 warrantySubmissionTask.status === "Completed" &&
                 (!warrantyReturnTask ||
                   warrantyReturnTask.status === "Delayed") && (
@@ -1183,6 +1192,15 @@ const GroupTaskDetailsPage = () => {
         open={deviceModalOpen}
         onOpenChange={handleDetailModalClose}
         device={selectedDeviceForModal}
+      />
+      <CreateRepairAfterWarrantyModal
+        open={showCreateRepairModal}
+        onOpenChange={setShowCreateRepairModal}
+        requestId={requestId || ""}
+        deviceName={deviceTabOldDevice?.deviceName || ""}
+        onSuccess={() => {
+          refreshTaskData();
+        }}
       />
     </div>
   );

@@ -180,6 +180,12 @@ class APIClient {
     createSingleTask: (data: CREATE_SINGLE_TASK): Promise<any> => {
       return http.post("/api/Task/single-task", data);
     },
+    createRepairTaskAfterWarranty: (requestId: string): Promise<any> => {
+      return http.post(
+        `/api/Task/repair-after-warranty?requestId=${requestId}`,
+        {}
+      );
+    },
 
     createWarrantyReturnTask: (data: CreateWarrantyReturn): Promise<any> => {
       return http.post("/api/Task/warranty-task/return", data);
@@ -401,7 +407,7 @@ class APIClient {
 
       return http.get(`/api/Device/search?${query.toString()}`);
     },
-    
+
     getDeviceById: (deviceId: string): Promise<DEVICE_WEB> => {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
