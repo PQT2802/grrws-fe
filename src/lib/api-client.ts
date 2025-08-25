@@ -139,7 +139,9 @@ class APIClient {
       return http.get(`/api/Request/detail/${requestId}`); // ✅ Auto token
     },
     getRequestByDeviceId: (deviceId: string): Promise<any> => {
-      console.log(`🔍 API Client: Fetching requests for device ID: ${deviceId}`);
+      console.log(
+        `🔍 API Client: Fetching requests for device ID: ${deviceId}`
+      );
       return http.get(`/api/Request/deviceId?id=${deviceId}`);
     },
     getErrorOfRequest: (requestId: string): Promise<any> => {
@@ -343,6 +345,14 @@ class APIClient {
     addTaskErrors: (payload: AddTaskErrorPayload): Promise<any> => {
       return http.put("/api/ErrorDetail/error-detail/task", payload);
     },
+
+    addErrors: (
+      taskId: string,
+      payload: { ErrorIds: string[] }
+    ): Promise<any> => {
+      return http.post(`/api/Task/repair-task/${taskId}/add-errors`, payload);
+    },
+
     // createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
     //   return http.post("/api/Error/create-error-detail", errorDetail);
     // },
@@ -369,14 +379,25 @@ class APIClient {
     getDevices: (
       pageNumber: number,
       pageSize: number,
-      status?: string
+      filters?: {
+        deviceName?: string;
+        deviceCode?: string;
+        status?: string;
+        positionId?: string;
+      }
     ): Promise<DEVICE_WEB[]> => {
-      return http.get(
-        `/api/Device/search?pageNumber=${pageNumber}&pageSize=${pageSize}&status=${status || ""
-        }`
-      ); // ✅ Auto token
-    },
+      const query = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+        ...(filters?.deviceName ? { deviceName: filters.deviceName } : {}),
+        ...(filters?.deviceCode ? { deviceCode: filters.deviceCode } : {}),
+        ...(filters?.status ? { status: filters.status } : {}),
+        ...(filters?.positionId ? { positionId: filters.positionId } : {}),
+      });
 
+      return http.get(`/api/Device/search?${query.toString()}`);
+    },
+    
     getDeviceById: (deviceId: string): Promise<DEVICE_WEB> => {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
