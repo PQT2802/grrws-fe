@@ -101,15 +101,11 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
     useEffect(() => {
       if (showImportModal || showExportModal) {
         document.body.style.overflow = "hidden";
-        console.log("🔒 DeviceListCpn: Set body overflow to hidden");
       } else {
         document.body.style.overflow = "auto";
-        console.log("🔓 DeviceListCpn: Restored body overflow to auto");
       }
-
       return () => {
         document.body.style.overflow = "auto";
-        console.log("🧹 DeviceListCpn: Restored body overflow to auto");
       };
     }, [showImportModal, showExportModal]);
 
@@ -167,16 +163,32 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
         : "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400";
     };
 
+    // Server-side search and filter
     const fetchDevices = useCallback(async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Only send status if not "all"
-        const statusParam = filterStatus !== "all" ? filterStatus : undefined;
+        // Build filters for API
+        const filters: {
+          deviceName?: string;
+          deviceCode?: string;
+          status?: string;
+        } = {};
 
-        const response = await apiClient.device.getDevices(page, pageSize, statusParam);
+        if (debouncedSearchTerm) {
+          // Use deviceName primarily, but also deviceCode for broader search
+          filters.deviceName = debouncedSearchTerm;
+          filters.deviceCode = debouncedSearchTerm;
+        }
+        if (filterStatus !== "all") {
+          filters.status = filterStatus;
+        }
+        console.log(filters)
+        // API expects: pageNumber, pageSize, filters
+        const response = await apiClient.device.getDevices(page, pageSize, filters);
 
+        // Standardize response parsing
         let devicesData: DEVICE_WEB[] = [];
         let total = 0;
 
@@ -190,7 +202,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           ) {
             devicesData = (response as any).data;
             total =
-              (response as any).totalCount || (response as any).data.length;
+              (response as any).totalCount ?? (response as any).data.length;
           } else if (
             (response as any).data &&
             (response as any).data.data &&
@@ -198,7 +210,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           ) {
             devicesData = (response as any).data.data;
             total =
-              (response as any).data.totalCount ||
+              (response as any).data.totalCount ??
               (response as any).data.data.length;
           } else {
             throw new Error("Cấu trúc phản hồi API không mong đợi");
@@ -207,25 +219,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           throw new Error("Phản hồi API không hợp lệ");
         }
 
-        // Remove client-side status filtering, only keep search filtering
-        let filteredDevices = devicesData;
-
-        if (debouncedSearchTerm) {
-          filteredDevices = filteredDevices.filter(
-            (device) =>
-              device.deviceName
-                ?.toLowerCase()
-                .includes(debouncedSearchTerm.toLowerCase()) ||
-              device.deviceCode
-                ?.toLowerCase()
-                .includes(debouncedSearchTerm.toLowerCase()) ||
-              device.serialNumber
-                ?.toLowerCase()
-                .includes(debouncedSearchTerm.toLowerCase())
-          );
-        }
-
-        setDevices(filteredDevices);
+        setDevices(devicesData);
         setTotalCount(total);
       } catch (error: any) {
         setError(
@@ -281,8 +275,6 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
 
         const formData = new FormData();
         formData.append("file", file);
-
-        console.log(`📂 Đang nhập tệp thiết bị: ${file.name}`);
 
         await apiClient.device.importDevice(formData);
         await fetchDevices();
@@ -369,7 +361,7 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       setPageSize(Number(newPageSize));
     }, []);
 
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
     if (isLoading && devices.length === 0) {
       return (
@@ -408,25 +400,36 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Quản lý thiết bị</h1>
-          {hasFullAccess && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {hasFullAccess && (
+              <>
+                <Button
+                  onClick={handleExportClick}
+                  variant="outline"
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Xuất thiết bị
+                </Button>
+                <Button
+                  onClick={handleImportClick}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Nhập thiết bị
+                </Button>
+              </>
+            )}
+            {onCreateDevice && hasFullAccess && (
               <Button
-                onClick={handleExportClick}
-                variant="outline"
-                className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                onClick={handleCreateDevice}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
               >
-                <Download className="mr-2 h-4 w-4" />
-                Xuất thiết bị
+                <Plus className="mr-2 h-4 w-4" />
+                Tạo thiết bị
               </Button>
-              <Button
-                onClick={handleImportClick}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Nhập thiết bị
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <OperationStatsCpn />

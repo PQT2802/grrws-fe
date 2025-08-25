@@ -17,7 +17,15 @@ import {
   CommandGroup,
   CommandItem,
 } from "@/components/ui/command";
-import { X, Check, Loader2, Search, AlertCircle, Plus, Trash2 } from "lucide-react";
+import {
+  X,
+  Check,
+  Loader2,
+  Search,
+  AlertCircle,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { AddTaskErrorPayload } from "@/types/error.type";
@@ -48,7 +56,9 @@ const AddErrorToTaskModal = ({
   const [suggestions, setSuggestions] = useState<ErrorSuggestion[]>([]);
   // Persist selectedErrors across modal toggles
   const selectedErrorsRef = useRef<ErrorSuggestion[]>([]);
-  const [selectedErrors, setSelectedErrors] = useState<ErrorSuggestion[]>(selectedErrorsRef.current);
+  const [selectedErrors, setSelectedErrors] = useState<ErrorSuggestion[]>(
+    selectedErrorsRef.current
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -112,15 +122,8 @@ const AddErrorToTaskModal = ({
       setSubmitting(true);
 
       const errorIds = selectedErrors.map((error) => error.id);
-
-      const payload: AddTaskErrorPayload = {
-        TaskId: taskId,
-        ErrorIds: errorIds,
-        Action: "Add", 
-      };
-      console.log(payload);
-
-      await apiClient.error.addTaskErrors(payload);
+      console.log(taskId, errorIds);
+      await apiClient.error.addErrors(taskId, { ErrorIds: errorIds });
 
       toast.success(`Đã thêm ${errorIds.length} lỗi vào nhiệm vụ`);
       onErrorsAdded();
@@ -328,8 +331,6 @@ const AddErrorToTaskModal = ({
             </div>
           )}
         </div>
-
-       
       </DialogContent>
     </Dialog>
   );
