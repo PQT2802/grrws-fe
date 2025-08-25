@@ -239,9 +239,7 @@ const RepairTab = ({
   };
 
   // Define colors for timelines and spare parts borders based on error index
-  const groupColors = [
-    "border-blue-500 bg-blue-50 dark:bg-blue-950/30",
-  ];
+  const groupColors = ["border-blue-500 bg-blue-50 dark:bg-blue-950/30"];
   const iconColors = ["text-green-500", "text-blue-500"];
 
   return (
@@ -252,8 +250,8 @@ const RepairTab = ({
             <Wrench className="h-5 w-5 text-orange-600" />
             Thông tin Sửa chữa
           </div>
-          {repairTask.status === "Pending" && (
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            {repairTask.status === "Pending" && (
               <Button
                 variant="destructive"
                 size="sm"
@@ -267,18 +265,18 @@ const RepairTab = ({
                 <Trash2 className="h-4 w-4 mr-2" />
                 Xóa tất cả lỗi
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowAddErrorModal(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white"
-                disabled={!repairTask?.taskId}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Chẩn đoán lỗi
-              </Button>
-            </div>
-          )}
+            )}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShowAddErrorModal(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              disabled={!repairTask?.taskId}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Chẩn đoán lỗi
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -438,10 +436,10 @@ const RepairTab = ({
                   <div
                     key={error.errorId}
                     className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                      error.isDeleted 
-                        ? "opacity-60 bg-gray-100/50 dark:bg-gray-900/30" 
-                        : error.isFixed 
-                        ? "bg-green-50/60 dark:bg-green-950/20" 
+                      error.isDeleted
+                        ? "opacity-60 bg-gray-100/50 dark:bg-gray-900/30"
+                        : error.isFixed
+                        ? "bg-green-50/60 dark:bg-green-950/20"
                         : ""
                     }`}
                   >
@@ -490,7 +488,9 @@ const RepairTab = ({
                                   Đã sửa
                                 </span>
                                 <span className="text-xs text-green-600">
-                                  {formatAPIDateToHoChiMinh(error.completedDate)}
+                                  {formatAPIDateToHoChiMinh(
+                                    error.completedDate
+                                  )}
                                 </span>
                               </div>
                             )}
@@ -501,7 +501,9 @@ const RepairTab = ({
                                 <Badge
                                   variant="secondary"
                                   className={`text-xs py-0 px-1.5 ${
-                                    error.isDeleted ? "line-through opacity-70" : ""
+                                    error.isDeleted
+                                      ? "line-through opacity-70"
+                                      : ""
                                   }`}
                                 >
                                   {error.spareParts.length} linh kiện
@@ -511,32 +513,36 @@ const RepairTab = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {error.spareParts && error.spareParts.length > 0 && !error.isDeleted && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {expandedErrors[error.errorId]
-                              ? "Thu nhỏ"
-                              : "Mở rộng"}
-                          </span>
-                        )}
-                        {!error.isFixed && !error.isDeleted && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0 border-red-200 hover:bg-red-50 hover:border-red-300"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setErrorToDelete(error.errorId);
-                              setShowDeleteDialog(true);
-                            }}
-                            aria-label="Xóa lỗi"
-                            disabled={
-                              deleting ||
-                              repairTaskDetail.status === "Completed"
-                            }
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                          </Button>
-                        )}
+                        {error.spareParts &&
+                          error.spareParts.length > 0 &&
+                          !error.isDeleted && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {expandedErrors[error.errorId]
+                                ? "Thu nhỏ"
+                                : "Mở rộng"}
+                            </span>
+                          )}
+                        {!error.isFixed &&
+                          !error.isDeleted &&
+                          repairTask.status === "Pending" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 p-0 border-red-200 hover:bg-red-50 hover:border-red-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setErrorToDelete(error.errorId);
+                                setShowDeleteDialog(true);
+                              }}
+                              aria-label="Xóa lỗi"
+                              disabled={
+                                deleting ||
+                                repairTaskDetail.status === "Completed"
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          )}
                       </div>
                     </div>
 
@@ -553,9 +559,11 @@ const RepairTab = ({
                               : groupColors[index % groupColors.length]
                           }`}
                         >
-                          <h5 className={`text-xs font-medium mb-2 text-gray-700 dark:text-gray-300 flex items-center gap-1 ${
-                            error.isDeleted ? "line-through" : ""
-                          }`}>
+                          <h5
+                            className={`text-xs font-medium mb-2 text-gray-700 dark:text-gray-300 flex items-center gap-1 ${
+                              error.isDeleted ? "line-through" : ""
+                            }`}
+                          >
                             <Package
                               className={`h-3.5 w-3.5 ${
                                 error.isDeleted
@@ -576,17 +584,21 @@ const RepairTab = ({
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
                                     <div>
-                                      <div className={`text-xs font-medium text-gray-900 dark:text-gray-100 ${
-                                        error.isDeleted ? "line-through" : ""
-                                      }`}>
+                                      <div
+                                        className={`text-xs font-medium text-gray-900 dark:text-gray-100 ${
+                                          error.isDeleted ? "line-through" : ""
+                                        }`}
+                                      >
                                         {sparePart.sparepartName}
                                       </div>
                                     </div>
                                   </div>
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className={`text-xs ${
-                                      error.isDeleted ? "line-through opacity-70" : ""
+                                      error.isDeleted
+                                        ? "line-through opacity-70"
+                                        : ""
                                     }`}
                                   >
                                     SL: {sparePart.quantityNeeded}
@@ -614,113 +626,118 @@ const RepairTab = ({
           </TabsContent>
 
           {/* Spare Parts Tab - Only show active errors' spare parts */}
-            <TabsContent value="spareparts" className="mt-0">
+          <TabsContent value="spareparts" className="mt-0">
             {allErrors.some(
               (error) => error.spareParts && error.spareParts.length > 0
             ) ? (
               <div>
-              <h3 className="text-sm font-medium mb-3 flex items-center gap-1">
-                <Package className="h-4 w-4 text-blue-600" />
-                Tất cả linh kiện cần thiết
-              </h3>
-              <div className="grid gap-2 md:grid-cols-2">
-                {allErrors
-                .flatMap((error, errorIndex) =>
-                  (error.spareParts || []).map((sparePart) => ({
-                  ...sparePart,
-                  errorName: error.errorName,
-                  errorIndex,
-                  isErrorFixed: error.isFixed,
-                  isErrorDeleted: error.isDeleted,
-                  }))
-                )
-                .map((sparePart, idx) => (
-                  <div
-                  key={sparePart.sparepartId + "-" + idx}
-                  className={`border-l-2 rounded-md p-2 ${
-                    sparePart.isErrorDeleted
-                    ? "border-gray-400 bg-gray-100/50 dark:bg-gray-900/30 opacity-60"
-                    : sparePart.isErrorFixed
-                    ? "border-green-500 bg-green-50/60 dark:bg-green-950/20"
-                    : groupColors[
-                      sparePart.errorIndex % groupColors.length
-                      ]
-                  }`}
-                  >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                    <Package
-                      className={`h-4 w-4 ${
-                      sparePart.isErrorDeleted
-                        ? "text-gray-500"
-                        : sparePart.isErrorFixed
-                        ? "text-green-600"
-                        : iconColors[
-                          sparePart.errorIndex % iconColors.length
-                        ]
-                      }`}
-                    />
-                    <div>
-                      <div className="flex gap-5 items-center">
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-1">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  Tất cả linh kiện cần thiết
+                </h3>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {allErrors
+                    .flatMap((error, errorIndex) =>
+                      (error.spareParts || []).map((sparePart) => ({
+                        ...sparePart,
+                        errorName: error.errorName,
+                        errorIndex,
+                        isErrorFixed: error.isFixed,
+                        isErrorDeleted: error.isDeleted,
+                      }))
+                    )
+                    .map((sparePart, idx) => (
                       <div
-                        className={`text-sm font-medium ${
-                        sparePart.isErrorDeleted
-                          ? "line-through text-gray-500 dark:text-gray-400"
-                          : sparePart.isErrorFixed
-                          ? "text-green-700 dark:text-green-400"
-                          : ""
+                        key={sparePart.sparepartId + "-" + idx}
+                        className={`border-l-2 rounded-md p-2 ${
+                          sparePart.isErrorDeleted
+                            ? "border-gray-400 bg-gray-100/50 dark:bg-gray-900/30 opacity-60"
+                            : sparePart.isErrorFixed
+                            ? "border-green-500 bg-green-50/60 dark:bg-green-950/20"
+                            : groupColors[
+                                sparePart.errorIndex % groupColors.length
+                              ]
                         }`}
                       >
-                        {sparePart.sparepartName}
-                      </div>
-                      {sparePart.isErrorDeleted && (
-                        <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-xs py-0 px-1.5">
-                        Đã xóa
-                        </Badge>
-                      )}
-                      {sparePart.isErrorFixed && !sparePart.isErrorDeleted && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        <span className="text-xs text-green-600">
-                          Đã sửa xong
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Package
+                              className={`h-4 w-4 ${
+                                sparePart.isErrorDeleted
+                                  ? "text-gray-500"
+                                  : sparePart.isErrorFixed
+                                  ? "text-green-600"
+                                  : iconColors[
+                                      sparePart.errorIndex % iconColors.length
+                                    ]
+                              }`}
+                            />
+                            <div>
+                              <div className="flex gap-5 items-center">
+                                <div
+                                  className={`text-sm font-medium ${
+                                    sparePart.isErrorDeleted
+                                      ? "line-through text-gray-500 dark:text-gray-400"
+                                      : sparePart.isErrorFixed
+                                      ? "text-green-700 dark:text-green-400"
+                                      : ""
+                                  }`}
+                                >
+                                  {sparePart.sparepartName}
+                                </div>
+                                {sparePart.isErrorDeleted && (
+                                  <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-xs py-0 px-1.5">
+                                    Đã xóa
+                                  </Badge>
+                                )}
+                                {sparePart.isErrorFixed &&
+                                  !sparePart.isErrorDeleted && (
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                      <span className="text-xs text-green-600">
+                                        Đã sửa xong
+                                      </span>
+                                    </div>
+                                  )}
+                              </div>
+                              <div
+                                className={`text-xs text-gray-600 dark:text-gray-400 ${
+                                  sparePart.isErrorDeleted ? "line-through" : ""
+                                }`}
+                              >
+                                Từ lỗi: {sparePart.errorName}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              sparePart.isErrorDeleted
+                                ? "line-through opacity-70"
+                                : sparePart.isErrorFixed
+                                ? "border-green-500 text-green-700"
+                                : ""
+                            }`}
+                          >
+                            SL: {sparePart.quantityNeeded}
+                          </Badge>
                         </div>
-                      )}
                       </div>
-                      <div className={`text-xs text-gray-600 dark:text-gray-400 ${sparePart.isErrorDeleted ? "line-through" : ""}`}>
-                      Từ lỗi: {sparePart.errorName}
-                      </div>
-                    </div>
-                    </div>
-                    <Badge
-                    variant="outline"
-                    className={`text-xs ${
-                      sparePart.isErrorDeleted
-                      ? "line-through opacity-70"
-                      : sparePart.isErrorFixed
-                      ? "border-green-500 text-green-700"
-                      : ""
-                    }`}
-                    >
-                    SL: {sparePart.quantityNeeded}
-                    </Badge>
-                  </div>
-                  </div>
-                ))}
-              </div>
+                    ))}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center border border-gray-200 dark:border-gray-700 rounded-md">
-              <Package className="h-10 w-10 text-gray-400 mb-2" />
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
-                Không có thông tin linh kiện
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Không có linh kiện nào được yêu cầu cho các lỗi hiện tại.
-              </p>
+                <Package className="h-10 w-10 text-gray-400 mb-2" />
+                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  Không có thông tin linh kiện
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Không có linh kiện nào được yêu cầu cho các lỗi hiện tại.
+                </p>
               </div>
             )}
-            </TabsContent>
+          </TabsContent>
         </Tabs>
       </CardContent>
 
