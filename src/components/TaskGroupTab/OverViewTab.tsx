@@ -16,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -28,24 +27,29 @@ import {
   Shield,
   Eye,
   MoreHorizontal,
-  Check,
+  StopCircle,
+  Loader2,
 } from "lucide-react";
-import { formatAPIDateToHoChiMinh, formatAPIDateUTC, getFirstLetterUppercase } from "@/lib/utils";
+import { formatAPIDateUTC, getFirstLetterUppercase } from "@/lib/utils";
 import { TASK_GROUP_WEB, TASK_IN_GROUP } from "@/types/task.type";
 import {
-  translateTaskPriority,
   translateTaskStatus,
   translateTaskType,
 } from "@/utils/textTypeTask";
-import { getPriorityColor, getStatusColor } from "@/utils/colorUtils";
+import { getStatusColor } from "@/utils/colorUtils";
 import { toast } from "sonner";
+import { useState } from "react";
+import { apiClient } from "@/lib/api-client";
 
 interface OverviewTabProps {
   taskGroup: TASK_GROUP_WEB;
   onTaskClick: (task: TASK_IN_GROUP) => void;
+  onTaskStatusUpdate?: () => void; // Callback to refresh task data
 }
 
-const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
+const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTabProps) => {
+  const [disablingTasks, setDisablingTasks] = useState<Set<string>>(new Set());
+
   const getTaskTypeIcon = (taskType: string) => {
     switch (taskType.toLowerCase()) {
       case "uninstallation":
@@ -65,6 +69,48 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
     }
   };
 
+  const handleDisableTask = async (task: TASK_IN_GROUP) => {
+    if (task.status.toLowerCase() !== "inprogress") {
+      toast.error("Chỉ có thể ngừng các nhiệm vụ đang thực hiện");
+      return;
+    }
+
+    try {
+      setDisablingTasks(prev => new Set(prev).add(task.taskId));
+      
+      console.log(`🛑 Disabling task ${task.taskId} with unassignStaff=true`);
+      
+      await apiClient.task.disableTask(task.taskId, true);
+      
+      toast.success(`Đã ngừng nhiệm vụ "${task.taskName}" thành công`, {
+        description: "Nhiệm vụ đã được chuyển về trạng thái Đang chờ",
+      });
+
+      // Call the callback to refresh task data
+      if (onTaskStatusUpdate) {
+        onTaskStatusUpdate();
+      }
+      
+    } catch (error) {
+      console.error("❌ Failed to disable task:", error);
+      toast.error("Không thể ngừng nhiệm vụ", {
+        description: "Vui lòng thử lại sau",
+      });
+    } finally {
+      setDisablingTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(task.taskId);
+        return newSet;
+      });
+    }
+  };
+
+  const isTaskDisabling = (taskId: string) => disablingTasks.has(taskId);
+
+  const canDisableTask = (task: TASK_IN_GROUP) => {
+    return task.status.toLowerCase() === "inprogress";
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -82,6 +128,7 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
               <TableHead>Trạng thái</TableHead>
               <TableHead>Người được giao</TableHead>
               <TableHead>Thời gian</TableHead>
+              <TableHead>Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -168,39 +215,54 @@ const OverviewTab = ({ taskGroup, onTaskClick }: OverviewTabProps) => {
                       )}
                     </div>
                   </TableCell>
-                  {/* <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0"
+                          disabled={isTaskDisabling(task.taskId)}
+                        >
+                          {isTaskDisabling(task.taskId) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-
-                        {task.status.toLowerCase() === "suggested" && (
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toast.info("Tính năng áp dụng đơn lẻ sắp ra mắt!");
-                            }}
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            Áp dụng nhiệm vụ này
-                          </DropdownMenuItem>
-                        )}
-
-                        {!["WarrantySubmission", "WarrantyReturn"].includes(
-                          task.taskType
-                        ) && (
-                          <DropdownMenuItem onClick={() => onTaskClick(task)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Xem chi tiết
-                          </DropdownMenuItem>
-                        )}
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTaskClick(task);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Xem chi tiết
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDisableTask(task);
+                          }}
+                          disabled={!canDisableTask(task) || isTaskDisabling(task.taskId)}
+                          className={`${
+                            canDisableTask(task) && !isTaskDisabling(task.taskId)
+                              ? "text-red-600 focus:text-red-600" 
+                              : "text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          {isTaskDisabling(task.taskId) ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <StopCircle className="h-4 w-4 mr-2" />
+                          )}
+                          Ngừng công việc
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell> */}
+                  </TableCell>
                 </TableRow>
               ))}
           </TableBody>

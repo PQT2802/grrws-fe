@@ -1010,7 +1010,11 @@ const GroupTaskDetailsPage = () => {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <OverviewTab taskGroup={taskGroup} onTaskClick={handleTaskClick} />
+          <OverviewTab 
+            taskGroup={taskGroup} 
+            onTaskClick={handleTaskClick}
+            onTaskStatusUpdate={refreshTaskData} 
+          />
         </TabsContent>
 
         {repairTask ? (

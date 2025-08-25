@@ -330,6 +330,10 @@ class APIClient {
         `/api/Task/single-tasks?${params.toString()}`
       );
     },
+    disableTask: (taskId: string, unassignStaff: boolean = true): Promise<any> => {
+      console.log(`🛑 Disabling task ${taskId} with unassignStaff=${unassignStaff}`);
+      return http.put(`/api/Task/disable-task/${taskId}?unassignStaff=${unassignStaff}`, {});
+    },
   };
   error = {
     getSuggestedErrors: (
