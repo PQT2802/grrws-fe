@@ -108,9 +108,6 @@ export function translateTaskClaimStatus(claimStatus: string): string {
   }
 }
 
-/**
- * Convert task priority to Vietnamese text
- */
 export function translateTaskPriority(priority: string): string {
   switch (priority.toLowerCase()) {
     case "low":
@@ -126,9 +123,6 @@ export function translateTaskPriority(priority: string): string {
   }
 }
 
-/**
- * Convert machine action type to Vietnamese text
- */
 export function translateActionType(actionType: string): string {
   switch (actionType.toLowerCase()) {
     case "stockout":
@@ -144,4 +138,25 @@ export function translateActionType(actionType: string): string {
     default:
       return actionType; // Return original if no translation found
   }
+}
+
+export function translateSeverity(severity: string): string {
+  switch (severity.toLowerCase()) {
+    case "critical":
+      return "Nghiêm trọng";
+    case "high":
+      return "Cao";
+    case "medium":
+      return "Trung bình";
+    case "low":
+      return "Thấp";
+    case "urgent":
+      return "Khẩn cấp";
+    default:
+      return severity;
+  }
+}
+
+export function translateCommonStatus(isCommon: boolean): string {
+  return isCommon ? "Phổ biến" : "Không phổ biến";
 }

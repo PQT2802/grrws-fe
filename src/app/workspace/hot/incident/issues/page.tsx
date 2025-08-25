@@ -22,7 +22,7 @@ export default function IssuesPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <IssueListCpn
         ref={issueListRef}
         onEditIssue={handleEditIssue}

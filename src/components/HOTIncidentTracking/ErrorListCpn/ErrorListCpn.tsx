@@ -10,20 +10,19 @@ import React, {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
   Search,
   MoreHorizontal,
@@ -36,16 +35,19 @@ import {
   Download,
   Loader2,
   Bug,
-  Code,
   TrendingUp,
   CheckCircle2,
   Clock,
   Timer,
-  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorIncident } from "@/types/incident.type";
 import { apiClient } from "@/lib/api-client";
+import { useDebounce } from "@/hooks/useDebounce";
+import { 
+  translateCommonStatus, 
+  translateSeverity
+} from "@/utils/textTypeTask";
 
 interface ErrorListCpnProps {
   onEditError: (error: ErrorIncident) => void;
@@ -62,63 +64,66 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
     const [errors, setErrors] = useState<ErrorIncident[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
-    const itemsPerPage = 10;
+    const [page, setPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    
+    // ✅ Use debounce for search
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     const fetchErrors = useCallback(async () => {
       try {
         setLoading(true);
-        console.log(`🔄 Fetching errors (page ${currentPage}, search: "${searchTerm}")`);
+        console.log(`🔄 Fetching errors (page ${page}, search: "${debouncedSearchTerm}")`);
         
         const response = await apiClient.incident.getErrors(
-          currentPage,
-          itemsPerPage,
-          searchTerm || undefined
+          page,
+          pageSize,
+          debouncedSearchTerm || undefined
         );
 
         console.log("📋 Errors API response:", response);
 
         // ✅ Enhanced response handling for multiple possible structures
         let errorsData: ErrorIncident[] = [];
-        let totalCount = 0;
+        let totalCountValue = 0;
 
         if (response && typeof response === 'object') {
+          const responseAny = response as any;
           // Structure 1: { extensions: { data: { data: [], totalCount: number } } }
-          if (response.extensions?.data?.data && Array.isArray(response.extensions.data.data)) {
-            errorsData = response.extensions.data.data;
-            totalCount = response.extensions.data.totalCount || errorsData.length;
+          if (responseAny.extensions?.data?.data && Array.isArray(responseAny.extensions.data.data)) {
+            errorsData = responseAny.extensions.data.data;
+            totalCountValue = responseAny.extensions.data.totalCount || errorsData.length;
             console.log("✅ Using structure: extensions.data.data");
           }
           // Structure 2: { data: { data: [], totalCount: number } }
-          else if (response.data?.data && Array.isArray(response.data.data)) {
-            errorsData = response.data.data;
-            totalCount = response.data.totalCount || errorsData.length;
+          else if (responseAny.data?.data && Array.isArray(responseAny.data.data)) {
+            errorsData = responseAny.data.data;
+            totalCountValue = responseAny.data.totalCount || errorsData.length;
             console.log("✅ Using structure: data.data");
           }
           // Structure 3: { data: [] } with totalCount at root
-          else if (response.data && Array.isArray(response.data)) {
-            errorsData = response.data;
-            totalCount = response.totalCount || response.totalItems || errorsData.length;
+          else if (responseAny.data && Array.isArray(responseAny.data)) {
+            errorsData = responseAny.data;
+            totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
             console.log("✅ Using structure: data (array)");
           }
           // Structure 4: Direct array response
           else if (Array.isArray(response)) {
             errorsData = response;
-            totalCount = errorsData.length;
+            totalCountValue = errorsData.length;
             console.log("✅ Using structure: direct array");
           }
           // Structure 5: { errors: [] } (alternative field name)
-          else if ((response as any).errors && Array.isArray((response as any).errors)) {
-            errorsData = (response as any).errors;
-            totalCount = (response as any).totalCount || (response as any).totalItems || errorsData.length;
+          else if (responseAny.errors && Array.isArray(responseAny.errors)) {
+            errorsData = responseAny.errors;
+            totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
             console.log("✅ Using structure: errors field");
           }
           // Structure 6: { items: [] } (pagination wrapper)
-          else if (response.items && Array.isArray(response.items)) {
-            errorsData = response.items;
-            totalCount = response.totalCount || response.totalItems || errorsData.length;
+          else if (responseAny.items && Array.isArray(responseAny.items)) {
+            errorsData = responseAny.items;
+            totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
             console.log("✅ Using structure: items field");
           }
           else {
@@ -129,41 +134,50 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
             const possibleArrays = Object.values(response).filter(value => Array.isArray(value));
             if (possibleArrays.length > 0) {
               errorsData = possibleArrays[0] as ErrorIncident[];
-              totalCount = errorsData.length;
+              totalCountValue = errorsData.length;
               console.log("✅ Found array data in response:", errorsData.length, "items");
             } else {
               console.error("❌ No array data found in response");
               errorsData = [];
-              totalCount = 0;
+              totalCountValue = 0;
             }
           }
         } else {
           console.error("❌ Invalid response type:", typeof response);
           errorsData = [];
-          totalCount = 0;
+          totalCountValue = 0;
         }
 
         // Set the extracted data
         setErrors(errorsData);
-        setTotalItems(totalCount);
-        setTotalPages(Math.ceil(totalCount / itemsPerPage));
+        setTotalCount(totalCountValue);
         
-        console.log(`✅ Successfully loaded ${errorsData.length} errors (total: ${totalCount})`);
+        console.log(`✅ Successfully loaded ${errorsData.length} errors (total: ${totalCountValue})`);
         
       } catch (error) {
         console.error("❌ Failed to fetch errors:", error);
-        toast.error("Failed to load errors");
+        toast.error("Không thể tải danh sách lỗi");
         setErrors([]);
-        setTotalItems(0);
-        setTotalPages(1);
+        setTotalCount(0);
       } finally {
         setLoading(false);
       }
-    }, [currentPage, searchTerm]);
+    }, [page, pageSize, debouncedSearchTerm]);
 
     useEffect(() => {
       fetchErrors();
     }, [fetchErrors]);
+
+    // ✅ Reset to page 1 when search term or page size changes
+    useEffect(() => {
+      if (page !== 1 && debouncedSearchTerm) {
+        setPage(1);
+      }
+    }, [debouncedSearchTerm]);
+
+    useEffect(() => {
+      setPage(1);
+    }, [pageSize]);
 
     useImperativeHandle(ref, () => ({
       refetchErrors: fetchErrors,
@@ -171,8 +185,11 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
 
     const handleSearch = (value: string) => {
       setSearchTerm(value);
-      setCurrentPage(1);
     };
+
+    const handlePageSizeChange = useCallback((newPageSize: string) => {
+      setPageSize(Number(newPageSize));
+    }, []);
 
     const getSeverityColor = (severity: string) => {
       switch (severity?.toLowerCase()) {
@@ -195,12 +212,16 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
         : "bg-gray-500/10 text-gray-400 border-gray-500/20 dark:bg-gray-500/20 dark:text-gray-300";
     };
 
-    if (loading) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    if (loading && errors.length === 0) {
       return (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-sm text-muted-foreground">Loading errors...</p>
+            <p className="text-sm text-muted-foreground">
+              Đang tải lỗi...
+            </p>
           </div>
         </div>
       );
@@ -212,10 +233,10 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Error Management
+              Lỗi thiết bị
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Monitor and manage system errors across all environments
+              Giám sát và quản lý lỗi thiết bị trong xưởng may
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -224,200 +245,231 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
               className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
             >
               <Download className="mr-2 h-4 w-4" />
-              Export Errors
+              Xuất danh sách lỗi
             </Button>
             <Button className="bg-green-600 hover:bg-green-700">
               <Upload className="mr-2 h-4 w-4" />
-              Import Errors
+              Nhập lỗi
             </Button>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex items-center gap-4 p-4 bg-background/50 dark:bg-muted/20 rounded-lg border">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search errors by code, name or description..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10 bg-background/50 border-muted"
-            />
+        {/* ✅ Search Bar matching DeviceListCpn style */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-1 gap-2">
+            <div className="relative w-1/3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Tìm kiếm lỗi theo mã, tên hoặc mô tả..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-9"
+              />
+              {searchTerm && searchTerm !== debouncedSearchTerm && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600">
+                  Đang tìm...
+                </span>
+              )}
+            </div>
           </div>
-          <Badge variant="secondary" className="px-3 py-2">
-            {totalItems} errors found
-          </Badge>
         </div>
 
         {/* Error Logs Table */}
-        <div className="border rounded-lg bg-background/50 dark:bg-card/50">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/50">
-                <TableHead className="font-semibold">Error Details</TableHead>
-                <TableHead className="font-semibold">Severity</TableHead>
-                <TableHead className="font-semibold">Type</TableHead>
-                <TableHead className="font-semibold">Repair Time</TableHead>
-                <TableHead className="font-semibold">Occurrences</TableHead>
-                <TableHead className="w-[100px] text-center font-semibold">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {errors.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
-                    <div className="flex flex-col items-center">
-                      <Bug className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                      <p className="text-lg font-medium text-muted-foreground">
-                        No errors found
-                      </p>
-                      <p className="text-sm text-muted-foreground/80 mt-1">
-                        Try adjusting your search criteria
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                errors.map((error) => (
-                  <TableRow
-                    key={error.errorCode}
-                    className="hover:bg-muted/30 border-border/50"
-                  >
-                    <TableCell className="py-4">
-                      <div className="space-y-2">
+        <div className="rounded-md border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-semibold">Chi tiết lỗi</th>
+                  <th className="px-4 py-3 text-left font-semibold">Mức độ nghiêm trọng</th>
+                  <th className="px-4 py-3 text-left font-semibold">Loại</th>
+                  <th className="px-4 py-3 text-left font-semibold">Thời gian sửa chữa</th>
+                  <th className="px-4 py-3 text-left font-semibold">Số lần xuất hiện</th>
+                  <th className="w-[100px] px-4 py-3 text-right font-semibold">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={`skeleton-${index}`} className="border-b animate-pulse">
+                      <td className="px-4 py-3">
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-20" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-8 ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : errors.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      <div className="flex flex-col items-center">
+                        <Bug className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <p className="text-lg font-medium text-muted-foreground">
+                          {searchTerm ? `Không tìm thấy lỗi nào cho "${searchTerm}"` : "Không tìm thấy lỗi nào"}
+                        </p>
+                        <p className="text-sm text-muted-foreground/80 mt-1">
+                          Thử điều chỉnh tiêu chí tìm kiếm
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  errors.map((error) => (
+                    <tr key={error.errorCode} className="border-b hover:bg-muted/50">
+                      <td className="px-4 py-3">
+                        <div className="space-y-2">
+                          {/* ✅ Name/Title at the top */}
+                          <div className="font-medium text-foreground text-base">
+                            {error.name}
+                          </div>
+                          {/* ✅ Description below the name */}
+                          <div className="text-sm text-muted-foreground line-clamp-2 max-w-md">
+                            {error.description}
+                          </div>
+                          {/* ✅ Code at the bottom with orange color for Error */}
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-medium text-orange-500">
+                              {error.errorCode}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={getSeverityColor(error.severity)}>
+                          {translateSeverity(error.severity)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={getCommonBadgeVariant(error.isCommon)}>
+                          {error.isCommon ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              {translateCommonStatus(true)}
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="h-3 w-3 mr-1" />
+                              {translateCommonStatus(false)}
+                            </>
+                          )}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Code className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono text-sm font-medium text-foreground">
-                            {error.errorCode}
+                          <Timer className="h-4 w-4 text-blue-400" />
+                          <span className="text-sm text-foreground">
+                            {error.estimatedRepairTime}
                           </span>
                         </div>
-                        <div className="font-medium text-foreground">
-                          {error.name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-orange-400" />
+                          <span className="text-sm font-medium text-foreground">
+                            {error.occurrenceCount}x
+                          </span>
                         </div>
-                        <div className="text-sm text-muted-foreground line-clamp-2 max-w-md">
-                          {error.description}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getSeverityColor(error.severity)}>
-                        {error.severity}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getCommonBadgeVariant(error.isCommon)}>
-                        {error.isCommon ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Common
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="h-3 w-3 mr-1" />
-                            Unique
-                          </>
-                        )}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Timer className="h-4 w-4 text-blue-400" />
-                        <span className="text-sm text-foreground">
-                          {error.estimatedRepairTime}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-orange-400" />
-                        <span className="text-sm font-medium text-foreground">
-                          {error.occurrenceCount}x
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:bg-muted/50"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem
-                            onClick={() => onViewError(error)}
-                            className="gap-2"
-                          >
-                            <Eye className="h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onEditError(error)}
-                            className="gap-2"
-                          >
-                            <Pencil className="h-4 w-4" />
-                            Update Status
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onDeleteError(error)}
-                            className="gap-2 text-red-400 focus:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onViewError(error)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Xem chi tiết
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onEditError(error)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Cập nhật trạng thái
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onDeleteError(error)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 bg-background/50 dark:bg-muted/20 rounded-lg border">
-            <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}{" "}
-              errors
+          {/* ✅ DeviceListCpn-style Pagination */}
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Hiển thị:</span>
+                <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="text-sm text-gray-500">
+                {totalCount > 0 ? (
+                  <>
+                    {(page - 1) * pageSize + 1}-
+                    {Math.min(page * pageSize, totalCount)} trong số{" "}
+                    {totalCount} lỗi
+                  </>
+                ) : (
+                  "Không có lỗi"
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">
+                Trang {page} trong số {totalPages}
+              </span>
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="gap-1"
+                size="icon"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                className="h-8 w-8"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Previous
               </Button>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </span>
-              </div>
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="gap-1"
+                size="icon"
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={page >= totalPages}
+                className="h-8 w-8"
               >
-                Next
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   }
