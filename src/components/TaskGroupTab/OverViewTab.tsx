@@ -70,8 +70,10 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
   };
 
   const handleDisableTask = async (task: TASK_IN_GROUP) => {
-    if (task.status.toLowerCase() !== "inprogress") {
-      toast.error("Chỉ có thể ngừng các nhiệm vụ đang thực hiện");
+    // ✅ Updated condition to allow both InProgress and Pending tasks
+    const allowedStatuses = ["inprogress", "pending"];
+    if (!allowedStatuses.includes(task.status.toLowerCase())) {
+      toast.error("Chỉ có thể ngừng các nhiệm vụ đang thực hiện hoặc đang chờ");
       return;
     }
 
@@ -107,15 +109,17 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
 
   const isTaskDisabling = (taskId: string) => disablingTasks.has(taskId);
 
+  // ✅ Updated function to allow both InProgress and Pending status
   const canDisableTask = (task: TASK_IN_GROUP) => {
-    return task.status.toLowerCase() === "inprogress";
+    const allowedStatuses = ["inprogress", "pending"];
+    return allowedStatuses.includes(task.status.toLowerCase());
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          Nhiệm vụ trong Nhóm ({taskGroup.tasks.length})
+          Nhiệm vụ trong Nhóm ({taskGroup.tasks.length})t 
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
