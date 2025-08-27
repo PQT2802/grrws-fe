@@ -70,10 +70,9 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
   };
 
   const handleDisableTask = async (task: TASK_IN_GROUP) => {
-    // ✅ Updated condition to allow both InProgress and Pending tasks
-    const allowedStatuses = ["inprogress", "pending"];
-    if (!allowedStatuses.includes(task.status.toLowerCase())) {
-      toast.error("Chỉ có thể ngừng các nhiệm vụ đang thực hiện hoặc đang chờ");
+    // ✅ Updated condition: Only disable completed tasks
+    if (task.status.toLowerCase() === "completed") {
+      toast.error("Không thể ngừng nhiệm vụ đã hoàn thành");
       return;
     }
 
@@ -84,8 +83,9 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
       
       await apiClient.task.disableTask(task.taskId, true);
       
-      toast.success(`Đã ngừng nhiệm vụ "${task.taskName}" thành công`, {
-        description: "Nhiệm vụ đã được chuyển về trạng thái Đang chờ",
+      // ✅ Updated success toast message
+      toast.success("Ngừng công việc thành công", {
+        description: `Nhiệm vụ "${task.taskName}" đã được ngừng và chuyển về trạng thái Đang chờ`,
       });
 
       // Call the callback to refresh task data
@@ -109,17 +109,16 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
 
   const isTaskDisabling = (taskId: string) => disablingTasks.has(taskId);
 
-  // ✅ Updated function to allow both InProgress and Pending status
+  // ✅ Updated function: Only disable for completed tasks
   const canDisableTask = (task: TASK_IN_GROUP) => {
-    const allowedStatuses = ["inprogress", "pending"];
-    return allowedStatuses.includes(task.status.toLowerCase());
+    return task.status.toLowerCase() !== "completed";
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          Nhiệm vụ trong Nhóm ({taskGroup.tasks.length})t 
+          Nhiệm vụ trong Nhóm ({taskGroup.tasks.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -132,7 +131,7 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
               <TableHead>Trạng thái</TableHead>
               <TableHead>Người được giao</TableHead>
               <TableHead>Thời gian</TableHead>
-              <TableHead>Hành động</TableHead>
+              <TableHead className="w-[100px] text-center">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -234,7 +233,7 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
                           )}
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
@@ -253,8 +252,8 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
                           disabled={!canDisableTask(task) || isTaskDisabling(task.taskId)}
                           className={`${
                             canDisableTask(task) && !isTaskDisabling(task.taskId)
-                              ? "text-red-600 focus:text-red-600" 
-                              : "text-gray-400 cursor-not-allowed"
+                              ? "text-red-600 focus:text-red-600 hover:text-red-600" 
+                              : "text-gray-400 cursor-not-allowed opacity-50"
                           }`}
                         >
                           {isTaskDisabling(task.taskId) ? (
