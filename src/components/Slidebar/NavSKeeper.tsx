@@ -23,32 +23,32 @@ export function NavSKeeper() {
 
   const STOCK_KEEPER_ITEMS = [
     {
-      title: "Dashboard",
+      title: "Tổng quan",
       url: `/workspace/stock_keeper/dashboard`,
       icon: Home,
     },
     {
-      title: "Request",
+      title: "Yêu cầu",
       url: `/workspace/stock_keeper/requests`,
       icon: ClipboardList,
     },
     {
-      title: "Device",
+      title: "Thiết bị",
       url: `/workspace/stock_keeper/devices`,
       icon: Smartphone,
     },
     {
-      title: "Machine",
+      title: "Máy móc",
       url: `/workspace/stock_keeper/machines`,
       icon: WashingMachine,
     },
     {
-      title: "Spare Part",
+      title: "Linh kiện",
       url: `/workspace/stock_keeper/inventory`,
       icon: Box,
     },
     {
-      title: "Stock In/Out Logs",
+      title: "Lịch sử nhập/xuất kho",
       url: `/workspace/stock_keeper/logs`,
       icon: FileText,
     },

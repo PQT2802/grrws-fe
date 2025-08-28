@@ -54,58 +54,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const MAIN_ITEMS: SLIDEBAR_ITEM_TYPE[] = [
     {
-      title: "Home",
+      title: "Tổng quan",
       url: `/workspace/hot`,
       icon: House,
       items: [],
     },
     {
-      title: "Tasks",
+      title: "Công việc",
       url: `/workspace/hot/tasks`,
       icon: CircleCheckBig,
       items: [],
     },
     {
-      title: "Devices",
+      title: "Thiết bị",
       url: `/workspace/hot/devices`,
       icon: Wrench,
       items: [],
     },
     {
-      title: "Requests",
+      title: "Yêu cầu",
       url: `/workspace/hot/requests`,
       icon: Frame,
       items: [],
     }, 
     {
-      title: "Reports",
+      title: "Báo cáo",
       url: `/workspace/hot/reports`,
       icon: PieChart,
       items: [],
     },
     {
-      title: "Calendar",
+      title: "Lịch",
       url: `/workspace/calendar`,
       icon: Map,
       items: PROJECT_ITEMS,
     },
     {
-      title: "Incident Tracking",
+      title: "Sự cố",
       url: "#",
       icon: AlertTriangle,
       items: [
         {
-          title: "Issues",
+          title: "Triệu chứng",
           url: `/workspace/hot/incident/issues`,
           icon: AlertCircle,
         },
         {
-          title: "Technical Issues",
+          title: "Triệu chứng kỹ thuật",
           url: `/workspace/hot/incident/technicalIssues`,
           icon: Wrench,
         },
         {
-          title: "Errors",
+          title: "Lỗi",
           url: `/workspace/hot/incident/errors`,
           icon: Bug,
         },

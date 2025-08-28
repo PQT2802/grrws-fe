@@ -42,79 +42,79 @@ export function NavAdmin() {
 
   const ADMIN_ITEMS = [
     {
-      title: "DashBoard",
+      title: "Tổng quan",
       url: `/workspace/admin/dashboard`,
       icon: LayoutDashboard,
       items: [],
     },
     {
-      title: "User",
+      title: "Người dùng",
       url: `/workspace/admin/userList`,
       icon: UsersRound,
       items: [],
     },
     {
-      title: "Machine",
+      title: "Máy móc",
       url: `/workspace/admin/machineList`,
       icon: WashingMachine,
       items: [],
     },
     {
-      title: "Device",
+      title: "Thiết bị",
       url: `/workspace/admin/deviceList`,
       icon: Smartphone,
       items: [],
     },
     {
-      title: "Spare Part",
+      title: "Linh kiện",
       url: `/workspace/admin/spare-parts`,
       icon: PackageSearch,
       items: [],
     },
     {
-      title: "Location",
+      title: "Phòng ban",
       url: "#",
       icon: MapPin,
       items: [
         {
-          title: "Areas",
+          title: "Khu vực",
           url: `/workspace/admin/location/areas`,
           icon: MapPin,
         },
         {
-          title: "Zones",
+          title: "Khu",
           url: `/workspace/admin/location/zones`,
           icon: MapPin,
         },
         {
-          title: "Positions",
+          title: "Vị trí",
           url: `/workspace/admin/location/positions`,
           icon: MapPin,
         },
       ],
     },
     {
-      title: "Request",
+      title: "Yêu cầu",
       url: "#",
       icon: ClipboardList,
       items: [
         {
-          title: "HOD Requests",
+          title: "Yêu cầu (HOD)",
           url: `/workspace/admin/requests/hod`,
           icon: AlertCircle,
         },
         {
-          title: "HOT Reports",
+          title: "Báo cáo (HOT)",
           url: `/workspace/admin/requests/hot`,
           icon: Wrench,
         },
         {
-          title: "Stock Keeper Requests",
+          title: "Yêu cầu (Stock Keeper)",
           url: `/workspace/admin/requests/stock_keeper`,
           icon: Package,
         },
         {
-          title: "Staff Tasks",
+          title: "Công việc (Mechanic)",
           url: `/workspace/admin/requests/staff`,
           icon: Users,
         },
