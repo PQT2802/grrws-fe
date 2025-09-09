@@ -10,8 +10,9 @@ import HOTNotificationArea from "@/components/HOTChartCpn/HOTNotificationArea";
 import HOTQuickActions from "@/components/HOTChartCpn/HOTQuickActions";
 import RequestStatusPieChart from "@/components/HOTChartCpn/RequestStatusPieChart";
 import TaskStatusPieChart from "@/components/HOTChartCpn/TaskStatusPieChart";
-import MechanicStatusPieChart from "@/components/HOTChartCpn/MechanicStatusPieChart";
 import CombinedBarChart from "@/components/HOTChartCpn/CombinedBarChart";
+import TaskBreakdownChart from "@/components/HOTChartCpn/TaskBreakdownChart";
+import IncidentOverviewChart from "@/components/HOTChartCpn/IncidentOverviewChart"; // ✅ Import new component
 
 // Define the dashboard data types
 interface DashboardStats {
@@ -159,7 +160,7 @@ const DetailWorkspacePage = () => {
       },
     ].filter((item) => item.value > 0);
 
-    // Calculate percentages for mechanics
+
     const mechanicTotal = dashboardStats.mechanicStats.total || 1;
     const mechanicsWithPercentage = [
       {
@@ -246,9 +247,9 @@ const DetailWorkspacePage = () => {
           {/* Top Section - Quick Actions */}
           <HOTQuickActions dashboardStats={dashboardStats} loading={loading} />
 
-          {/* Middle Section - Charts Area */}
+          {/* ✅ Updated Middle Section - Only 2 charts (removed MechanicStatusPieChart) */}
           {dashboardStats && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <RequestStatusPieChart
                 data={chartData.requests}
                 total={dashboardStats.requestStats.total}
@@ -257,21 +258,31 @@ const DetailWorkspacePage = () => {
                 data={chartData.tasks}
                 total={dashboardStats.taskStats.total}
               />
-              <MechanicStatusPieChart
-                data={chartData.mechanics}
-                total={dashboardStats.mechanicStats.total}
+              <CombinedBarChart 
+              data={chartData.combined} 
               />
             </div>
           )}
 
-          {/* Bottom Section - Notification Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Task Breakdown and Incident Overview Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            {/* <TaskBreakdownChart /> */}
+            <div className="lg:col-span-3">
+              <TaskBreakdownChart />
+            </div>
             <div className="lg:col-span-2">
+              <IncidentOverviewChart />
+            </div>
+          </div>
+
+          {/* Bottom Section - Notification Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
+            {/* <div className="lg:col-span-2"> */}
               <HOTNotificationArea />
-            </div>
-            <div className="lg:col-span-1">
+            {/* </div> */}
+            {/* <div className="lg:col-span-1">
               <CombinedBarChart data={chartData.combined} />
-            </div>
+            </div> */}
           </div>
         </>
       )}

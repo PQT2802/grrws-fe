@@ -15,15 +15,25 @@ interface CombinedBarChartProps {
 }
 
 export default function CombinedBarChart({ data }: CombinedBarChartProps) {
+  // ✅ Filter out categories with all zero values to prevent gaps
+  const filteredData = data.filter(item => 
+    item.pending > 0 || item.inProgress > 0 || item.completed > 0
+  );
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const total = payload[0].payload.total;
       const categoryLabel = label === "Requests" ? "Yêu cầu" : "Công việc";
       
+      // ✅ Only show tooltip entries that have values > 0
+      const validPayload = payload.filter((item: any) => item.value > 0);
+      
+      if (validPayload.length === 0) return null;
+
       return (
         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border">
           <p className="font-semibold mb-2">{categoryLabel}</p>
-          {payload.map((item: any, index: number) => {
+          {validPayload.map((item: any, index: number) => {
             const statusLabels: { [key: string]: string } = {
               'pending': 'Chờ xử lý',
               'inProgress': 'Đang xử lý',
@@ -73,22 +83,57 @@ export default function CombinedBarChart({ data }: CombinedBarChartProps) {
       <h3 className="text-lg font-semibold mb-4">
         So sánh yêu cầu và công việc
       </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="category" 
-            tick={{ fontSize: 16 }}
-            tickFormatter={(value) => value === "Requests" ? "Yêu cầu" : "Công việc"}
-          />
-          <YAxis tick={{ fontSize: 13 }} />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend content={<CustomLegend />} />
-          <Bar dataKey="pending" fill="#FFA726" name="pending" radius={[2, 2, 0, 0]} />
-          <Bar dataKey="inProgress" fill="#42A5F5" name="inProgress" radius={[2, 2, 0, 0]} />
-          <Bar dataKey="completed" fill="#66BB6A" name="completed" radius={[2, 2, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      
+      {filteredData.length === 0 ? (
+        <div className="flex items-center justify-center h-80">
+          <p className="text-gray-500 dark:text-gray-400">Không có dữ liệu để hiển thị</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={335}>
+          <BarChart 
+            data={filteredData} 
+            margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+            barCategoryGap="15%"
+          >
+            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+            <XAxis 
+              dataKey="category" 
+              tick={{ fontSize: 16 }}
+              tickFormatter={(value) => value === "Requests" ? "Yêu cầu" : "Công việc"}
+              interval={0} 
+            />
+            <YAxis tick={{ fontSize: 13 }} />
+            <Tooltip 
+              content={<CustomTooltip />}
+              cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+              allowEscapeViewBox={{ x: false, y: false }}
+              position={{ x: undefined, y: undefined }}
+            />
+            <Legend content={<CustomLegend />} />
+            <Bar 
+              dataKey="pending" 
+              fill="#FFA726" 
+              name="pending" 
+              radius={[2, 2, 0, 0]}
+              maxBarSize={60} 
+            />
+            <Bar 
+              dataKey="inProgress" 
+              fill="#42A5F5" 
+              name="inProgress" 
+              radius={[2, 2, 0, 0]}
+              maxBarSize={60} 
+            />
+            <Bar 
+              dataKey="completed" 
+              fill="#66BB6A" 
+              name="completed" 
+              radius={[2, 2, 0, 0]}
+              maxBarSize={60} 
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }

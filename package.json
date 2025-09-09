@@ -44,6 +44,7 @@
     "copy-to-clipboard": "^3.3.3",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
+    "echarts": "^6.0.0",
     "firebase": "^11.9.0",
     "firebase-admin": "^13.4.0",
     "html2canvas": "^1.4.1",
