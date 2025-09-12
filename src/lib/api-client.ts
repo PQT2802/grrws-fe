@@ -19,6 +19,7 @@ import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 import {
   CREATE_INSTALL_TASK,
   CREATE_REPAIR_TASK,
+  CREATE_REPAIR_TASK_V2,
   CREATE_SINGLE_TASK,
   CREATE_UNINSTALL_TASK,
   CREATE_WARRANTY_TASK,
@@ -57,7 +58,7 @@ import {
   NOTIFICATION_RESPONSE,
   NotificationResponse,
 } from "@/types/notification.type";
-import { IssueResponse, TechnicalIssueResponse, ErrorIncidentResponse } from "@/types/incident.type";
+import { IssueResponse, TechnicalIssueResponse, ErrorIncidentResponse, ErrorIncident } from "@/types/incident.type";
 
 class APIClient {
   // Auth methods - these are public (no token needed)
@@ -167,6 +168,9 @@ class APIClient {
     },
     createRepairTask: (data: CREATE_REPAIR_TASK): Promise<any> => {
       return http.post("/api/Task/repair-task", data);
+    },
+    createRepairTaskV2: (data: CREATE_REPAIR_TASK_V2): Promise<any> => {
+      return http.post("/api/Task/single-task", data);
     },
     createWarrantyTask: (data: CREATE_WARRANTY_TASK): Promise<any> => {
       return http.post("/api/Task/warranty-task/submit", data);
@@ -361,6 +365,9 @@ class APIClient {
       payload: { ErrorIds: string[] }
     ): Promise<any> => {
       return http.post(`/api/Task/repair-task/${taskId}/add-errors`, payload);
+    },
+    getErrorsByDeviceId: (deviceId: string): Promise<ErrorIncident[]> => {
+      return http.get<ErrorIncident[]>(`/api/Error/mapped-by-ti/${deviceId}`);
     },
 
     // createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
