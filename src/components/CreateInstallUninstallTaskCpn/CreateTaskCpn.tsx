@@ -46,6 +46,7 @@ import userService from "@/app/service/user.service";
 import { DateTimeSelector } from "../DateTimeSelector/DateTimeSelector";
 import { getFirstLetterUppercase, formatTimeStampDate } from "@/lib/utils";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
+import ErrorSelectionCpn from "@/components/ErrorSelectionCpn/ErrorSelectionCpn";
 import {
   ChevronLeft,
   ChevronRight,
@@ -63,7 +64,8 @@ import {
 } from "lucide-react";
 import { useModalBodyStyle } from "@/hooks/useModalBodyStyle";
 // Import the task type and API client
-import { CREATE_SINGLE_TASK } from "@/types/task.type";
+import { CREATE_SINGLE_TASK, CREATE_REPAIR_TASK_V2 } from "@/types/task.type";
+import { ErrorIncident } from "@/types/incident.type";
 import { apiClient } from "@/lib/api-client";
 
 interface CreateTaskCpnProps {
@@ -75,7 +77,7 @@ interface CreateTaskCpnProps {
 
 type TaskType = "Repair" | "Warranty" | "Replacement";
 type CreationMode = "Auto" | "Manual";
-type Step = "task-type" | "manual-creation" | "overview";
+type Step = "task-type" | "error-selection" | "manual-creation" | "overview";
 
 const CreateTaskCpn = ({
   open,
@@ -96,6 +98,7 @@ const CreateTaskCpn = ({
     useState<GET_MECHANIC_USER | null>(null);
   const [loadingMechanics, setLoadingMechanics] = useState<boolean>(false);
   const [creating, setCreating] = useState<boolean>(false);
+  const [selectedErrors, setSelectedErrors] = useState<ErrorIncident[]>([]);
 
   // Replace existing body style management with hook
   useModalBodyStyle(open);
@@ -137,11 +140,12 @@ const CreateTaskCpn = ({
       setCreationMode("");
       setAssigneeId("");
       setSelectedMechanic(null);
+      setSelectedErrors([]);
 
       // Set default time to current time + 1 hour
       const defaultDate = new Date();
       defaultDate.setHours(defaultDate.getHours());
-      defaultDate.setMinutes(defaultDate.getMinutes()); // Next hour, 0 minutes
+      defaultDate.setMinutes(defaultDate.getMinutes());
       setStartDate(defaultDate);
 
       setCanProceed(false);
@@ -162,6 +166,10 @@ const CreateTaskCpn = ({
       case "task-type":
         setCanProceed(!!taskType && !!creationMode);
         break;
+      case "error-selection":
+        // For repair tasks, require at least one error
+        setCanProceed(selectedErrors.length > 0);
+        break;
       case "manual-creation":
         setCanProceed(!!selectedMechanic && !!startDate);
         break;
@@ -169,19 +177,23 @@ const CreateTaskCpn = ({
         const baseRequirements = !!taskType && !!startDate;
         const manualRequirements =
           creationMode === "Manual" ? !!selectedMechanic : true;
-        setCanProceed(baseRequirements && manualRequirements);
+        const errorRequirements =
+          taskType === "Repair" ? selectedErrors.length > 0 : true;
+        setCanProceed(
+          baseRequirements && manualRequirements && errorRequirements
+        );
         break;
       default:
         setCanProceed(false);
         break;
     }
-  }, [currentStep, taskType, creationMode, selectedMechanic, startDate]);
+  }, [currentStep, taskType, creationMode, selectedMechanic, startDate, selectedErrors]);
 
   const handleTaskTypeSelection = (type: TaskType) => {
-    // Nếu đã chọn type này rồi, không làm gì
-    // Nếu chưa chọn, gán type mới và xóa các lựa chọn khác
     if (taskType !== type) {
       setTaskType(type);
+      // Reset errors when changing task type
+      setSelectedErrors([]);
     }
   };
 
@@ -194,8 +206,24 @@ const CreateTaskCpn = ({
     setAssigneeId(mechanic.id);
   };
 
+  const handleErrorsChange = (errors: ErrorIncident[]) => {
+    setSelectedErrors(errors);
+  };
+
   const goToNextStep = () => {
     if (currentStep === "task-type") {
+      // For repair tasks, go to error selection first
+      if (taskType === "Repair") {
+        setCurrentStep("error-selection");
+      } else {
+        // For other tasks, skip error selection
+        if (creationMode === "Auto") {
+          setCurrentStep("overview");
+        } else {
+          setCurrentStep("manual-creation");
+        }
+      }
+    } else if (currentStep === "error-selection") {
       if (creationMode === "Auto") {
         setCurrentStep("overview");
       } else {
@@ -207,18 +235,30 @@ const CreateTaskCpn = ({
   };
 
   const goToPreviousStep = () => {
-    if (currentStep === "manual-creation") {
+    if (currentStep === "error-selection") {
       setCurrentStep("task-type");
+    } else if (currentStep === "manual-creation") {
+      // Go back to error selection for repair tasks, otherwise to task-type
+      if (taskType === "Repair") {
+        setCurrentStep("error-selection");
+      } else {
+        setCurrentStep("task-type");
+      }
     } else if (currentStep === "overview") {
       if (creationMode === "Auto") {
-        setCurrentStep("task-type");
+        // For auto mode, go back to error selection if repair, otherwise task-type
+        if (taskType === "Repair") {
+          setCurrentStep("error-selection");
+        } else {
+          setCurrentStep("task-type");
+        }
       } else {
         setCurrentStep("manual-creation");
       }
     }
   };
 
-  // Updated handleSubmit to use the API
+  // Updated handleSubmit to use the appropriate API
   const handleSubmit = async () => {
     if (!taskType || !device) {
       toast.error("Vui lòng điền đầy đủ thông tin");
@@ -230,27 +270,44 @@ const CreateTaskCpn = ({
       return;
     }
 
+    if (taskType === "Repair" && selectedErrors.length === 0) {
+      toast.error("Vui lòng chọn ít nhất một lỗi cho công việc sửa chữa");
+      return;
+    }
+
     try {
       setCreating(true);
 
       // Determine assigneeId based on creation mode
       const finalAssigneeId =
         creationMode === "Auto"
-          ? mechanics[0]?.id // Auto-assign first mechanic for Auto mode
+          ? mechanics[0]?.id
           : assigneeId;
 
-      // Create API payload
-      const payload: CREATE_SINGLE_TASK = {
-        DeviceId: device.id,
-        AssigneeId: finalAssigneeId,
-        StartDate: startDate?.toISOString() || new Date().toISOString(),
-        TaskType: taskType as "Repair" | "Warranty" | "Replacement",
-      };
+      if (taskType === "Repair") {
+        // Use CREATE_REPAIR_TASK_V2 for repair tasks
+        const repairPayload: CREATE_REPAIR_TASK_V2 = {
+          DeviceId: device.id,
+          AssigneeId: finalAssigneeId,
+          StartDate: startDate?.toISOString() || new Date().toISOString(),
+          TaskType: "Repair",
+          AddingErrors: selectedErrors.map(error => error.id),
+        };
 
-      console.log("Đang tạo công việc:", payload);
+        console.log("Đang tạo công việc sửa chữa:", repairPayload);
+        const response = await apiClient.task.createRepairTaskV2(repairPayload);
+      } else {
+        // Use CREATE_SINGLE_TASK for other task types
+        const payload: CREATE_SINGLE_TASK = {
+          DeviceId: device.id,
+          AssigneeId: finalAssigneeId,
+          StartDate: startDate?.toISOString() || new Date().toISOString(),
+          TaskType: taskType as "Warranty" | "Replacement",
+        };
 
-      // Call the actual API
-      const response = await apiClient.task.createSingleTask(payload);
+        console.log("Đang tạo công việc:", payload);
+        const response = await apiClient.task.createSingleTask(payload);
+      }
 
       toast.success(
         `Công việc ${getTaskTypeVietnamese(taskType)} ${
@@ -537,6 +594,29 @@ const CreateTaskCpn = ({
           </div>
         );
 
+      case "error-selection":
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <AlertTriangle className="mx-auto h-12 w-12 text-orange-500 mb-4" />
+              <h3 className="text-lg font-semibold">
+                Chọn lỗi cần sửa chữa
+              </h3>
+              <p className="text-sm text-gray-600">
+                Chọn các lỗi cần được sửa chữa cho thiết bị này
+              </p>
+            </div>
+
+            {device && (
+              <ErrorSelectionCpn
+                deviceId={device.id}
+                selectedErrors={selectedErrors}
+                onErrorsChange={handleErrorsChange}
+              />
+            )}
+          </div>
+        );
+
       case "manual-creation":
         return (
           <div className="space-y-6">
@@ -573,6 +653,11 @@ const CreateTaskCpn = ({
                           : "Không hoạt động"}
                         )
                       </div>
+                      {taskType === "Repair" && selectedErrors.length > 0 && (
+                        <div className="text-sm text-gray-600">
+                          Số lỗi đã chọn: {selectedErrors.length}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -731,6 +816,35 @@ const CreateTaskCpn = ({
               </CardContent>
             </Card>
 
+            {/* Show selected errors for repair tasks */}
+            {taskType === "Repair" && selectedErrors.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Lỗi được chọn</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {selectedErrors.map((error) => (
+                      <div
+                        key={error.id}
+                        className="flex items-center justify-between p-2 bg-orange-50 border border-orange-200 rounded"
+                      >
+                        <div>
+                          <span className="font-medium text-sm">
+                            {error.errorCode}
+                          </span>
+                          <p className="text-xs text-gray-600">{error.name}</p>
+                        </div>
+                        <Badge className="bg-orange-100 text-orange-800">
+                          {error.severity}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Chi tiết thiết bị</CardTitle>
@@ -802,11 +916,14 @@ const CreateTaskCpn = ({
   };
 
   const getStepProgress = () => {
+    const totalSteps = taskType === "Repair" ? 4 : 3;
     switch (currentStep) {
       case "task-type":
-        return 33;
+        return 25;
+      case "error-selection":
+        return 50;
       case "manual-creation":
-        return 66;
+        return taskType === "Repair" ? 75 : 66;
       case "overview":
         return 100;
       default:
@@ -819,12 +936,16 @@ const CreateTaskCpn = ({
     switch (currentStep) {
       case "task-type":
         return "Bước 1: Chọn loại công việc & phương thức";
+      case "error-selection":
+        return "Bước 2: Chọn lỗi cần sửa chữa";
       case "manual-creation":
-        return "Bước 2: Phân công thợ máy & lịch trình";
+        return taskType === "Repair"
+          ? "Bước 3: Phân công thợ máy & lịch trình"
+          : "Bước 2: Phân công thợ máy & lịch trình";
       case "overview":
-        return creationMode === "Auto"
-          ? "Bước 2: Xem lại & Tạo"
-          : "Bước 3: Xem lại & Tạo";
+        return taskType === "Repair"
+          ? creationMode === "Auto" ? "Bước 3: Xem lại & Tạo" : "Bước 4: Xem lại & Tạo"
+          : creationMode === "Auto" ? "Bước 2: Xem lại & Tạo" : "Bước 3: Xem lại & Tạo";
       default:
         return "";
     }
@@ -861,7 +982,7 @@ const CreateTaskCpn = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto flex flex-col">
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle>Tạo công việc cho {device?.deviceName}</DialogTitle>
           <DialogDescription>{getStepTitle()}</DialogDescription>
@@ -877,6 +998,17 @@ const CreateTaskCpn = ({
               >
                 1. Loại công việc
               </span>
+              {taskType === "Repair" && (
+                <span
+                  className={
+                    currentStep === "error-selection"
+                      ? "font-medium text-blue-600"
+                      : "text-gray-500"
+                  }
+                >
+                  2. Chọn lỗi
+                </span>
+              )}
               {creationMode === "Manual" && (
                 <span
                   className={
@@ -885,7 +1017,7 @@ const CreateTaskCpn = ({
                       : "text-gray-500"
                   }
                 >
-                  2. Thợ máy
+                  {taskType === "Repair" ? "3" : "2"}. Thợ máy
                 </span>
               )}
               <span
@@ -895,7 +1027,9 @@ const CreateTaskCpn = ({
                     : "text-gray-500"
                 }
               >
-                {creationMode === "Auto" ? "2" : "3"}. Xem trước
+                {taskType === "Repair"
+                  ? creationMode === "Auto" ? "3" : "4"
+                  : creationMode === "Auto" ? "2" : "3"}. Xem trước
               </span>
             </div>
             <Progress value={getStepProgress()} className="h-2" />

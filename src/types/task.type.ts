@@ -13,6 +13,14 @@ export interface CREATE_REPAIR_TASK {
   AssigneeId: string; // User ID of the assignee
   ErrorGuidelineIds: string[]; // Required - List of error IDs
 }
+export interface CREATE_REPAIR_TASK_V2 {
+  DeviceId: string;
+  StartDate: string; // ISO string format
+  AssigneeId?: string | null; // User ID of the assignee, can be null if not assigned yet
+  AddingErrors: string[]; // Required - List of error IDs
+  TaskType:"Repair"
+}
+
 
 export interface CREATE_SINGLE_TASK {
   DeviceId: string; // Device ID to which the task is related
