@@ -111,7 +111,7 @@ const AddErrorToTaskModal = ({
     return () => clearTimeout(debounceTimer);
   }, [searchQuery, selectedErrors, open, listError]);
 
-  // Handle adding errors to task
+  // Handle adding errors to task using addTaskErrors
   const handleAddErrors = async () => {
     if (selectedErrors.length === 0) {
       toast.error("Vui lòng chọn ít nhất một lỗi để thêm");
@@ -122,8 +122,16 @@ const AddErrorToTaskModal = ({
       setSubmitting(true);
 
       const errorIds = selectedErrors.map((error) => error.id);
-      console.log(taskId, errorIds);
-      await apiClient.error.addErrors(taskId, { ErrorIds: errorIds });
+      
+      // Create payload for addTaskErrors
+      const payload: AddTaskErrorPayload = {
+        TaskId: taskId,
+        ErrorIds: errorIds,
+        Action: "Add",
+      };
+
+      console.log("Adding errors to task with payload:", payload);
+      await apiClient.error.addTaskErrors(payload);
 
       toast.success(`Đã thêm ${errorIds.length} lỗi vào nhiệm vụ`);
       onErrorsAdded();
