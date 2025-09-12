@@ -266,7 +266,6 @@ const DetailWorkspacePage = () => {
 
           {/* Task Breakdown and Incident Overview Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            {/* <TaskBreakdownChart /> */}
             <div className="lg:col-span-3">
               <TaskBreakdownChart />
             </div>
@@ -277,12 +276,7 @@ const DetailWorkspacePage = () => {
 
           {/* Bottom Section - Notification Area */}
           <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-            {/* <div className="lg:col-span-2"> */}
               <HOTNotificationArea />
-            {/* </div> */}
-            {/* <div className="lg:col-span-1">
-              <CombinedBarChart data={chartData.combined} />
-            </div> */}
           </div>
         </>
       )}

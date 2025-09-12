@@ -52,23 +52,10 @@ export default function TaskStatusPieChart({ data, total }: TaskStatusPieChartPr
     const legendColor = isDarkMode ? '#FFFFFF' : '#000000'; // White in dark, black in light
     const labelColor = isDarkMode ? '#FFFFFF' : '#000000';  // White in dark, black in light
 
-    // Show empty state if no data
-    if (total === 0 || data.length === 0) {
-      const emptyOption: echarts.EChartsOption = {
-        title: {
-          text: 'Không có dữ liệu công việc',
-          left: 'center',
-          top: 'middle',
-          textStyle: {
-            color: '#9CA3AF',
-            fontSize: 16,
-            fontWeight: 'normal',
-            fontFamily: 'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"'
-          }
-        },
-        backgroundColor: 'transparent'
-      };
-      chartInstance.current!.setOption(emptyOption, true);
+    // ✅ Show empty state if no data - same as TaskBreakdownChart
+    if (total === 0 || data.length === 0 || data.every(item => item.value === 0)) {
+      // Clear the chart and don't show anything - just empty space
+      chartInstance.current!.clear();
       return;
     }
 
@@ -233,7 +220,6 @@ export default function TaskStatusPieChart({ data, total }: TaskStatusPieChartPr
 
   return (
     <div className="bg-background border rounded-lg shadow-sm p-6">
-      {/* ✅ Header like IncidentOverviewChart */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <ClipboardList className="w-5 h-5 text-green-500" />
@@ -249,12 +235,20 @@ export default function TaskStatusPieChart({ data, total }: TaskStatusPieChartPr
         </div>
       </div>
 
-      {/* Chart Container */}
-      <div 
-        ref={chartRef} 
-        className="w-full h-80"
-        style={{ minHeight: '320px' }}
-      />
+      {/* ✅ Empty State - same as TaskBreakdownChart */}
+      {total === 0 || data.length === 0 || data.every(item => item.value === 0) ? (
+        <div className="flex items-center justify-center h-80">
+          <p className="text-gray-500 dark:text-gray-400 text-lg">
+            Không có dữ liệu công việc
+          </p>
+        </div>
+      ) : (
+        <div 
+          ref={chartRef} 
+          className="w-full h-80"
+          style={{ minHeight: '320px' }}
+        />
+      )}
     </div>
   );
 }

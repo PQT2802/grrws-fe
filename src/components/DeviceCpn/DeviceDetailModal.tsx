@@ -54,6 +54,7 @@ import { WarrantyInfo, WARRANTY_HISTORY_LIST } from "@/types/warranty.type"
 import { apiClient } from "@/lib/api-client"
 import QRCodeSection from "@/components/QRCodeCpn/QRCodeSection"
 import { translateTaskStatus, translateTaskType } from "@/utils/textTypeTask"
+import DeviceHistoryLog from "./DeviceHistoryLog"; // ✅ Use the refactored component
 
 interface DeviceDetailModalProps {
     open: boolean
@@ -1074,157 +1075,13 @@ export default function DeviceDetailModal({
                             )}
                         </TabsContent>
 
-                        {/* ✅ STREAMLINED: DEVICE HISTORY TAB */}
+                        {/* ✅ REFACTORED: DEVICE HISTORY TAB - Use the improved DeviceHistoryLog component */}
                         <TabsContent value="device-history" className="space-y-4">
-                            {isLoadingDeviceHistory ? (
-                                <Card>
-                                    <CardContent className="flex items-center justify-center p-6">
-                                        <Loader2 className="h-8 w-8 animate-spin mr-2" />
-                                        <p>Đang tải lịch sử thiết bị...</p>
-                                    </CardContent>
-                                </Card>
-                            ) : deviceHistory.length === 0 ? (
-                                <Card>
-                                    <CardContent className="flex flex-col items-center justify-center p-8 text-center">
-                                        <History className="h-12 w-12 text-muted-foreground mb-2 opacity-50" />
-                                        <p className="text-lg font-medium">
-                                            Thiết bị này chưa có hoạt động nào được ghi nhận.
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <div className="space-y-4">
-                                    {/* Summary Statistics */}
-                                    <Card>
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-base">Tổng quan hoạt động</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="grid grid-cols-4 gap-4 text-center">
-                                                <div>
-                                                    <span className="text-muted-foreground">Yêu cầu</span>
-                                                    <p className="font-medium">{deviceHistory.length}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Sửa chữa</span>
-                                                    <p className="font-medium">
-                                                        {deviceHistory.reduce((count, req) => 
-                                                            count + req.actions.filter(a => a.type === 'repair').length, 0
-                                                        )}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Bảo hành</span>
-                                                    <p className="font-medium">
-                                                        {deviceHistory.reduce((count, req) => 
-                                                            count + req.actions.filter(a => a.type === 'warranty').length, 0
-                                                        )}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-muted-foreground">Lắp/Tháo</span>
-                                                    <p className="font-medium">
-                                                        {deviceHistory.reduce((count, req) => 
-                                                            count + req.actions.filter(a => 
-                                                                a.type === 'installation' || a.type === 'uninstallation'
-                                                            ).length, 0
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* ✅ STREAMLINED: Request Timeline with Action Timeline */}
-                                    <div className="space-y-4">
-                                        {deviceHistory.map((request) => (
-                                            <Card key={request.id} className="overflow-hidden">
-                                                {/* ✅ Request Header - Clean design with essential info only */}
-                                                <CardHeader className="bg-muted/30 pb-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText className="h-5 w-5 text-blue-600" />
-                                                            <div>
-                                                                <h4 className="text-base font-medium">{request.requestCode}</h4>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {formatDate(request.requestDate)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <Badge variant="outline" className={getTaskStatusBadgeVariant(request.status)}>
-                                                            {translateTaskStatus(request.status)}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground mt-1">
-                                                        Người yêu cầu: <span className="font-medium text-foreground">{request.requesterName}</span>
-                                                    </div>
-                                                </CardHeader>
-
-                                                {/* ✅ Action Timeline - Focus only on actions and dates */}
-                                                <CardContent className="pt-3 pb-3">
-                                                    {request.actions.length === 0 ? (
-                                                        <div className="text-sm text-center text-muted-foreground py-2">
-                                                            Không có hoạt động được ghi nhận
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-3">
-                                                            {request.actions.map((action, index) => (
-                                                                <div key={action.id} className="p-3 rounded-lg bg-muted/20 border border-muted/30">
-                                                                    <div className="flex justify-between items-start">
-                                                                        {/* ✅ Left side: Action info with enhanced formatting */}
-                                                                        <div className="flex items-start gap-3 flex-1">
-                                                                            <div className={`rounded-full h-3 w-3 mt-1 ${
-                                                                                action.type === 'repair' ? 'bg-orange-500' :
-                                                                                action.type === 'installation' ? 'bg-green-500' :
-                                                                                action.type === 'uninstallation' ? 'bg-red-500' :
-                                                                                action.type === 'warranty' ? 'bg-blue-500' :
-                                                                                action.type === 'warrantyreturn' ? 'bg-purple-500' :
-                                                                                'bg-gray-500'
-                                                                            }`} />
-                                                                            <div className="flex-1">
-                                                                                {/* ✅ Enhanced action header with date and time */}
-                                                                                <div className="flex items-center gap-2 mb-1">
-                                                                                    <p className="text-sm font-medium">
-                                                                                        {action.displayLabel}
-                                                                                    </p>
-                                                                                    <span className="text-muted-foreground">•</span>
-                                                                                    <span className="text-xs text-muted-foreground">
-                                                                                        {formatDateOnly(action.date)}
-                                                                                    </span>
-                                                                                    <span className="text-muted-foreground">•</span>
-                                                                                    <span className="text-xs text-muted-foreground">
-                                                                                        {formatTimeOnly(action.date)}
-                                                                                    </span>
-                                                                                    <div className="flex items-center gap-1 text-muted-foreground">
-                                                                                        <Clock className="h-3 w-3" />
-                                                                                        <span className="text-xs">
-                                                                                            {getTimeAgo(action.date)}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </div>
-                                                                                
-                                                                                {/* ✅ Assignee information */}
-                                                                                <div className="text-xs text-muted-foreground">
-                                                                                    Người thực hiện: <span className="font-medium text-foreground">{action.assigneeName}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        
-                                                                        {/* ✅ Right side: Status badge */}
-                                                                        <Badge variant="outline" className={getTaskStatusBadgeVariant(action.status)}>
-                                                                            {translateTaskStatus(action.status)}
-                                                                        </Badge>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            <DeviceHistoryLog
+                                deviceId={device.id}
+                                deviceCode={device.deviceCode}
+                                deviceName={device.deviceName}
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>

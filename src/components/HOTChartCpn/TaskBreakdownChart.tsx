@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
-import { CalendarDays, Loader2, AlertCircle } from "lucide-react";
+import { CalendarDays, Loader2 } from "lucide-react";
 import { translateTaskType } from "@/utils/textTypeTask";
 
 interface TaskData {
@@ -41,6 +41,7 @@ interface ChartDataPoint {
   warranty: number;
   totalTasks: number;
   fullDate: string;
+  hourSlot?: number; // ✅ NEW: For 24h view time slot tracking
 }
 
 interface TaskBreakdownChartProps {
@@ -104,11 +105,25 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     return 'repair';
   };
 
+  // ✅ NEW: Dynamic interval calculation based on screen size
+  const getTimeInterval = (): number => {
+    // Check if we're on a small screen or if chart area is limited
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    
+    // Use 2-hour intervals for smaller screens for better readability
+    if (screenWidth < 768) { // Mobile/tablet
+      return 2;
+    } else if (screenWidth < 1200) { // Medium screens
+      return 2;
+    } else { // Large screens
+      return 1;
+    }
+  };
+
   // Dynamic Y-axis scale calculation
   const calculateYAxisScale = (maxValue: number): { max: number; tickCount: number; interval: number } => {
     if (maxValue <= 0) return { max: 4, tickCount: 5, interval: 1 };
     
-    // Find the best scale that divides evenly into 4 intervals
     const candidates = [
       Math.ceil(maxValue / 4) * 4,     // Round up to nearest multiple of 4
       Math.ceil(maxValue / 5) * 5,     // Round up to nearest multiple of 5
@@ -117,21 +132,19 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
       Math.ceil(maxValue / 20) * 20,   // Round up to nearest multiple of 20
     ];
     
-    // Choose the smallest candidate that's >= maxValue and provides nice intervals
     for (const candidate of candidates) {
       if (candidate >= maxValue) {
         const interval = candidate / 4;
         if (Number.isInteger(interval)) {
           return {
             max: candidate,
-            tickCount: 5, // 0, interval, 2*interval, 3*interval, max
+            tickCount: 5,
             interval: interval
           };
         }
       }
     }
     
-    // Fallback: round up to nearest 4 and create 4 intervals
     const fallbackMax = Math.ceil(maxValue / 4) * 4;
     return {
       max: fallbackMax,
@@ -167,17 +180,16 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
           });
         }
         
-        if (tasksData.length > 0) {
-          setTasks(tasksData);
-          setError(null);
-        } else {
-          setError("Không có dữ liệu nhiệm vụ từ API. Hiển thị dữ liệu mẫu.");
-          setTasks(generateMockTaskData());
+        setTasks(tasksData);
+        
+        if (tasksData.length === 0) {
+          setError("Không có dữ liệu nhiệm vụ");
         }
         
       } catch (error) {
-        setError(`Lỗi khi tải dữ liệu: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
-        setTasks(generateMockTaskData());
+        console.error("Error fetching task data:", error);
+        setError("Không thể tải dữ liệu nhiệm vụ");
+        setTasks([]);
       } finally {
         setLoading(false);
       }
@@ -186,40 +198,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     fetchTasks();
   }, []);
 
-  // Generate realistic mock data with proper task types
-  const generateMockTaskData = (): TaskData[] => {
-    const mockTasks: TaskData[] = [];
-    const now = new Date();
-    const statuses = ['Pending', 'InProgress', 'Completed'];
-    const taskTypes = ['Installation', 'Repair', 'Warranty', 'WarrantySubmission', 'WarrantyReturn', 'Replacement', 'Uninstallation'];
-    const priorities = ['High', 'Medium', 'Low'];
-    
-    // Generate tasks for the past 30 days with realistic patterns
-    for (let i = 0; i < 120; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
-      const hoursAgo = Math.floor(Math.random() * 24);
-      
-      // Create date in local timezone to avoid offset issues
-      const taskDate = new Date();
-      taskDate.setDate(taskDate.getDate() - daysAgo);
-      taskDate.setHours(taskDate.getHours() - hoursAgo);
-      
-      mockTasks.push({
-        taskId: `mock-task-${i + 1}`,
-        taskName: `Công việc mẫu ${i + 1}`,
-        status: statuses[Math.floor(Math.random() * statuses.length)],
-        createdDate: taskDate.toISOString(),
-        taskType: taskTypes[Math.floor(Math.random() * taskTypes.length)],
-        expectedTime: new Date(taskDate.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-        assigneeName: `Thợ máy ${Math.floor(Math.random() * 10) + 1}`,
-        priority: priorities[Math.floor(Math.random() * priorities.length)]
-      });
-    }
-    
-    return mockTasks;
-  };
-
-  // ✅ FIXED: Process data with correct date range logic (counting from today backward)
+  // ✅ IMPROVED: Dynamic 24-hour view with proper time intervals
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!tasks.length) {
       return [];
@@ -231,31 +210,26 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     let endDate: Date;
     let periods: number;
 
-    // ✅ Fixed date range calculations - always count from today backward
     switch (timeRange) {
       case "24h":
-        // Last 24 hours: from 24 hours ago to now
+        // ✅ FIXED: Dynamic 24-hour window from current time
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         endDate = now;
         periods = 24;
         break;
       case "7d":
-        // Last 7 days: from 6 days ago to today (inclusive = 7 days total)
-        // Aug 21 - 7 days = Aug 15 to Aug 21 (7 days)
         startDate = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1); // End of today
+        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         periods = 7;
         break;
       case "30d":
-        // Last 30 days: from 29 days ago to today (inclusive = 30 days total)
         startDate = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
-        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1); // End of today
+        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         periods = 30;
         break;
       case "12m":
-        // Last 12 months: from 11 months ago to current month (inclusive = 12 months total)
         startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); // End of current month
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         periods = 12;
         break;
       default:
@@ -264,7 +238,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
         periods = 7;
     }
 
-    // Filter tasks within date range using local timezone comparison
+    // Filter tasks within date range
     const filteredTasks = tasks.filter(task => {
       const taskDate = new Date(task.createdDate);
       return taskDate >= startDate && taskDate <= endDate;
@@ -272,15 +246,28 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
 
     console.log(`📊 Filtered ${filteredTasks.length} tasks within ${timeRange} range`);
 
-    // ✅ Initialize periods with zero counts for all task types
     const groupedData = new Map<string, ChartDataPoint>();
 
     if (timeRange === "24h") {
-      // Group by hour - last 24 hours
-      for (let i = 0; i < periods; i++) {
-        const periodDate = new Date(startDate.getTime() + i * 60 * 60 * 1000);
-        const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}-${periodDate.getDate().toString().padStart(2, '0')}T${periodDate.getHours().toString().padStart(2, '0')}`;
-        const displayDate = periodDate.getHours().toString().padStart(2, '0') + ':00';
+      // ✅ NEW: Dynamic 24-hour view with smart intervals
+      const timeInterval = getTimeInterval(); // 1 or 2 hours
+      const totalSlots = Math.ceil(24 / timeInterval);
+      
+      // Create time slots based on dynamic interval
+      for (let i = 0; i < totalSlots; i++) {
+        const slotStartHour = Math.floor(startDate.getHours() / timeInterval) * timeInterval + (i * timeInterval);
+        const adjustedStartHour = slotStartHour % 24;
+        
+        // Create a representative time for this slot (center of the interval)
+        const slotCenterHour = adjustedStartHour + Math.floor(timeInterval / 2);
+        const slotDate = new Date(startDate.getTime() + i * timeInterval * 60 * 60 * 1000);
+        
+        // Key for grouping tasks (covers the entire interval)
+        const key = `slot-${i}`;
+        
+        // Display format: show the center hour of the interval
+        const displayHour = slotCenterHour % 24;
+        const displayDate = `${displayHour.toString().padStart(2, '0')}:00`;
         
         groupedData.set(key, {
           date: key,
@@ -289,11 +276,34 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
           repair: 0,
           warranty: 0,
           totalTasks: 0,
-          fullDate: periodDate.toISOString(),
+          fullDate: slotDate.toISOString(),
+          hourSlot: i,
         });
       }
+
+      // ✅ Group tasks into appropriate time slots
+      filteredTasks.forEach(task => {
+        const taskDate = new Date(task.createdDate);
+        const taskHour = taskDate.getHours();
+        
+        // Calculate which slot this task belongs to
+        const hoursFromStart = (taskDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+        const slotIndex = Math.floor(hoursFromStart / timeInterval);
+        
+        if (slotIndex >= 0 && slotIndex < totalSlots) {
+          const key = `slot-${slotIndex}`;
+          const period = groupedData.get(key);
+          
+          if (period) {
+            const taskCategory = categorizeTaskType(task.taskType);
+            period[taskCategory]++;
+            period.totalTasks++;
+          }
+        }
+      });
+
     } else if (timeRange === "12m") {
-      // Group by month - last 12 months
+      // Group by month - unchanged
       for (let i = 0; i < periods; i++) {
         const periodDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
         const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -312,14 +322,24 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
           fullDate: periodDate.toISOString(),
         });
       }
-    } else {
-      // ✅ FIXED: Group by day - properly handle date ranges starting from correct date
-      for (let i = 0; i < periods; i++) {
-        // For 7d: start from 6 days ago and count forward to today
-        // For 30d: start from 29 days ago and count forward to today
-        const periodDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+
+      // Count tasks by month
+      filteredTasks.forEach(task => {
+        const taskDate = new Date(task.createdDate);
+        const key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}`;
         
-        // Use local timezone date components for consistent grouping
+        const period = groupedData.get(key);
+        if (period) {
+          const taskCategory = categorizeTaskType(task.taskType);
+          period[taskCategory]++;
+          period.totalTasks++;
+        }
+      });
+
+    } else {
+      // Group by day - unchanged (7d, 30d)
+      for (let i = 0; i < periods; i++) {
+        const periodDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
         const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}-${periodDate.getDate().toString().padStart(2, '0')}`;
         
         const displayDate = periodDate.toLocaleDateString('vi-VN', {
@@ -337,32 +357,30 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
           fullDate: periodDate.toISOString(),
         });
       }
+
+      // Count tasks by day
+      filteredTasks.forEach(task => {
+        const taskDate = new Date(task.createdDate);
+        const key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}-${taskDate.getDate().toString().padStart(2, '0')}`;
+        
+        const period = groupedData.get(key);
+        if (period) {
+          const taskCategory = categorizeTaskType(task.taskType);
+          period[taskCategory]++;
+          period.totalTasks++;
+        }
+      });
     }
 
-    // Count tasks by period and task type
-    filteredTasks.forEach(task => {
-      const taskDate = new Date(task.createdDate);
-      let key: string;
-
-      if (timeRange === "24h") {
-        key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}-${taskDate.getDate().toString().padStart(2, '0')}T${taskDate.getHours().toString().padStart(2, '0')}`;
-      } else if (timeRange === "12m") {
-        key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      } else {
-        key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}-${taskDate.getDate().toString().padStart(2, '0')}`;
+    const result = Array.from(groupedData.values()).sort((a, b) => {
+      // For 24h view, sort by hourSlot; for others, sort by date
+      if (timeRange === "24h" && a.hourSlot !== undefined && b.hourSlot !== undefined) {
+        return a.hourSlot - b.hourSlot;
       }
-
-      const period = groupedData.get(key);
-      if (period) {
-        const taskCategory = categorizeTaskType(task.taskType);
-        period[taskCategory]++;
-        period.totalTasks++;
-      }
+      return new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime();
     });
-
-    const result = Array.from(groupedData.values()).sort((a, b) => 
-      new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime()
-    );
+    
+    console.log(`📊 Generated ${result.length} chart data points for ${timeRange}`);
     
     return result;
   }, [tasks, timeRange]);
@@ -373,15 +391,13 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     return calculateYAxisScale(maxTasksInAnyPeriod);
   }, [chartData]);
 
-  // ✅ Enhanced Vietnamese tooltip with task type breakdown and smart zero handling
+  // ✅ Enhanced tooltip with time range context for 24h view
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       
-      // ✅ Only show tooltip if there's actual data
       if (data.totalTasks === 0) return null;
 
-      // ✅ Filter out zero values from display
       const validEntries = [
         { label: TASK_TYPE_LABELS.installation, value: data.installation, color: "#22C55E" },
         { label: TASK_TYPE_LABELS.repair, value: data.repair, color: "#F97316" },
@@ -402,21 +418,29 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
               Tổng cộng: <span className="font-bold">{data.totalTasks}</span>
             </p>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            {new Date(data.fullDate).toLocaleDateString('vi-VN', {
-              weekday: 'short',
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
-          </p>
+          
+          {/* ✅ Enhanced time context for 24h view */}
+          {timeRange === "24h" ? (
+            <p className="text-sm text-gray-500 mt-2">
+              Khung giờ: {label}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500 mt-2">
+              {new Date(data.fullDate).toLocaleDateString('vi-VN', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </p>
+          )}
         </div>
       );
     }
     return null;
   };
 
-  // Custom legend component
+  // Custom legend component - unchanged
   const CustomLegend = (props: any) => {
     return (
       <div className="flex justify-center gap-6">
@@ -436,7 +460,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     );
   };
 
-  // Loading state
+  // Loading state - unchanged
   if (loading) {
     return (
       <div className={`bg-background border rounded-lg shadow-sm p-6 ${className}`}>
@@ -464,11 +488,6 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-blue-500" />
           <h3 className="text-lg font-semibold">Thống kê công việc theo loại và thời gian</h3>
-          {error && (
-            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs ml-2">
-              Dữ liệu mẫu
-            </span>
-          )}
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-40">
@@ -484,97 +503,98 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
         </Select>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center gap-2 text-yellow-800">
-            <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">{error}</span>
+      {/* Empty State */}
+      {chartData.length === 0 || chartData.every(item => item.totalTasks === 0) ? (
+        <div className="flex items-center justify-center h-80">
+          <p className="text-gray-500 dark:text-gray-400 text-lg">
+            Không có dữ liệu công việc
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* ✅ Enhanced Chart with dynamic 24h view */}
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart 
+              data={chartData} 
+              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              barCategoryGap="20%"
+            >
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey="displayDate" 
+                tick={{ fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                angle={timeRange === "12m" ? -45 : 0}
+                textAnchor={timeRange === "12m" ? "end" : "middle"}
+                height={timeRange === "12m" ? 80 : 60}
+                interval={0} // ✅ Show all time labels for 24h view
+              />
+              <YAxis 
+                tick={{ fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                domain={[0, yAxisScale.max]}
+                tickCount={yAxisScale.tickCount}
+                allowDecimals={false}
+              />
+              <Tooltip 
+                content={<CustomTooltip />}
+                cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                allowEscapeViewBox={{ x: false, y: false }}
+                position={{ x: undefined, y: undefined }}
+              />
+              <Legend content={<CustomLegend />} />
+              
+              {/* Stacked bars - unchanged */}
+              <Bar 
+                dataKey="installation" 
+                fill={TASK_TYPE_COLORS.installation}
+                name="installation"
+                stackId="tasks"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar 
+                dataKey="repair" 
+                fill={TASK_TYPE_COLORS.repair}
+                name="repair"
+                stackId="tasks"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar 
+                dataKey="warranty" 
+                fill={TASK_TYPE_COLORS.warranty}
+                name="warranty"
+                stackId="tasks"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+
+          {/* Enhanced Summary */}
+          <div className="space-y-2">
+            <div className="flex justify-center gap-6 text-sm text-muted-foreground">
+              <span>
+                Tổng nhiệm vụ: <span className="font-semibold text-foreground">
+                  {chartData.reduce((sum, item) => sum + item.totalTasks, 0)}
+                </span>
+              </span>
+              <span>
+                Trung bình/{timeRange === "24h" ? "khoảng thời gian" : timeRange === "12m" ? "tháng" : "ngày"}: <span className="font-semibold text-foreground">
+                  {chartData.length > 0 ? 
+                    Math.round(chartData.reduce((sum, item) => sum + item.totalTasks, 0) / chartData.length) : 0
+                  }
+                </span>
+              </span>
+              <span>
+                Cao nhất: <span className="font-semibold text-foreground">
+                  {Math.max(...chartData.map(item => item.totalTasks), 0)}
+                </span>
+              </span>
+            </div>
           </div>
-        </div>
+        </>
       )}
-
-      {/* Enhanced Chart with stacked bars and dynamic Y-axis */}
-      <ResponsiveContainer width="100%" height={380}>
-        <BarChart 
-          data={chartData} 
-          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-          barCategoryGap="20%"
-        >
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="displayDate" 
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            angle={timeRange === "12m" ? -45 : 0}
-            textAnchor={timeRange === "12m" ? "end" : "middle"}
-            height={timeRange === "12m" ? 80 : 60}
-          />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            domain={[0, yAxisScale.max]}
-            tickCount={yAxisScale.tickCount}
-            allowDecimals={false}
-          />
-          <Tooltip 
-            content={<CustomTooltip />}
-            cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-            // ✅ Enhanced tooltip behavior - only show when hovering over bars with data
-            allowEscapeViewBox={{ x: false, y: false }}
-            position={{ x: undefined, y: undefined }}
-          />
-          <Legend content={<CustomLegend />} />
-          
-          {/* Stacked bars for each task type */}
-          <Bar 
-            dataKey="installation" 
-            fill={TASK_TYPE_COLORS.installation}
-            name="installation"
-            stackId="tasks"
-            radius={[0, 0, 0, 0]}
-          />
-          <Bar 
-            dataKey="repair" 
-            fill={TASK_TYPE_COLORS.repair}
-            name="repair"
-            stackId="tasks"
-            radius={[0, 0, 0, 0]}
-          />
-          <Bar 
-            dataKey="warranty" 
-            fill={TASK_TYPE_COLORS.warranty}
-            name="warranty"
-            stackId="tasks"
-            radius={[4, 4, 0, 0]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-
-      {/* Enhanced Summary with task type breakdown */}
-      <div className="space-y-2">
-        <div className="flex justify-center gap-6 text-sm text-muted-foreground">
-          <span>
-            Tổng nhiệm vụ: <span className="font-semibold text-foreground">
-              {chartData.reduce((sum, item) => sum + item.totalTasks, 0)}
-            </span>
-          </span>
-          <span>
-            Trung bình/{timeRange === "24h" ? "giờ" : timeRange === "12m" ? "tháng" : "ngày"}: <span className="font-semibold text-foreground">
-              {chartData.length > 0 ? 
-                Math.round(chartData.reduce((sum, item) => sum + item.totalTasks, 0) / chartData.length) : 0
-              }
-            </span>
-          </span>
-          <span>
-            Cao nhất: <span className="font-semibold text-foreground">
-              {Math.max(...chartData.map(item => item.totalTasks), 0)}
-            </span>
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

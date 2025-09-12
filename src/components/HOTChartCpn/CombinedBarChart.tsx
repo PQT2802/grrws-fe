@@ -20,6 +20,46 @@ export default function CombinedBarChart({ data }: CombinedBarChartProps) {
     item.pending > 0 || item.inProgress > 0 || item.completed > 0
   );
 
+  // ✅ Calculate proper Y-axis scale with integer-only ticks
+  const calculateYAxisScale = (maxValue: number): { max: number; interval: number } => {
+    if (maxValue <= 0) return { max: 4, interval: 1 };
+    
+    // Find the best scale that provides clean integer intervals
+    const candidates = [
+      Math.ceil(maxValue / 4) * 4,     // Round up to nearest multiple of 4
+      Math.ceil(maxValue / 5) * 5,     // Round up to nearest multiple of 5
+      Math.ceil(maxValue / 10) * 10,   // Round up to nearest multiple of 10
+      Math.ceil(maxValue / 20) * 20,   // Round up to nearest multiple of 20
+    ];
+    
+    // Choose the smallest candidate that's >= maxValue and provides nice intervals
+    for (const candidate of candidates) {
+      if (candidate >= maxValue) {
+        const interval = candidate / 4;
+        if (Number.isInteger(interval) && interval >= 1) {
+          return {
+            max: candidate,
+            interval: interval
+          };
+        }
+      }
+    }
+    
+    // Fallback: round up to nearest integer and create intervals of 1
+    const fallbackMax = Math.max(Math.ceil(maxValue), 4);
+    return {
+      max: fallbackMax,
+      interval: Math.max(Math.ceil(fallbackMax / 4), 1)
+    };
+  };
+
+  // Calculate the maximum value across all categories
+  const maxValue = Math.max(...filteredData.map(item => 
+    Math.max(item.pending, item.inProgress, item.completed)
+  ), 0);
+
+  const yAxisScale = calculateYAxisScale(maxValue);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const total = payload[0].payload.total;
@@ -102,7 +142,13 @@ export default function CombinedBarChart({ data }: CombinedBarChartProps) {
               tickFormatter={(value) => value === "Requests" ? "Yêu cầu" : "Công việc"}
               interval={0} 
             />
-            <YAxis tick={{ fontSize: 13 }} />
+            <YAxis 
+              tick={{ fontSize: 13 }}
+              domain={[0, yAxisScale.max]}
+              ticks={Array.from({ length: Math.floor(yAxisScale.max / yAxisScale.interval) + 1 }, (_, i) => i * yAxisScale.interval)}
+              allowDecimals={false} // ✅ Ensure no decimal values
+              type="number"
+            />
             <Tooltip 
               content={<CustomTooltip />}
               cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}

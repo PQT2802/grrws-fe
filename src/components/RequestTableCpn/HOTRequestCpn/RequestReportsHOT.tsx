@@ -61,7 +61,7 @@ interface RequestReportsHOTProps {
 
 interface RequestWithTasks extends REQUEST_ITEM {
   tasks?: any[];
-  createdByName?: string; // Add field for creator name
+  createdByName?: string;
 }
 
 export default function RequestReportsHOT({
@@ -98,7 +98,7 @@ export default function RequestReportsHOT({
     }
   };
 
-  // Fetch requests from API
+  // ✅ Updated: Fetch requests from API (removed task requirement filter)
   const fetchRequests = useCallback(
     async (page: number = 1, newPageSize?: number) => {
       setIsLoading(true);
@@ -131,48 +131,55 @@ export default function RequestReportsHOT({
           throw new Error("Invalid response structure");
         }
 
-        // Filter requests that have tasks and fetch their tasks + creator names
-        const requestsWithTasks = [];
+        // ✅ Updated: Process ALL requests (not just those with tasks)
+        const processedRequests = [];
         for (const request of requestsData) {
           try {
+            // Try to fetch tasks for each request
             const tasks = await apiClient.request.getTaskOfRequest(request.id);
-            if (tasks && tasks.length > 0) {
-              // Fetch creator name
-              const createdByName = await fetchCreatorName(request.createdBy);
+            
+            // Fetch creator name
+            const createdByName = await fetchCreatorName(request.createdBy);
 
-              requestsWithTasks.push({
-                ...request,
-                tasks: tasks,
-                createdByName: createdByName,
-              });
-            }
+            // Add request with tasks (even if tasks array is empty)
+            processedRequests.push({
+              ...request,
+              tasks: tasks || [], // Include empty array if no tasks
+              createdByName: createdByName,
+            });
           } catch (error) {
             console.error(
               `Error fetching tasks for request ${request.id}:`,
               error
             );
-            // Continue with next request
+            
+            // ✅ Still include the request even if task fetching fails
+            const createdByName = await fetchCreatorName(request.createdBy);
+            processedRequests.push({
+              ...request,
+              tasks: [], // Empty tasks array
+              createdByName: createdByName,
+            });
           }
         }
 
-        console.log(`Found ${requestsWithTasks.length} requests with tasks`);
-        setRequests(requestsWithTasks);
+        console.log(`Processed ${processedRequests.length} total requests`);
+        setRequests(processedRequests);
 
         // Update pagination based on the response structure
-        const totalCount =
-          response?.data?.totalCount || requestsWithTasks.length;
+        const totalCount = response?.data?.totalCount || processedRequests.length;
         const pageNumber = response?.data?.pageNumber || page;
 
         setPagination({
           currentPage: pageNumber,
           pageSize: currentPageSize,
-          totalItems: requestsWithTasks.length, // Use filtered count
-          totalPages: Math.ceil(requestsWithTasks.length / currentPageSize),
+          totalItems: processedRequests.length, // Use all requests count
+          totalPages: Math.ceil(processedRequests.length / currentPageSize),
         });
 
         // Update parent component with all requests for counting
         if (onRequestsUpdate) {
-          onRequestsUpdate(requestsWithTasks);
+          onRequestsUpdate(processedRequests);
         }
       } catch (error) {
         console.error("Failed to fetch requests:", error);
@@ -219,10 +226,16 @@ export default function RequestReportsHOT({
   const getFilteredRequests = () => {
     let filtered = requests;
 
-    // Filter by tab
+    // ✅ Updated: Filter by tab (handle requests without tasks)
     if (activeTab !== "all") {
       filtered = filtered.filter((request) => {
         const tasks = request.tasks || [];
+        
+        // If no tasks, don't show in specific tabs (only show in "all")
+        if (tasks.length === 0) {
+          return false;
+        }
+        
         return tasks.some((task: any) => {
           const taskType = task.taskType?.toLowerCase();
           if (activeTab === "repair") {
@@ -275,9 +288,20 @@ export default function RequestReportsHOT({
 
   const filteredRequests = getFilteredRequests();
 
-  // Determine report type based on tasks
+  // ✅ Updated: Determine report type based on tasks (handle empty tasks)
   const getReportType = (request: RequestWithTasks) => {
     const tasks = request.tasks || [];
+    
+    // If no tasks, show as general request
+    if (tasks.length === 0) {
+      return {
+        type: "general",
+        label: "Chưa có báo cáo",
+        icon: Package,
+        color: "text-gray-400",
+      };
+    }
+    
     const taskTypes = tasks.map((task: any) => task.taskType?.toLowerCase());
 
     if (
@@ -356,19 +380,6 @@ export default function RequestReportsHOT({
     setIsDetailModalOpen(true);
   };
 
-//   const getTabTitle = () => {
-//     switch (activeTab) {
-//       case "all":
-//         return "Tất cả yêu cầu";
-//       case "repair":
-//         return "Yêu cầu sửa chữa";
-//       case "warranty":
-//         return "Yêu cầu bảo hành";
-//       default:
-//         return "Yêu cầu";
-//     }
-//   };
-
   // Generate pagination items
   const generatePaginationItems = () => {
     const items = [];
@@ -440,7 +451,7 @@ export default function RequestReportsHOT({
 
   return (
     <div className="space-y-4">
-      {/* ✅ Filter Section - Moved Outside and Aligned Left */}
+      {/* Filter Section */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -472,17 +483,8 @@ export default function RequestReportsHOT({
         </Button>
       </div>
 
-      {/* ✅ Main Table Card - Clean without embedded filters */}
+      {/* Main Table Card */}
       <Card className="border border-slate-200 dark:border-slate-700">
-        {/* <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {getTabTitle()}
-              <Badge variant="secondary">{pagination.totalItems}</Badge>
-            </div>
-          </CardTitle>
-        </CardHeader> */}
-
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -509,7 +511,7 @@ export default function RequestReportsHOT({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="font-medium">Mã yêu cầu</TableHead>
+                    <TableHead className="font-medium w-[300px]">Mã yêu cầu</TableHead>
                     <TableHead className="font-medium">Người tạo</TableHead>
                     <TableHead className="font-medium">Loại yêu cầu</TableHead>
                     <TableHead className="font-medium w-[140px]">Trạng thái</TableHead>
@@ -531,13 +533,8 @@ export default function RequestReportsHOT({
                         <TableCell>
                           <div className="space-y-1">
                             <div className="font-medium text-base">
-                              {request.requestTitle}
+                              {request.description}
                             </div>
-                            {request.description && (
-                              <div className="text-sm text-muted-foreground line-clamp-2 max-w-xs">
-                                {request.description}
-                              </div>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -573,10 +570,7 @@ export default function RequestReportsHOT({
                             <div className="font-medium text-sm">
                               {request.deviceName}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {request.deviceCode}
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1 text-xs">
                               <MapPin className="h-3 w-3" />
                               {request.areaName} - {request.zoneName} (Vị trí{" "}
                               {request.positionIndex})
@@ -590,7 +584,6 @@ export default function RequestReportsHOT({
                           </div>
                         </TableCell>
                         <TableCell>
-                          {/* ✅ Updated Action Button - View Details instead of Eye icon */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -610,7 +603,7 @@ export default function RequestReportsHOT({
         </CardContent>
       </Card>
 
-      {/* ✅ Pagination Layout - Outside the table */}
+      {/* Pagination Layout */}
       {filteredRequests.length > 0 && (
         <div className="flex items-center justify-between pt-4">
           {/* Left Side: Page Size Selector and Display Info */}
