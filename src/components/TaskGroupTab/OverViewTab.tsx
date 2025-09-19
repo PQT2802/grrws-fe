@@ -29,16 +29,18 @@ import {
   MoreHorizontal,
   StopCircle,
   Loader2,
+  MapPin,
+  Building,
 } from "lucide-react";
 import { formatAPIDateUTC, getFirstLetterUppercase } from "@/lib/utils";
-import { TASK_GROUP_WEB, TASK_IN_GROUP } from "@/types/task.type";
+import { TASK_GROUP_WEB, TASK_IN_GROUP, REPAIR_TASK_DETAIL } from "@/types/task.type";
 import {
   translateTaskStatus,
   translateTaskType,
 } from "@/utils/textTypeTask";
 import { getStatusColor } from "@/utils/colorUtils";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api-client";
 
 interface OverviewTabProps {
@@ -49,6 +51,35 @@ interface OverviewTabProps {
 
 const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTabProps) => {
   const [disablingTasks, setDisablingTasks] = useState<Set<string>>(new Set());
+  const [repairTaskDetails, setRepairTaskDetails] = useState<Record<string, REPAIR_TASK_DETAIL>>({});
+
+  // Fetch repair task details to get isOnSiteRepair information
+  useEffect(() => {
+    const fetchRepairTaskDetails = async () => {
+      const repairTasks = taskGroup.tasks.filter(task => task.taskType.toLowerCase() === "repair");
+      
+      const detailsMap: Record<string, REPAIR_TASK_DETAIL> = {};
+      
+      await Promise.allSettled(
+        repairTasks.map(async (task) => {
+          try {
+            const detail = await apiClient.task.getRepairTaskDetail(task.taskId);
+            if (detail) {
+              detailsMap[task.taskId] = detail;
+            }
+          } catch (error) {
+            console.warn(`Could not fetch repair task detail for ${task.taskId}:`, error);
+          }
+        })
+      );
+      
+      setRepairTaskDetails(detailsMap);
+    };
+
+    if (taskGroup.tasks.some(task => task.taskType.toLowerCase() === "repair")) {
+      fetchRepairTaskDetails();
+    }
+  }, [taskGroup.tasks]);
 
   const getTaskTypeIcon = (taskType: string) => {
     switch (taskType.toLowerCase()) {
@@ -67,6 +98,32 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
+  };
+
+  const getRepairLocationBadge = (task: TASK_IN_GROUP) => {
+    if (task.taskType.toLowerCase() !== "repair") return null;
+    
+    const repairDetail = repairTaskDetails[task.taskId];
+    if (!repairDetail) return null;
+
+    return (
+      <Badge 
+        variant={repairDetail.isOnSiteRepair ? "default" : "secondary"}
+        className="flex items-center gap-1 text-xs ml-2"
+      >
+        {repairDetail.isOnSiteRepair ? (
+          <>
+            <MapPin className="h-3 w-3" />
+            Tại chỗ
+          </>
+        ) : (
+          <>
+            <Building className="h-3 w-3" />
+            Xưởng
+          </>
+        )}
+      </Badge>
+    );
   };
 
   const handleDisableTask = async (task: TASK_IN_GROUP) => {
@@ -152,7 +209,7 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium flex items-center gap-2">
+                      <div className="font-medium flex items-center gap-2 flex-wrap">
                         {task.taskName}
                         {task.status.toLowerCase() === "suggested" && (
                           <Badge
@@ -162,6 +219,7 @@ const OverviewTab = ({ taskGroup, onTaskClick, onTaskStatusUpdate }: OverviewTab
                             Mới
                           </Badge>
                         )}
+                        {getRepairLocationBadge(task)}
                       </div>
                       <div className="text-sm text-gray-600 max-w-xs truncate">
                         {task.taskDescription}
