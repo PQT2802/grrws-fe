@@ -51,3 +51,27 @@ export interface TECHNICAL_ISSUE_FOR_REQUEST_DETAIL_WEB {
   isCommon: boolean;
   status: string; // Indicates if the technical issue has been processed (Unassigned/Assigned)
 }
+
+export interface MACHINE_ACTION_CONFIRMATION_DETAIL {
+  id: string;
+  confirmationCode: string;
+  startDate: string;
+  requestedById?: string;
+  requestedByName?: string;
+  deviceId?: string;
+  taskId?: string;
+  status?: string;
+  actionType?: string;
+  completedDate?: string;
+  reason?: string;
+  notes?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  approvedById?: string;
+  approvedByName?: string;
+  machineId?: string;
+  machineName?: string;
+  deviceName?: string;
+  taskName?: string;
+  sparePartUsages?: any[];
+}

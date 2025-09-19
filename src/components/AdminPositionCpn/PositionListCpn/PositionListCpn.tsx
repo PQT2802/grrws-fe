@@ -103,14 +103,11 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
     const selectedZone = zones.find(zone => zone.id === selectedZoneId);
     const selectedArea = selectedZone ? areas.find(area => area.id === selectedZone.areaId) : areas.find(area => area.id === selectedAreaId);
 
-    const formatDate = (dateString: string | null | undefined) => {
-      if (!dateString) return "N/A";
-      const date = new Date(dateString);
-      return date.toLocaleDateString("vi-VN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
+    // ✅ Updated warranty badge function to match DeviceListCpn exactly
+    const getWarrantyBadgeVariant = (isUnderWarranty: boolean) => {
+      return isUnderWarranty
+        ? "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400"
+        : "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400";
     };
 
     // Fetch areas for dropdown filter and position mapping
@@ -209,18 +206,18 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
 
         console.log(`📊 Extracted: ${positionsData.length} positions, total: ${total}`);
 
-        // Enhanced data mapping with device fetch
+        // Enhanced data mapping with device fetch using getDeviceById
         const enhancedPositions = await Promise.all(
           positionsData.map(async (position) => {
             // Find zone and area information
             const zone = zones.find(z => z.id === position.zoneId);
             const area = areas.find(a => a.id === zone?.areaId);
 
-            // If position has deviceId but no device data, fetch it
+            // ✅ Use getDeviceById API for device data if position has deviceId
             let deviceData = position.device;
             if (position.deviceId && !position.device) {
               try {
-                console.log(`🔄 Fetching device data for position ${position.id}, deviceId: ${position.deviceId}`);
+                console.log(`🔄 Fetching device data using getDeviceById for position ${position.id}, deviceId: ${position.deviceId}`);
                 deviceData = await apiClient.device.getDeviceById(position.deviceId);
                 console.log(`✅ Device data fetched for position ${position.id}:`, deviceData);
               } catch (error) {
@@ -362,20 +359,6 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
       },
       [fetchPositions, hasFullAccess]
     );
-
-    // Enhanced device handling with modal
-    const handleViewDevice = useCallback(async (position: Position) => {
-      if (position.device) {
-        try {
-          console.log(`Opening device detail for: ${position.device.deviceName}`);
-          setSelectedDevice(position.device as DEVICE_WEB);
-          setShowDeviceModal(true);
-        } catch (error) {
-          console.error('Error preparing device details:', error);
-          toast.error('Cannot load device information');
-        }
-      }
-    }, []);
 
     const handleViewPosition = useCallback(
       (position: Position) => {
@@ -565,17 +548,16 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
           </div>
         </div>
 
-        {/* Positions Table */}
+        {/* ✅ Updated Positions Table - Structure: Chỉ số vị trí | Thiết bị | Tên thiết bị | Bảo hành | Thao tác */}
         <div className="rounded-md border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border">
                   <TableHead className="font-semibold text-foreground">Chỉ số vị trí</TableHead>
-                  {!selectedZoneId && <TableHead className="font-semibold text-foreground">Tên khu vực</TableHead>}
-                  {!selectedZoneId && <TableHead className="font-semibold text-foreground">Tên khu</TableHead>}
                   <TableHead className="font-semibold text-foreground">Thiết bị</TableHead>
-                  <TableHead className="font-semibold text-foreground">Ngày tạo</TableHead>
+                  <TableHead className="font-semibold text-foreground w-[200px]">Tên thiết bị</TableHead>
+                  <TableHead className="font-semibold text-center text-foreground">Bảo hành</TableHead>
                   <TableHead className="font-semibold text-center w-[100px] text-foreground">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -586,21 +568,14 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                       <TableCell>
                         <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24" />
                       </TableCell>
-                      {!selectedZoneId && (
-                        <>
-                          <TableCell>
-                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-                          </TableCell>
-                          <TableCell>
-                            <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-                          </TableCell>
-                        </>
-                      )}
                       <TableCell>
-                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-20" />
                       </TableCell>
                       <TableCell>
-                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24" />
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-24 mx-auto" />
                       </TableCell>
                       <TableCell>
                         <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-8 mx-auto" />
@@ -609,7 +584,7 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                   ))
                 ) : positions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedZoneId ? 4 : 6} className="text-center py-12">
+                    <TableCell colSpan={5} className="text-center py-12">
                       <div className="flex flex-col items-center gap-3">
                         <MapPin className="h-12 w-12 text-muted-foreground/50" />
                         <div>
@@ -624,99 +599,109 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                     </TableCell>
                   </TableRow>
                 ) : (
-                  positions.map((position) => (
-                    <TableRow key={position.id} className="hover:bg-muted/50 transition-colors">
-                      {/* Position Index */}
-                      <TableCell className="font-medium text-purple-600 dark:text-purple-400">
-                        Vị trí {position.index}
-                      </TableCell>
-                      
-                      {/* Area Name (only when not accessed from zone) */}
-                      {!selectedZoneId && (
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {position.areaName || 'Khu vực không xác định'}
-                          </span>
+                  positions.map((position) => {
+                    return (
+                      <TableRow key={position.id} className="hover:bg-muted/50 transition-colors">
+                        {/* Chỉ số vị trí */}
+                        <TableCell className="font-medium text-purple-600 dark:text-purple-400">
+                          Vị trí {position.index}
                         </TableCell>
-                      )}
-                      
-                      {/* Zone Name (only when not accessed from zone) */}
-                      {!selectedZoneId && (
+                        
+                        {/* Thiết bị - Status Badge */}
                         <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {position.zoneName || 'Khu không xác định'}
-                          </span>
+                          {position.device ? (
+                            <div className="flex items-center gap-2">
+                              <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50"
+                              >
+                                Có thiết bị
+                              </Badge>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Monitor className="h-4 w-4 opacity-50 text-muted-foreground" />
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-700/50"
+                              >
+                                Trống
+                              </Badge>
+                            </div>
+                          )}
                         </TableCell>
-                      )}
-                      
-                      {/* Device Status Badge */}
-                      <TableCell>
-                        {position.device ? (
-                          <button
-                            onClick={() => handleViewDevice(position)}
-                            className="flex items-center gap-2 hover:bg-muted/50 p-1 rounded transition-colors"
-                          >
-                            <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50"
+                        
+                        {/* ✅ Tên thiết bị - Just normal text, no click function */}
+                        <TableCell>
+                          {position.device ? (
+                            <span className="text-sm font-medium text-foreground">
+                              {position.device.deviceName}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground italic">
+                              Chưa có thiết bị
+                            </span>
+                          )}
+                        </TableCell>
+                        
+                        {/* ✅ Bảo hành - Warranty Status using Badge like DeviceListCpn */}
+                        <TableCell className="text-center">
+                          {position.device ? (
+                            <Badge
+                              variant="outline"
+                              className={`${getWarrantyBadgeVariant(
+                                position.device.isUnderWarranty
+                              )} border-0`}
                             >
-                              Có thiết bị
+                              {position.device.isUnderWarranty
+                                ? "Còn bảo hành"
+                                : "Hết bảo hành"}
                             </Badge>
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Monitor className="h-4 w-4 opacity-50 text-muted-foreground" />
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-700/50"
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-gray-100 text-gray-500 border-0 dark:bg-gray-900/30 dark:text-gray-400"
                             >
-                              Trống
+                              N/A
                             </Badge>
-                          </div>
-                        )}
-                      </TableCell>
-                      
-                      {/* Created Date */}
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(position.createdDate)}
-                      </TableCell>
-                      
-                      {/* Actions */}
-                      <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            {position.device && (
-                              <DropdownMenuItem onClick={() => handleViewDevice(position)}>
-                                <Monitor className="mr-2 h-4 w-4" />
-                                Xem thiết bị
+                          )}
+                        </TableCell>
+                        
+                        {/* Thao tác */}
+                        <TableCell className="text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => handleViewPosition(position)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Xem chi tiết
                               </DropdownMenuItem>
-                            )}
-                            {hasFullAccess && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleEditPosition(position)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Chỉnh sửa
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeletePosition(position)}
-                                  className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Xóa
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                              {hasFullAccess && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEditPosition(position)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Chỉnh sửa
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeletePosition(position)}
+                                    className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Xóa
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

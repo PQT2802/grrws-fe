@@ -406,7 +406,7 @@ export default function UserList() {
           className="bg-blue-600 hover:bg-blue-700"
         >
           <UserPlus className="mr-2 h-4 w-4" />
-          New User
+          Thêm người dùng
         </Button>
       </div>
 

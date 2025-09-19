@@ -60,13 +60,6 @@ const AdminDashboardPage = () => {
             <AdminQuickSummary />
           </div>
 
-          {/* Top Charts Row - Three Charts */}
-          <div className="w-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
-            <TopErrorDevicesChart />
-            <TopMechanicsChart />
-            <RequestTrendChart />
-          </div>
-
           {/* Device Charts Row - Two Separate Charts */}
           <div className="mt-3 w-full flex items-start gap-3 flex-wrap lg:flex-nowrap">
             <div className="w-full lg:w-1/2">

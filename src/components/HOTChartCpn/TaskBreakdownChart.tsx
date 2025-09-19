@@ -11,16 +11,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { apiClient } from "@/lib/api-client";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { translateTaskType } from "@/utils/textTypeTask";
+import { useDashboardFilters } from "@/components/HOTChartCpn/DashboardFilterContext";
 
 interface TaskData {
   taskId: string;
@@ -31,6 +25,7 @@ interface TaskData {
   expectedTime?: string;
   assigneeName?: string;
   priority?: string;
+  areaId?: string;
 }
 
 interface ChartDataPoint {
@@ -41,19 +36,12 @@ interface ChartDataPoint {
   warranty: number;
   totalTasks: number;
   fullDate: string;
-  hourSlot?: number; // ✅ NEW: For 24h view time slot tracking
+  hourSlot?: number;
 }
 
 interface TaskBreakdownChartProps {
   className?: string;
 }
-
-const TIME_RANGES = [
-  { value: "24h", label: "24 giờ qua" },
-  { value: "7d", label: "7 ngày qua" },
-  { value: "30d", label: "30 ngày qua" },
-  { value: "12m", label: "12 tháng qua" },
-];
 
 const TASK_TYPE_COLORS = {
   installation: "#22C55E", // Green
@@ -68,7 +56,7 @@ const TASK_TYPE_LABELS = {
 };
 
 export default function TaskBreakdownChart({ className }: TaskBreakdownChartProps) {
-  const [timeRange, setTimeRange] = useState("7d");
+  const { getApiParams } = useDashboardFilters(); // ✅ Use global filters
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -105,19 +93,28 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     return 'repair';
   };
 
-  // ✅ NEW: Dynamic interval calculation based on screen size
-  const getTimeInterval = (): number => {
-    // Check if we're on a small screen or if chart area is limited
-    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  // ✅ Apply global filters to tasks
+  const filterTasks = (tasks: TaskData[]): TaskData[] => {
+    const filterParams = getApiParams();
     
-    // Use 2-hour intervals for smaller screens for better readability
-    if (screenWidth < 768) { // Mobile/tablet
-      return 2;
-    } else if (screenWidth < 1200) { // Medium screens
-      return 2;
-    } else { // Large screens
-      return 1;
-    }
+    return tasks.filter(task => {
+      // Date filtering
+      if (filterParams.startDate && filterParams.endDate) {
+        const taskDate = new Date(task.createdDate);
+        const startDate = new Date(filterParams.startDate);
+        const endDate = new Date(filterParams.endDate);
+        if (taskDate < startDate || taskDate > endDate) {
+          return false;
+        }
+      }
+
+      // Area filtering
+      if (filterParams.areaIds && filterParams.areaIds.length > 0) {
+        return task.areaId && filterParams.areaIds.includes(task.areaId);
+      }
+
+      return true;
+    });
   };
 
   // Dynamic Y-axis scale calculation
@@ -153,12 +150,14 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     };
   };
 
-  // Fetch tasks from getAllTaskGroups API
+  // ✅ Fetch tasks from getAllTaskGroups API with global filters
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         setLoading(true);
         setError(null);
+        
+        console.log("📊 Fetching tasks for TaskBreakdownChart with global filters...");
         
         const response = await apiClient.task.getAllTaskGroups(1, 100);
         let tasksData: TaskData[] = [];
@@ -173,16 +172,23 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
                   status: task.status || 'Unknown',
                   createdDate: task.createdDate || group.createdDate || new Date().toISOString(),
                   taskType: task.taskType || group.groupType || 'General',
-                  assigneeName: task.assigneeName || task.assignee?.name
+                  assigneeName: task.assigneeName || task.assignee?.name,
+                  areaId: task.areaId || group.areaId // ✅ Include areaId for filtering
                 });
               });
             }
           });
         }
         
-        setTasks(tasksData);
+        console.log(`📊 Fetched ${tasksData.length} total tasks`);
         
-        if (tasksData.length === 0) {
+        // ✅ Apply global filters
+        const filteredTasks = filterTasks(tasksData);
+        console.log(`📊 After filtering: ${filteredTasks.length} tasks`);
+        
+        setTasks(filteredTasks);
+        
+        if (filteredTasks.length === 0) {
           setError("Không có dữ liệu nhiệm vụ");
         }
         
@@ -196,9 +202,9 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     };
 
     fetchTasks();
-  }, []);
+  }, [getApiParams]); // ✅ Re-fetch when filters change
 
-  // ✅ IMPROVED: Dynamic 24-hour view with proper time intervals
+  // ✅ Generate chart data based on filtered tasks (show last 7 days)
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!tasks.length) {
       return [];
@@ -206,184 +212,54 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let startDate: Date;
-    let endDate: Date;
-    let periods: number;
-
-    switch (timeRange) {
-      case "24h":
-        // ✅ FIXED: Dynamic 24-hour window from current time
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        endDate = now;
-        periods = 24;
-        break;
-      case "7d":
-        startDate = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
-        periods = 7;
-        break;
-      case "30d":
-        startDate = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
-        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
-        periods = 30;
-        break;
-      case "12m":
-        startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        periods = 12;
-        break;
-      default:
-        startDate = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
-        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
-        periods = 7;
-    }
-
-    // Filter tasks within date range
-    const filteredTasks = tasks.filter(task => {
-      const taskDate = new Date(task.createdDate);
-      return taskDate >= startDate && taskDate <= endDate;
-    });
-
-    console.log(`📊 Filtered ${filteredTasks.length} tasks within ${timeRange} range`);
+    const startDate = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000); // Last 7 days
+    const endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+    const periods = 7;
 
     const groupedData = new Map<string, ChartDataPoint>();
 
-    if (timeRange === "24h") {
-      // ✅ NEW: Dynamic 24-hour view with smart intervals
-      const timeInterval = getTimeInterval(); // 1 or 2 hours
-      const totalSlots = Math.ceil(24 / timeInterval);
+    // Create 7 day periods
+    for (let i = 0; i < periods; i++) {
+      const periodDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}-${periodDate.getDate().toString().padStart(2, '0')}`;
       
-      // Create time slots based on dynamic interval
-      for (let i = 0; i < totalSlots; i++) {
-        const slotStartHour = Math.floor(startDate.getHours() / timeInterval) * timeInterval + (i * timeInterval);
-        const adjustedStartHour = slotStartHour % 24;
-        
-        // Create a representative time for this slot (center of the interval)
-        const slotCenterHour = adjustedStartHour + Math.floor(timeInterval / 2);
-        const slotDate = new Date(startDate.getTime() + i * timeInterval * 60 * 60 * 1000);
-        
-        // Key for grouping tasks (covers the entire interval)
-        const key = `slot-${i}`;
-        
-        // Display format: show the center hour of the interval
-        const displayHour = slotCenterHour % 24;
-        const displayDate = `${displayHour.toString().padStart(2, '0')}:00`;
-        
-        groupedData.set(key, {
-          date: key,
-          displayDate,
-          installation: 0,
-          repair: 0,
-          warranty: 0,
-          totalTasks: 0,
-          fullDate: slotDate.toISOString(),
-          hourSlot: i,
-        });
-      }
-
-      // ✅ Group tasks into appropriate time slots
-      filteredTasks.forEach(task => {
-        const taskDate = new Date(task.createdDate);
-        const taskHour = taskDate.getHours();
-        
-        // Calculate which slot this task belongs to
-        const hoursFromStart = (taskDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-        const slotIndex = Math.floor(hoursFromStart / timeInterval);
-        
-        if (slotIndex >= 0 && slotIndex < totalSlots) {
-          const key = `slot-${slotIndex}`;
-          const period = groupedData.get(key);
-          
-          if (period) {
-            const taskCategory = categorizeTaskType(task.taskType);
-            period[taskCategory]++;
-            period.totalTasks++;
-          }
-        }
+      const displayDate = periodDate.toLocaleDateString('vi-VN', {
+        month: 'short',
+        day: '2-digit',
       });
-
-    } else if (timeRange === "12m") {
-      // Group by month - unchanged
-      for (let i = 0; i < periods; i++) {
-        const periodDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-        const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        const displayDate = periodDate.toLocaleDateString('vi-VN', {
-          month: 'short',
-          year: '2-digit',
-        });
-        
-        groupedData.set(key, {
-          date: key,
-          displayDate,
-          installation: 0,
-          repair: 0,
-          warranty: 0,
-          totalTasks: 0,
-          fullDate: periodDate.toISOString(),
-        });
-      }
-
-      // Count tasks by month
-      filteredTasks.forEach(task => {
-        const taskDate = new Date(task.createdDate);
-        const key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        
-        const period = groupedData.get(key);
-        if (period) {
-          const taskCategory = categorizeTaskType(task.taskType);
-          period[taskCategory]++;
-          period.totalTasks++;
-        }
-      });
-
-    } else {
-      // Group by day - unchanged (7d, 30d)
-      for (let i = 0; i < periods; i++) {
-        const periodDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-        const key = `${periodDate.getFullYear()}-${(periodDate.getMonth() + 1).toString().padStart(2, '0')}-${periodDate.getDate().toString().padStart(2, '0')}`;
-        
-        const displayDate = periodDate.toLocaleDateString('vi-VN', {
-          month: 'short',
-          day: '2-digit',
-        });
-        
-        groupedData.set(key, {
-          date: key,
-          displayDate,
-          installation: 0,
-          repair: 0,
-          warranty: 0,
-          totalTasks: 0,
-          fullDate: periodDate.toISOString(),
-        });
-      }
-
-      // Count tasks by day
-      filteredTasks.forEach(task => {
-        const taskDate = new Date(task.createdDate);
-        const key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}-${taskDate.getDate().toString().padStart(2, '0')}`;
-        
-        const period = groupedData.get(key);
-        if (period) {
-          const taskCategory = categorizeTaskType(task.taskType);
-          period[taskCategory]++;
-          period.totalTasks++;
-        }
+      
+      groupedData.set(key, {
+        date: key,
+        displayDate,
+        installation: 0,
+        repair: 0,
+        warranty: 0,
+        totalTasks: 0,
+        fullDate: periodDate.toISOString(),
       });
     }
 
-    const result = Array.from(groupedData.values()).sort((a, b) => {
-      // For 24h view, sort by hourSlot; for others, sort by date
-      if (timeRange === "24h" && a.hourSlot !== undefined && b.hourSlot !== undefined) {
-        return a.hourSlot - b.hourSlot;
+    // Count tasks by day
+    tasks.forEach(task => {
+      const taskDate = new Date(task.createdDate);
+      const key = `${taskDate.getFullYear()}-${(taskDate.getMonth() + 1).toString().padStart(2, '0')}-${taskDate.getDate().toString().padStart(2, '0')}`;
+      
+      const period = groupedData.get(key);
+      if (period) {
+        const taskCategory = categorizeTaskType(task.taskType);
+        period[taskCategory]++;
+        period.totalTasks++;
       }
+    });
+
+    const result = Array.from(groupedData.values()).sort((a, b) => {
       return new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime();
     });
     
-    console.log(`📊 Generated ${result.length} chart data points for ${timeRange}`);
+    console.log(`📊 Generated ${result.length} chart data points for TaskBreakdownChart`);
     
     return result;
-  }, [tasks, timeRange]);
+  }, [tasks]);
 
   // Calculate dynamic Y-axis scale
   const yAxisScale = useMemo(() => {
@@ -391,7 +267,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     return calculateYAxisScale(maxTasksInAnyPeriod);
   }, [chartData]);
 
-  // ✅ Enhanced tooltip with time range context for 24h view
+  // Enhanced tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -418,29 +294,21 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
               Tổng cộng: <span className="font-bold">{data.totalTasks}</span>
             </p>
           </div>
-          
-          {/* ✅ Enhanced time context for 24h view */}
-          {timeRange === "24h" ? (
-            <p className="text-sm text-gray-500 mt-2">
-              Khung giờ: {label}
-            </p>
-          ) : (
-            <p className="text-sm text-gray-500 mt-2">
-              {new Date(data.fullDate).toLocaleDateString('vi-VN', {
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </p>
-          )}
+          <p className="text-sm text-gray-500 mt-2">
+            {new Date(data.fullDate).toLocaleDateString('vi-VN', {
+              weekday: 'short',
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </p>
         </div>
       );
     }
     return null;
   };
 
-  // Custom legend component - unchanged
+  // Custom legend component
   const CustomLegend = (props: any) => {
     return (
       <div className="flex justify-center gap-6">
@@ -460,16 +328,15 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
     );
   };
 
-  // Loading state - unchanged
+  // Loading state
   if (loading) {
     return (
       <div className={`bg-background border rounded-lg shadow-sm p-6 ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-blue-500" />
-            <h3 className="text-lg font-semibold">Thống kê công việc theo loại và thời gian</h3>
+            <h3 className="text-lg font-semibold">Thống kê công việc theo loại (7 ngày qua)</h3>
           </div>
-          <div className="animate-pulse bg-gray-200 dark:bg-slate-700 rounded w-32 h-8"></div>
         </div>
         <div className="flex items-center justify-center h-80">
           <div className="text-center">
@@ -483,24 +350,12 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
 
   return (
     <div className={`bg-background border rounded-lg shadow-sm p-6 ${className}`}>
-      {/* Header with Time Range Filter */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-blue-500" />
-          <h3 className="text-lg font-semibold">Thống kê công việc theo loại và thời gian</h3>
+          <h3 className="text-lg font-semibold">Thống kê công việc theo loại (7 ngày qua)</h3>
         </div>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {TIME_RANGES.map((range) => (
-              <SelectItem key={range.value} value={range.value}>
-                {range.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Empty State */}
@@ -512,7 +367,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
         </div>
       ) : (
         <>
-          {/* ✅ Enhanced Chart with dynamic 24h view */}
+          {/* Chart */}
           <ResponsiveContainer width="100%" height={380}>
             <BarChart 
               data={chartData} 
@@ -525,10 +380,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
                 tick={{ fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
-                angle={timeRange === "12m" ? -45 : 0}
-                textAnchor={timeRange === "12m" ? "end" : "middle"}
-                height={timeRange === "12m" ? 80 : 60}
-                interval={0} // ✅ Show all time labels for 24h view
+                interval={0}
               />
               <YAxis 
                 tick={{ fontSize: 12 }}
@@ -546,7 +398,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
               />
               <Legend content={<CustomLegend />} />
               
-              {/* Stacked bars - unchanged */}
+              {/* Stacked bars */}
               <Bar 
                 dataKey="installation" 
                 fill={TASK_TYPE_COLORS.installation}
@@ -571,7 +423,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Enhanced Summary */}
+          {/* Summary */}
           <div className="space-y-2">
             <div className="flex justify-center gap-6 text-sm text-muted-foreground">
               <span>
@@ -580,7 +432,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
                 </span>
               </span>
               <span>
-                Trung bình/{timeRange === "24h" ? "khoảng thời gian" : timeRange === "12m" ? "tháng" : "ngày"}: <span className="font-semibold text-foreground">
+                Trung bình/ngày: <span className="font-semibold text-foreground">
                   {chartData.length > 0 ? 
                     Math.round(chartData.reduce((sum, item) => sum + item.totalTasks, 0) / chartData.length) : 0
                   }

@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Loader2, History, Clock, MapPin, Activity, Wrench, Package, ArrowUpDown, Shield, Calendar, Settings } from "lucide-react";
+import { Loader2, History, Clock, MapPin, Activity, Wrench, Package, ArrowUpDown, Shield, Calendar, Settings, Minus } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { translateTaskStatus, translateTaskType, translateActionType } from "@/utils/textTypeTask";
+import { MACHINE_ACTION_CONFIRMATION_DETAIL } from "@/types/request.type";
 
 interface DeviceHistoryLogProps {
   deviceId: string;
@@ -17,7 +18,7 @@ interface DeviceHistoryLogProps {
 interface DeviceLogEvent {
   id: string;
   date: string;
-  eventType: 'INSTALLATION' | 'UNINSTALLATION' | 'WAREHOUSE_IMPORT' | 'WAREHOUSE_EXPORT' | 'REPAIR' | 'WARRANTY_SEND' | 'WARRANTY_RETURN' | 'MAINTENANCE' | 'DEVICE_INSTALLATION';
+  eventType: 'INSTALLATION' | 'UNINSTALLATION' | 'WAREHOUSE_IMPORT' | 'WAREHOUSE_EXPORT' | 'REPAIR' | 'WARRANTY_SEND' | 'WARRANTY_RETURN' | 'MAINTENANCE' | 'DEVICE_REMOVAL';
   actionLabel: string;
   description: string;
   status: 'COMPLETED' | 'INPROGRESS' | 'PENDING' | 'FAILED';
@@ -25,8 +26,13 @@ interface DeviceLogEvent {
   taskId?: string;
   assigneeName?: string;
   notes?: string;
-  source: 'REQUEST' | 'TASK' | 'MACHINE_ACTION' | 'SYSTEM' | 'DEVICE_INSTALLATION';
+  source: 'REQUEST' | 'TASK' | 'MACHINE_ACTION' | 'SYSTEM' | 'DEVICE_REMOVAL' | 'DEVICE_INSTALLATION';
   location?: string;
+  requestedBy?: string;
+  replacedDeviceId?: string;
+  replacedDeviceCode?: string;
+  sortPriority?: number;
+  isOriginalTimestamp?: boolean;
 }
 
 interface DeviceCurrentLocation {
@@ -43,7 +49,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ Main function to fetch comprehensive device history
+  // ✅ ENHANCED: Main function to fetch comprehensive device history
   const fetchDeviceHistory = async () => {
     setIsLoading(true);
     setError(null);
@@ -57,27 +63,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
       // ✅ Step 2: Get comprehensive device activity logs
       const allEvents: DeviceLogEvent[] = [];
       
-      // ✅ Step 3: Add installation date log entry if available
-      if (deviceDetails?.installationDate) {
-        const installationEvent: DeviceLogEvent = {
-          id: `device-installation-${deviceId}`,
-          date: deviceDetails.installationDate,
-          eventType: 'DEVICE_INSTALLATION',
-          actionLabel: 'Ngày lắp đặt thiết bị',
-          description: 'Thiết bị được lắp đặt và đưa vào vận hành',
-          status: 'COMPLETED',
-          assigneeName: "Hệ thống",
-          source: 'DEVICE_INSTALLATION',
-          location: deviceDetails.areaName && deviceDetails.zoneName ? 
-            `${deviceDetails.areaName} - ${deviceDetails.zoneName} - ${deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : 'Không rõ'}` : 
-            undefined
-        };
-        
-        allEvents.push(installationEvent);
-        console.log(`➕ Added device installation event: ${deviceDetails.installationDate}`);
-      }
-      
-      // Get device-specific requests
+      // ✅ Step 3: Get device-specific requests and enhanced task checking
       const deviceRequests = await fetchDeviceRequests();
       
       // Process each request for device events
@@ -86,23 +72,42 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
         allEvents.push(...requestEvents);
       }
       
-      // Get machine actions for this device
+      // ✅ Step 4: Get enhanced machine actions for this device with completed status filtering
       const machineActionEvents = await fetchMachineActionsForDevice();
       allEvents.push(...machineActionEvents);
       
-      // ✅ Step 4: Filter out meaningless events and sort chronologically
-      const meaningfulEvents = allEvents.filter(event => 
+      // ✅ Step 5: Filter out meaningless events
+      let meaningfulEvents = allEvents.filter(event => 
         !event.actionLabel.includes('SparePartRequest') &&
         !event.actionLabel.includes('linh kiện') &&
-        (event.eventType !== 'MAINTENANCE' || event.eventType === 'DEVICE_INSTALLATION') // Keep device installation but filter maintenance noise
+        event.eventType !== 'MAINTENANCE'
       );
       
-      // Sort newest → oldest (but device installation should appear chronologically)
-      const sortedEvents = meaningfulEvents.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      // ✅ NEW: Unify installation logs and remove duplicates
+      meaningfulEvents = unifyInstallationLogs(meaningfulEvents, deviceDetails);
+      
+      // ✅ UPDATED: Enhanced sorting with proper ordering (Stock In → Removal → Installation)
+      const sortedEvents = meaningfulEvents.sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        
+        // ✅ Handle events with same date with proper ordering
+        if (Math.abs(dateA - dateB) < 1000) { // Within 1 second, consider same time
+          // Stock In (priority 3) → Removal (priority 2) → Installation (priority 1)
+          const priorityA = getPriority(a);
+          const priorityB = getPriority(b);
+          return priorityB - priorityA; // Higher priority first (Stock In = 3 comes first)
+        }
+        
+        // Sort by date descending (most recent first)
+        return dateB - dateA;
+      });
       
       setDeviceLogs(sortedEvents);
+      
+      // ✅ Update current location last updated time based on most recent log
+      updateCurrentLocationLastUpdated(sortedEvents);
+      
       console.log(`📊 Device history complete: ${sortedEvents.length} meaningful events found`);
 
     } catch (error) {
@@ -113,43 +118,275 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     }
   };
 
-  // ✅ UPDATED: Get current device location from device details AND return device details for installation date
+  // ✅ NEW: Function to determine event priority for same-timestamp sorting
+  const getPriority = (event: DeviceLogEvent): number => {
+    if (event.eventType === 'WAREHOUSE_IMPORT') return 3; // Stock In - highest priority (appears first)
+    if (event.eventType === 'DEVICE_REMOVAL') return 2; // Removal - middle priority
+    if (event.eventType === 'INSTALLATION') return 1; // Installation - lowest priority (appears last)
+    return 0; // Default priority
+  };
+
+  // ✅ NEW: Unify installation logs from different sources
+  const unifyInstallationLogs = (events: DeviceLogEvent[], deviceDetails?: any): DeviceLogEvent[] => {
+    // Find all installation-related events
+    const installationEvents = events.filter(e => 
+      e.eventType === 'INSTALLATION'
+    );
+    
+    if (installationEvents.length === 0) {
+      // ✅ If no installation task exists, create one from device details if available
+      if (deviceDetails?.installationDate) {
+        const deviceInstallationEvent: DeviceLogEvent = {
+          id: `unified-installation-${deviceId}`,
+          date: deviceDetails.installationDate,
+          eventType: 'INSTALLATION',
+          actionLabel: 'Lắp đặt thiết bị',
+          description: 'Thiết bị được lắp đặt và đưa vào vận hành trong hệ thống sản xuất',
+          status: 'COMPLETED',
+          source: 'DEVICE_INSTALLATION',
+          location: getInstallationLocationFromDevice(deviceDetails),
+          assigneeName: "Nhân viên kỹ thuật",
+          notes: `Thiết bị ${deviceCode} đã được lắp đặt thành công`,
+          isOriginalTimestamp: true,
+        };
+        
+        // Add the unified installation event to the filtered events
+        const nonInstallationEvents = events.filter(e => e.eventType !== 'INSTALLATION');
+        return [...nonInstallationEvents, deviceInstallationEvent];
+      }
+      
+      return events; // No installation data available
+    }
+
+    // ✅ If installation task(s) exist, unify them with device details
+    if (installationEvents.length === 1) {
+      const installationTask = installationEvents[0];
+      
+      // ✅ Enhance the existing installation task with device details
+      const unifiedInstallation: DeviceLogEvent = {
+        ...installationTask,
+        id: `unified-installation-${deviceId}`,
+        actionLabel: 'Lắp đặt thiết bị',
+        description: 'Thiết bị được lắp đặt và đưa vào vận hành trong hệ thống sản xuất',
+        location: getUnifiedInstallationLocation(installationTask, deviceDetails),
+        assigneeName: installationTask.assigneeName || "Nhân viên kỹ thuật",
+        notes: installationTask.notes || `Thiết bị ${deviceCode} đã được lắp đặt thành công`,
+        // Use task date if available, otherwise use device installation date
+        date: installationTask.date || deviceDetails?.installationDate || installationTask.date,
+      };
+      
+      // Replace the original installation task with the unified one
+      const nonInstallationEvents = events.filter(e => e.eventType !== 'INSTALLATION');
+      return [...nonInstallationEvents, unifiedInstallation];
+    }
+
+    // ✅ If multiple installation tasks exist (duplicates), merge them into one
+    if (installationEvents.length > 1) {
+      console.log(`🔄 Found ${installationEvents.length} installation events, unifying...`);
+      
+      // Sort by date and take the earliest one as the primary
+      const sortedInstallations = installationEvents.sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      const primaryInstallation = sortedInstallations[0];
+      
+      // ✅ Create unified installation log with best available data
+      const unifiedInstallation: DeviceLogEvent = {
+        ...primaryInstallation,
+        id: `unified-installation-${deviceId}`,
+        actionLabel: 'Lắp đặt thiết bị',
+        description: 'Thiết bị được lắp đặt và đưa vào vận hành trong hệ thống sản xuất',
+        location: getUnifiedInstallationLocation(primaryInstallation, deviceDetails, sortedInstallations),
+        assigneeName: getBestAssigneeName(sortedInstallations),
+        notes: getBestNotes(sortedInstallations, deviceCode),
+        // Use the earliest installation date
+        date: primaryInstallation.date,
+      };
+      
+      // Remove all installation events and add the unified one
+      const nonInstallationEvents = events.filter(e => e.eventType !== 'INSTALLATION');
+      return [...nonInstallationEvents, unifiedInstallation];
+    }
+
+    return events;
+  };
+
+  // ✅ Helper function to get the best location from available sources
+  const getUnifiedInstallationLocation = (
+    primaryTask?: DeviceLogEvent, 
+    deviceDetails?: any, 
+    allInstallations?: DeviceLogEvent[]
+  ): string => {
+    // Priority 1: Task location if it's detailed (contains area-zone-position)
+    if (primaryTask?.location && primaryTask.location.includes(' - ') && !primaryTask.location.includes('Kho')) {
+      return primaryTask.location;
+    }
+    
+    // Priority 2: Check other installation tasks for better location
+    if (allInstallations) {
+      for (const task of allInstallations) {
+        if (task.location && task.location.includes(' - ') && !task.location.includes('Kho')) {
+          return task.location;
+        }
+      }
+    }
+    
+    // Priority 3: Device details location
+    if (deviceDetails?.areaName && deviceDetails?.zoneName) {
+      const position = deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : 'Không rõ';
+      return `${deviceDetails.areaName} - ${deviceDetails.zoneName} - ${position}`;
+    }
+    
+    // Priority 4: Task location (even if basic)
+    if (primaryTask?.location) {
+      return primaryTask.location;
+    }
+    
+    // Fallback: Warehouse
+    return "Kho";
+  };
+
+  // ✅ Helper function to get installation location from device details only
+  const getInstallationLocationFromDevice = (deviceDetails: any): string => {
+    if (deviceDetails?.areaName && deviceDetails?.zoneName) {
+      const position = deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : 'Không rõ';
+      return `${deviceDetails.areaName} - ${deviceDetails.zoneName} - ${position}`;
+    }
+    return "Kho";
+  };
+
+  // ✅ Helper function to get the best assignee name from multiple installation tasks
+  const getBestAssigneeName = (installations: DeviceLogEvent[]): string => {
+    for (const installation of installations) {
+      if (installation.assigneeName && 
+          installation.assigneeName !== "Không rõ" && 
+          installation.assigneeName !== "Nhân viên kỹ thuật") {
+        return installation.assigneeName;
+      }
+    }
+    
+    // Fallback to any available name
+    for (const installation of installations) {
+      if (installation.assigneeName) {
+        return installation.assigneeName;
+      }
+    }
+    
+    return "Nhân viên kỹ thuật";
+  };
+
+  // ✅ Helper function to get the best notes from multiple installation tasks
+  const getBestNotes = (installations: DeviceLogEvent[], deviceCode: string): string => {
+    // Look for detailed notes first
+    for (const installation of installations) {
+      if (installation.notes && 
+          installation.notes.length > 20 && 
+          !installation.notes.includes('đã được lắp đặt thành công')) {
+        return installation.notes;
+      }
+    }
+    
+    // Fallback to any available notes
+    for (const installation of installations) {
+      if (installation.notes) {
+        return installation.notes;
+      }
+    }
+    
+    return `Thiết bị ${deviceCode} đã được lắp đặt thành công`;
+  };
+
+  // ✅ Update current location last updated time based on most recent log
+  const updateCurrentLocationLastUpdated = (sortedEvents: DeviceLogEvent[]) => {
+    if (sortedEvents.length > 0 && currentLocation) {
+      const mostRecentEvent = sortedEvents[0]; // First event is most recent due to descending sort
+      setCurrentLocation(prev => prev ? {
+        ...prev,
+        lastUpdated: mostRecentEvent.date
+      } : null);
+      console.log(`🕒 Updated last updated time to: ${mostRecentEvent.date}`);
+    }
+  };
+
+  // ✅ ENHANCED: Get current device location with improved warehouse and warranty status handling
   const fetchCurrentDeviceLocation = async () => {
     try {
+      console.log(`📍 Fetching device details: ${deviceId}`);
       const deviceDetails = await apiClient.device.getDeviceById(deviceId);
-      console.log("📍 Device details:", deviceDetails);
+      console.log("📊 Device details:", deviceDetails);
       
       if (deviceDetails) {
-        // ✅ Build correct location format: AreaName - ZoneName - PositionIndex
-        const area = deviceDetails.areaName || "Không rõ";
-        const zone = deviceDetails.zoneName || "Không rõ";
-        const position = deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : "Không rõ";
+        let area, zone, position;
+        
+        // ✅ Handle warranty status location
+        if (deviceDetails.status?.toLowerCase() === 'inwarranty') {
+          area = "Nhà bảo hành";
+          zone = "Nhà bảo hành";
+          position = "Nhà bảo hành";
+          console.log(`🔧 Device ${deviceCode} is in warranty`);
+        } else if (!deviceDetails.areaName || !deviceDetails.zoneName) {
+          // ✅ Simplified warehouse display
+          area = "Kho";
+          zone = "Kho";
+          position = "Kho";
+          console.log(`📦 Device ${deviceCode} is in warehouse`);
+        } else {
+          area = deviceDetails.areaName;
+          zone = deviceDetails.zoneName;
+          position = deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : "Không rõ";
+        }
         
         setCurrentLocation({
-          area,
-          zone, 
-          position,
-          status: deviceDetails.status,
+          area: area || "Kho",
+          zone: zone || "Kho", 
+          position: position || "Kho",
+          status: deviceDetails.status || "ACTIVE",
           lastUpdated: deviceDetails.modifiedDate || deviceDetails.createdDate || new Date().toISOString()
         });
         
-        // ✅ Return device details for installation date extraction
         return deviceDetails;
       }
       
       return null;
     } catch (error) {
       console.warn("⚠️ Could not fetch device location:", error);
-      // Set default values if API fails
       setCurrentLocation({
-        area: "Không rõ",
-        zone: "Không rõ", 
-        position: "Không rõ",
+        area: "Kho",
+        zone: "Kho", 
+        position: "Kho",
         status: "ACTIVE",
         lastUpdated: new Date().toISOString()
       });
       return null;
     }
+  };
+
+  // ✅ Helper function to determine device location from context
+  const getDeviceLocationFromContext = (task: any, deviceDetails?: any): string => {
+    // Check if we have task-specific location data
+    if (task.areaName && task.zoneName) {
+      const position = task.positionIndex ? `Vị trí ${task.positionIndex}` : "";
+      return `${task.areaName} - ${task.zoneName}${position ? ` - ${position}` : ""}`;
+    }
+    
+    // Use device details location if available
+    if (deviceDetails?.areaName && deviceDetails?.zoneName) {
+      const position = deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : "";
+      return `${deviceDetails.areaName} - ${deviceDetails.zoneName}${position ? ` - ${position}` : ""}`;
+    }
+    
+    // Check task type for context-based location
+    const taskType = task.taskType?.toLowerCase();
+    if (taskType === 'warrantysubmission' || taskType === 'warranty') {
+      return "Nhà bảo hành";
+    }
+    if (taskType === 'stockin' || taskType === 'stockout') {
+      return "Kho";
+    }
+    
+    // Default to warehouse
+    return "Kho";
   };
 
   // ✅ Fetch all requests that involve this specific device
@@ -158,7 +395,6 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
       const response = await apiClient.request.getRequestByDeviceId(deviceId);
       console.log("📊 Device requests response:", response);
       
-      // Handle different response structures
       let requests = [];
       if (response?.data?.data && Array.isArray(response.data.data)) {
         requests = response.data.data;
@@ -178,7 +414,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     }
   };
 
-  // ✅ Process a single request to extract meaningful device lifecycle events
+  // ✅ ENHANCED: Process a single request with improved device removal detection and ordering
   const processRequestForDeviceEvents = async (request: any): Promise<DeviceLogEvent[]> => {
     const events: DeviceLogEvent[] = [];
     const requestId = request.id || request.requestId;
@@ -197,11 +433,16 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
         taskGroups = tasksResponse;
       }
 
+      // ✅ Get the device's current location for removal events
+      const deviceDetails = await apiClient.device.getDeviceById(deviceId);
+      const deviceLocation = deviceDetails?.areaName && deviceDetails?.zoneName ? 
+        `${deviceDetails.areaName} - ${deviceDetails.zoneName} - ${deviceDetails.positionIndex ? `Vị trí ${deviceDetails.positionIndex}` : 'Không rõ'}` : 
+        "Kho";
+
       // Process each task group
       for (const taskGroup of taskGroups) {
         if (taskGroup.tasks && Array.isArray(taskGroup.tasks)) {
           for (const task of taskGroup.tasks) {
-            // ✅ Check if this task involves our specific device
             const taskDeviceId = task.deviceId || task.device?.id;
             const taskDeviceCode = task.deviceCode || task.device?.deviceCode;
             const taskDeviceName = task.deviceName || task.device?.deviceName;
@@ -217,6 +458,45 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
                 console.log(`➕ Added lifecycle event: ${deviceEvent.actionLabel} for ${deviceCode}`);
               }
             }
+            
+            // ✅ ENHANCED: Special handling for Installation tasks that affect other devices
+            if (task.taskType?.toLowerCase() === 'installation') {
+              const installTaskDeviceId = task.deviceId || task.device?.id;
+              const installTaskDeviceCode = task.deviceCode || task.device?.deviceCode;
+              const installTaskDeviceName = task.deviceName || task.device?.deviceName;
+              
+              const isDifferentDevice = installTaskDeviceId !== deviceId && 
+                                      installTaskDeviceCode !== deviceCode && 
+                                      installTaskDeviceName !== deviceName;
+              
+              const isCompleted = task.status?.toLowerCase() === 'completed' || task.status?.toLowerCase() === 'done';
+              
+              if (isDifferentDevice && isCompleted) {
+                // ✅ Use actual task date and subtract 1 second to ensure proper ordering
+                let taskDate = new Date(task.completedTime || task.endTime || task.startTime || task.createdDate);
+                taskDate.setSeconds(taskDate.getSeconds() - 1); // Ensure removal happens 1 second before stock-in
+                
+                const removalEvent: DeviceLogEvent = {
+                  id: `device-removal-${task.taskId || Date.now()}-${deviceId}`,
+                  date: taskDate.toISOString(),
+                  eventType: 'DEVICE_REMOVAL',
+                  actionLabel: 'Tháo thiết bị',
+                  description: `Thiết bị bị tháo để thay thế bằng thiết bị khác`,
+                  status: 'COMPLETED',
+                  requestCode,
+                  taskId: task.taskId,
+                  assigneeName: task.assigneeName || "Không rõ",
+                  source: 'DEVICE_REMOVAL',
+                  notes: `Thiết bị được thay thế bằng ${installTaskDeviceCode || installTaskDeviceName || 'thiết bị mới'}`,
+                  replacedDeviceId: installTaskDeviceId,
+                  replacedDeviceCode: installTaskDeviceCode,
+                  location: deviceLocation,
+                };
+                
+                events.push(removalEvent);
+                console.log(`➕ Added device removal event: ${deviceCode} replaced by ${installTaskDeviceCode} at ${deviceLocation}`);
+              }
+            }
           }
         }
       }
@@ -227,7 +507,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     return events;
   };
 
-  // ✅ Get machine actions for this device
+  // ✅ ENHANCED: Get machine actions with detailed information and location context
   const fetchMachineActionsForDevice = async (): Promise<DeviceLogEvent[]> => {
     const events: DeviceLogEvent[] = [];
     
@@ -243,27 +523,56 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
                              actionDeviceCode === deviceCode;
                              
         if (isDeviceMatch) {
-          // ✅ Only include meaningful machine actions (not spare part noise)
-          if (action.actionType?.toLowerCase() === 'stockin' || 
+          const isCompleted = action.status?.toLowerCase() === 'completed';
+          
+          if (isCompleted && (action.actionType?.toLowerCase() === 'stockin' || 
               action.actionType?.toLowerCase() === 'stockout' ||
               action.actionType?.toLowerCase() === 'installation' ||
-              action.actionType?.toLowerCase() === 'uninstallation') {
+              action.actionType?.toLowerCase() === 'uninstallation')) {
+            
+            let detailedAction: MACHINE_ACTION_CONFIRMATION_DETAIL | null = null;
+            let requestedByName = "Hệ thống";
+            
+            try {
+              detailedAction = await apiClient.machineActionConfirmation.getById(action.id);
+              requestedByName = detailedAction?.requestedByName || 
+                               detailedAction?.assigneeName || 
+                               action.mechanicName || 
+                               "Hệ thống";
+            } catch (detailError) {
+              console.warn(`⚠️ Could not fetch detailed machine action for ${action.id}:`, detailError);
+              requestedByName = action.mechanicName || action.assigneeName || "Hệ thống";
+            }
+            
+            // ✅ Enhanced location determination for machine actions
+            let actionLocation = "Kho"; // Default
+            if (action.department && action.position) {
+              actionLocation = `${action.department} - ${action.position}`;
+            } else if (action.actionType?.toLowerCase() === 'stockin' || action.actionType?.toLowerCase() === 'stockout') {
+              actionLocation = "Kho";
+            }
             
             events.push({
               id: action.id || `machine-${action.actionType}-${Date.now()}`,
-              date: action.createdDate || action.actionDate || new Date().toISOString(),
+              date: detailedAction?.completedDate || 
+                    action.createdDate || 
+                    action.actionDate || 
+                    detailedAction?.startDate || 
+                    new Date().toISOString(),
               eventType: action.actionType?.toUpperCase() === 'STOCKIN' ? 'WAREHOUSE_IMPORT' : 
                         action.actionType?.toUpperCase() === 'STOCKOUT' ? 'WAREHOUSE_EXPORT' :
                         action.actionType?.toUpperCase() === 'INSTALLATION' ? 'INSTALLATION' : 'UNINSTALLATION',
               actionLabel: translateActionType(action.actionType || 'Hoạt động'),
-              description: action.description || `${translateActionType(action.actionType)} thiết bị`,
-              status: action.status === 'completed' ? 'COMPLETED' : action.status === 'inprogress' ? 'INPROGRESS' : 'PENDING',
-              assigneeName: action.mechanicName || "Hệ thống",
+              description: detailedAction?.reason || action.description || `${translateActionType(action.actionType)} thiết bị`,
+              status: 'COMPLETED',
+              assigneeName: requestedByName,
+              requestedBy: requestedByName,
               source: 'MACHINE_ACTION',
-              location: action.department && action.position ? `${action.department} - ${action.position}` : undefined
+              location: actionLocation,
+              notes: detailedAction?.notes || action.notes,
             });
             
-            console.log(`➕ Added machine action event for ${deviceCode}`);
+            console.log(`➕ Added completed machine action event for ${deviceCode} by ${requestedByName}`);
           }
         }
       }
@@ -274,7 +583,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     return events;
   };
 
-  // ✅ Map task data to meaningful device lifecycle event
+  // ✅ Map task data to meaningful device lifecycle event with location context
   const mapTaskToLifecycleEvent = (task: any, requestCode: string): DeviceLogEvent | null => {
     const taskDate = task.startTime || task.createdDate || task.expectedTime;
     const isCompleted = task.status?.toLowerCase() === 'completed' || task.status?.toLowerCase() === 'done';
@@ -285,61 +594,68 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     let actionLabel: string;
     let description: string;
     let status: DeviceLogEvent['status'];
+    let location: string;
 
-    // ✅ Map task types to meaningful device lifecycle events
+    // ✅ Map task types with location context
     switch (task.taskType?.toLowerCase()) {
       case 'installation':
         eventType = 'INSTALLATION';
-        actionLabel = 'Ngày lắp đặt';
+        actionLabel = 'Lắp đặt thiết bị';
         description = `Lắp đặt thiết bị vào hệ thống sản xuất`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = getDeviceLocationFromContext(task);
         break;
         
       case 'uninstallation':
         eventType = 'UNINSTALLATION';
-        actionLabel = 'Ngày tháo máy';
+        actionLabel = 'Tháo dỡ thiết bị';
         description = `Tháo dỡ thiết bị khỏi hệ thống sản xuất`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = getDeviceLocationFromContext(task);
         break;
         
       case 'repair':
         eventType = 'REPAIR';
-        actionLabel = 'Ngày sửa chữa';
+        actionLabel = 'Sửa chữa thiết bị';
         description = `Thực hiện sửa chữa thiết bị`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = getDeviceLocationFromContext(task);
         break;
         
       case 'warranty':
       case 'warrantysubmission':
         eventType = 'WARRANTY_SEND';
-        actionLabel = 'Ngày xuất kho (gửi bảo hành)';
+        actionLabel = 'Gửi bảo hành';
         description = `Xuất thiết bị khỏi kho để gửi bảo hành`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = "Nhà bảo hành";
         break;
         
       case 'warrantyreturn':
         eventType = 'WARRANTY_RETURN';
-        actionLabel = 'Ngày nhập kho (trả về từ bảo hành)';
+        actionLabel = 'Trả về từ bảo hành';
         description = `Nhập thiết bị về kho sau khi bảo hành`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = "Kho";
         break;
         
       case 'stockin':
         eventType = 'WAREHOUSE_IMPORT';
-        actionLabel = 'Ngày nhập kho';
+        actionLabel = 'Nhập kho';
         description = `Nhập thiết bị vào kho`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = "Kho";
         break;
         
       case 'stockout':
         eventType = 'WAREHOUSE_EXPORT';
-        actionLabel = 'Ngày xuất kho';
+        actionLabel = 'Xuất kho';
         description = `Xuất thiết bị khỏi kho`;
         status = isCompleted ? 'COMPLETED' : isInProgress ? 'INPROGRESS' : isPending ? 'PENDING' : 'FAILED';
+        location = "Kho";
         break;
         
       default:
-        // Skip meaningless task types
         return null;
     }
 
@@ -354,7 +670,8 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
       taskId: task.taskId,
       assigneeName: task.assigneeName || "Không rõ",
       notes: task.notes || task.description,
-      source: 'TASK'
+      source: 'TASK',
+      location,
     };
   };
 
@@ -365,21 +682,18 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     }
   }, [deviceId, deviceCode, deviceName]);
 
-  // ✅ UPDATED: Enhanced timezone-aware date formatting functions
+  // ✅ Date formatting functions (unchanged)
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
     try {
-      // ✅ Handle UTC server time properly
       const date = new Date(dateString);
-      
-      // Check if date is valid
       if (isNaN(date.getTime())) return "N/A";
       
       return date.toLocaleDateString("vi-VN", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        timeZone: "Asia/Ho_Chi_Minh" // ✅ Force Vietnam timezone
+        timeZone: "Asia/Ho_Chi_Minh"
       });
     } catch (error) {
       console.warn("Date formatting error:", error);
@@ -391,13 +705,12 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      
       if (isNaN(date.getTime())) return "N/A";
       
       return date.toLocaleTimeString("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: "Asia/Ho_Chi_Minh" // ✅ Force Vietnam timezone
+        timeZone: "Asia/Ho_Chi_Minh"
       });
     } catch (error) {
       console.warn("Time formatting error:", error);
@@ -405,66 +718,35 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     }
   };
 
-  const formatDateTime = (dateString: string) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      
-      if (isNaN(date.getTime())) return "N/A";
-      
-      return date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit", 
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Asia/Ho_Chi_Minh" // ✅ Force Vietnam timezone
-      });
-    } catch (error) {
-      console.warn("DateTime formatting error:", error);
-      return "N/A";
-    }
-  };
-
-  // ✅ UPDATED: Format timestamp in exact format: HH:MM dd/MM/yyyy
   const formatExactTimestamp = (dateString: string) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      
       if (isNaN(date.getTime())) return "N/A";
       
-      // ✅ Create Vietnam timezone-aware date
-      const vietnamDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-      
-      // Format as HH:MM dd/MM/yyyy
-      const hours = vietnamDate.getHours().toString().padStart(2, '0');
-      const minutes = vietnamDate.getMinutes().toString().padStart(2, '0');
-      const day = vietnamDate.getDate().toString().padStart(2, '0');
-      const month = (vietnamDate.getMonth() + 1).toString().padStart(2, '0');
-      const year = vietnamDate.getFullYear();
-      
-      return `${hours}:${minutes} ${day}/${month}/${year}`;
+      return date.toLocaleString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Asia/Ho_Chi_Minh"
+      });
     } catch (error) {
       console.warn("Exact timestamp formatting error:", error);
       return "N/A";
     }
   };
 
-  // ✅ UPDATED: Calculate Vietnamese relative time with more accuracy
   const getVietnameseRelativeTime = (dateString: string) => {
     if (!dateString) return "Không rõ";
     
     try {
       const date = new Date(dateString);
-      
       if (isNaN(date.getTime())) return "Không rõ";
       
-      // ✅ Get current Vietnam time for accurate comparison
-      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-      const vietnamEventDate = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-      
-      const diffMs = now.getTime() - vietnamEventDate.getTime();
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
       const diffSeconds = Math.floor(diffMs / 1000);
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -473,7 +755,6 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
       const diffMonths = Math.floor(diffDays / 30);
       const diffYears = Math.floor(diffDays / 365);
       
-      // ✅ More precise Vietnamese relative time
       if (diffSeconds < 30) {
         return "Vừa xong";
       } else if (diffSeconds < 60) {
@@ -509,11 +790,11 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
     }
   };
 
-  // ✅ UPDATED: Enhanced getEventIcon to include device installation
+  // ✅ Enhanced getEventIcon (removed DEVICE_INSTALLATION)
   const getEventIcon = (eventType: DeviceLogEvent['eventType']) => {
     switch (eventType) {
-      case 'DEVICE_INSTALLATION':
-        return <Settings className="h-4 w-4 text-blue-600" />;
+      case 'DEVICE_REMOVAL':
+        return <Minus className="h-4 w-4 text-red-600" />;
       case 'INSTALLATION':
         return <ArrowUpDown className="h-4 w-4 text-green-600" />;
       case 'UNINSTALLATION':
@@ -616,7 +897,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
 
   return (
     <div className="space-y-4">
-      {/* ✅ Current Location Summary - Perfect two-line "Last Updated" display */}
+      {/* Current Location Summary */}
       {currentLocation && (
         <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10">
           <CardHeader className="pb-2">
@@ -630,7 +911,12 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
               <div>
                 <Label className="text-xs text-muted-foreground">Vị trí</Label>
                 <p className="font-medium">
-                  {currentLocation.area} - {currentLocation.zone} - {currentLocation.position}
+                  {currentLocation.area === "Kho" && currentLocation.zone === "Kho" && currentLocation.position === "Kho" 
+                    ? "Kho" 
+                    : currentLocation.area === "Nhà bảo hành" 
+                    ? "Nhà bảo hành"
+                    : `${currentLocation.area} - ${currentLocation.zone} - ${currentLocation.position}`
+                  }
                 </p>
               </div>
               <div>
@@ -641,18 +927,15 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
                   </Badge>
                 </p>
               </div>
-              {/* ✅ PERFECT: Two-line "Last Updated" display with correct Vietnam timezone */}
               <div>
                 <Label className="text-xs text-muted-foreground">Cập nhật lần cuối</Label>
                 <div className="space-y-0.5">
-                  {/* Line 1: Exact timestamp with clock icon */}
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3 w-3 text-blue-500 flex-shrink-0" />
                     <span className="text-sm font-medium text-foreground">
                       {formatExactTimestamp(currentLocation.lastUpdated)}
                     </span>
                   </div>
-                  {/* Line 2: Relative time with bullet point */}
                   <div className="flex items-center gap-1 text-xs text-muted-foreground ml-4">
                     <span className="text-blue-400">•</span>
                     <span>{getVietnameseRelativeTime(currentLocation.lastUpdated)}</span>
@@ -664,7 +947,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
         </Card>
       )}
 
-      {/* ✅ Activity Summary - Updated to reflect installation events */}
+      {/* Activity Summary */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Tổng quan hoạt động</CardTitle>
@@ -690,7 +973,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
             <div>
               <span className="text-xs text-muted-foreground">Lắp/Tháo</span>
               <p className="font-medium">
-                {deviceLogs.filter(e => e.eventType === 'INSTALLATION' || e.eventType === 'UNINSTALLATION' || e.eventType === 'DEVICE_INSTALLATION').length}
+                {deviceLogs.filter(e => e.eventType === 'INSTALLATION' || e.eventType === 'UNINSTALLATION' || e.eventType === 'DEVICE_REMOVAL').length}
               </p>
             </div>
             <div>
@@ -703,7 +986,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
         </CardContent>
       </Card>
 
-      {/* ✅ Timeline */}
+      {/* Timeline */}
       {deviceLogs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-8 text-center">
@@ -721,13 +1004,19 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
             <Badge variant="secondary">{deviceLogs.length} sự kiện</Badge>
           </div>
 
-          {/* ✅ Event timeline design */}
+          {/* ✅ Event timeline with unified installation logs */}
           <div className="space-y-3">
             {deviceLogs.map((event, index) => (
               <Card 
                 key={event.id} 
                 className={`border-l-4 ${
-                  event.eventType === 'DEVICE_INSTALLATION' ? 'border-l-blue-600 bg-blue-50/50 dark:bg-blue-900/10' : 'border-l-blue-500'
+                  event.eventType === 'INSTALLATION'
+                    ? 'border-l-green-600 bg-green-50/50 dark:bg-green-900/10' 
+                    : event.eventType === 'DEVICE_REMOVAL'
+                    ? 'border-l-red-600 bg-red-50/50 dark:bg-red-900/10'
+                    : event.eventType === 'WAREHOUSE_IMPORT'
+                    ? 'border-l-cyan-600 bg-cyan-50/50 dark:bg-cyan-900/10'
+                    : 'border-l-blue-500'
                 }`}
               >
                 <CardContent className="p-4">
@@ -749,23 +1038,22 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
                           <span className="text-sm text-muted-foreground">
                             {formatTime(event.date)}
                           </span>
-                          
                         </div>
                         
                         <p className="text-sm text-muted-foreground mb-2">
                           {event.description}
                         </p>
                         
-                        {/* Additional details */}
+                        {/* ✅ Enhanced details with unified information */}
                         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                          {event.assigneeName && (
-                            <span>Thực hiện bởi: <span className="font-medium text-foreground">{event.assigneeName}</span></span>
-                          )}
-                          {event.requestCode && (
-                            <span>Mã yêu cầu: <span className="font-medium text-foreground">{event.requestCode}</span></span>
+                          {(event.assigneeName || event.requestedBy) && (
+                            <span>Thực hiện bởi: <span className="font-medium text-foreground">{event.assigneeName || event.requestedBy}</span></span>
                           )}
                           {event.location && (
                             <span>Địa điểm: <span className="font-medium text-foreground">{event.location}</span></span>
+                          )}
+                          {event.replacedDeviceCode && (
+                            <span>Thay thế bằng: <span className="font-medium text-foreground">{event.replacedDeviceCode}</span></span>
                           )}
                         </div>
                         
@@ -778,11 +1066,14 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
                       </div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 items-end">
-                      <Badge variant="outline" className={getStatusBadgeVariant(event.status)}>
-                        {translateTaskStatus(event.status)}
-                      </Badge>
-                    </div>
+                    {/* Status badge display (hidden for machine actions) */}
+                    {/* {event.source !== 'MACHINE_ACTION' && (
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant="outline" className={getStatusBadgeVariant(event.status)}>
+                          {translateTaskStatus(event.status)}
+                        </Badge>
+                      </div>
+                    )} */}
                   </div>
                 </CardContent>
               </Card>

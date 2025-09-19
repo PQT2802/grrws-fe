@@ -125,7 +125,7 @@ export const UserListCpn = ({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name or email..."
+              placeholder="Tìm theo tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -142,35 +142,35 @@ export const UserListCpn = ({
               <SelectValue placeholder="All Roles" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="all">Tất cả vai trò</SelectItem>
               <SelectItem value="Head Department">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span>Head Department</span>
+                  <span>Trưởng phòng may</span>
                 </div>
               </SelectItem>
               <SelectItem value="Head of Technical">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span>Head of Technical</span>
+                  <span>Trưởng phòng kỹ thuật</span>
                 </div>
               </SelectItem>
               <SelectItem value="Mechanic">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span>Mechanic</span>
+                  <span>Thợ máy</span>
                 </div>
               </SelectItem>
               <SelectItem value="Stock Keeper">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span>Stock Keeper</span>
+                  <span>Thủ kho</span>
                 </div>
               </SelectItem>
               <SelectItem value="Admin">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  <span>Admin</span>
+                  <span>Quản trị viên</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -186,8 +186,8 @@ export const UserListCpn = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name-asc">Name</SelectItem>
-                <SelectItem value="createdDate-desc">Date</SelectItem>
+                <SelectItem value="name-asc">Tên</SelectItem>
+                <SelectItem value="createdDate-desc">Ngày tạo</SelectItem>
               </SelectContent>
             </Select>
 
@@ -224,11 +224,11 @@ export const UserListCpn = ({
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">User</th>
+                <th className="px-4 py-3 text-left">Người dùng</th>
                 <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Role</th>
-                <th className="px-4 py-3 text-left">Created</th>
-                <th className="w-[80px] px-4 py-3 text-right">Actions</th>
+                <th className="px-4 py-3 text-left">Vai trò</th>
+                <th className="px-4 py-3 text-left">Ngày tạo</th>
+                <th className="w-[120px] px-4 py-3 text-right">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -312,18 +312,18 @@ export const UserListCpn = ({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => onView(user)}>
                             <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            Xem chi tiết
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onEdit(user)}>
+                          {/* <DropdownMenuItem onClick={() => onEdit(user)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit User
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                           <DropdownMenuItem
                             onClick={() => onDelete(user)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Disable User
+                            Vô hiệu hóa người dùng
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

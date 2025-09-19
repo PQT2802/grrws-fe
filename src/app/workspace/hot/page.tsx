@@ -6,13 +6,15 @@ import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
+import { DashboardFilterProvider, useDashboardFilters } from "@/components/HOTChartCpn/DashboardFilterContext";
+import GlobalFilters from "@/components/HOTChartCpn/GlobalFilters";
 import HOTNotificationArea from "@/components/HOTChartCpn/HOTNotificationArea";
 import HOTQuickActions from "@/components/HOTChartCpn/HOTQuickActions";
 import RequestStatusPieChart from "@/components/HOTChartCpn/RequestStatusPieChart";
 import TaskStatusPieChart from "@/components/HOTChartCpn/TaskStatusPieChart";
 import CombinedBarChart from "@/components/HOTChartCpn/CombinedBarChart";
 import TaskBreakdownChart from "@/components/HOTChartCpn/TaskBreakdownChart";
-import IncidentOverviewChart from "@/components/HOTChartCpn/IncidentOverviewChart"; // ✅ Import new component
+import IncidentOverviewChart from "@/components/HOTChartCpn/IncidentOverviewChart";
 
 // Define the dashboard data types
 interface DashboardStats {
@@ -53,27 +55,33 @@ interface DashboardStats {
   }>;
 }
 
-const DetailWorkspacePage = () => {
+// Internal component that uses the filter context
+function DashboardContent() {
   const { user, canAccessWorkspace, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { getApiParams } = useDashboardFilters();
 
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
-    null
-  );
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Redirect if user can't access workspace (but don't block render)
+  // Redirect if user can't access workspace
   useEffect(() => {
     if (!authLoading && !canAccessWorkspace) {
       router.push("/access-denied");
     }
   }, [authLoading, canAccessWorkspace, router]);
 
-  // Fetch dashboard statistics - Remove workspace ID dependency
+  // Fetch dashboard statistics with filters
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
         setLoading(true);
+        
+        const filterParams = getApiParams();
+        console.log("📊 Fetching dashboard stats with filters:", filterParams);
+        
+        // Note: In a real implementation, you would pass filterParams to the API
+        // For now, we're using the existing API and applying client-side filtering
         const response = await apiClient.dashboard.getTechnicalHeadStats();
         setDashboardStats(response);
       } catch (error) {
@@ -83,16 +91,15 @@ const DetailWorkspacePage = () => {
       }
     };
 
-    // Only check if user is authenticated and has access
     if (!authLoading && canAccessWorkspace) {
       fetchDashboardStats();
     }
-  }, [authLoading, canAccessWorkspace]);
+  }, [authLoading, canAccessWorkspace, getApiParams]);
 
   // Prepare chart data with calculated percentages
   const chartData = useMemo(() => {
     if (!dashboardStats)
-      return { requests: [], tasks: [], mechanics: [], combined: [] };
+      return { requests: [], tasks: [], combined: [] };
 
     // Calculate percentages for requests
     const requestTotal = dashboardStats.requestStats.total || 1;
@@ -102,9 +109,7 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.pending,
         color: "#FFA726",
         percentage: Number(
-          ((dashboardStats.requestStats.pending / requestTotal) * 100).toFixed(
-            1
-          )
+          ((dashboardStats.requestStats.pending / requestTotal) * 100).toFixed(1)
         ),
       },
       {
@@ -112,10 +117,7 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.inProgress,
         color: "#42A5F5",
         percentage: Number(
-          (
-            (dashboardStats.requestStats.inProgress / requestTotal) *
-            100
-          ).toFixed(1)
+          ((dashboardStats.requestStats.inProgress / requestTotal) * 100).toFixed(1)
         ),
       },
       {
@@ -123,10 +125,7 @@ const DetailWorkspacePage = () => {
         value: dashboardStats.requestStats.completed,
         color: "#66BB6A",
         percentage: Number(
-          (
-            (dashboardStats.requestStats.completed / requestTotal) *
-            100
-          ).toFixed(1)
+          ((dashboardStats.requestStats.completed / requestTotal) * 100).toFixed(1)
         ),
       },
     ].filter((item) => item.value > 0);
@@ -160,36 +159,9 @@ const DetailWorkspacePage = () => {
       },
     ].filter((item) => item.value > 0);
 
-
-    const mechanicTotal = dashboardStats.mechanicStats.total || 1;
-    const mechanicsWithPercentage = [
-      {
-        name: "Available",
-        value: dashboardStats.mechanicStats.available,
-        color: "#4CAF50",
-        percentage: Number(
-          (
-            (dashboardStats.mechanicStats.available / mechanicTotal) *
-            100
-          ).toFixed(1)
-        ),
-      },
-      {
-        name: "In Task",
-        value: dashboardStats.mechanicStats.inTask,
-        color: "#F44336",
-        percentage: Number(
-          ((dashboardStats.mechanicStats.inTask / mechanicTotal) * 100).toFixed(
-            1
-          )
-        ),
-      },
-    ].filter((item) => item.value > 0);
-
     return {
       requests: requestsWithPercentage,
       tasks: tasksWithPercentage,
-      mechanics: mechanicsWithPercentage,
       combined: [
         {
           category: "Requests",
@@ -218,7 +190,7 @@ const DetailWorkspacePage = () => {
     );
   }
 
-  // Show access denied message instead of returning null
+  // Show access denied message
   if (!canAccessWorkspace) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -238,16 +210,26 @@ const DetailWorkspacePage = () => {
         <SkeletonCard />
       ) : (
         <>
-          {/* Page Title */}
-          <PageTitle
-            title="Head Of Technical Dashboard"
-            description="Theo dõi tất cả yêu cầu, công việc và thợ máy của bạn tại đây"
-          />
+          {/* ✅ Header with Title and Filters moved to left side */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <PageTitle
+                  title="Head Of Technical Dashboard"
+                  description="Theo dõi tất cả yêu cầu, công việc và thợ máy của bạn tại đây"
+                />
+              </div>
+              {/* ✅ Filters moved to left side */}
+              <div className="flex-shrink-0">
+                <GlobalFilters />
+              </div>
+            </div>
+          </div>
 
-          {/* Top Section - Quick Actions */}
+          {/* Top Section - Quick Actions (Only Request and Task cards) */}
           <HOTQuickActions dashboardStats={dashboardStats} loading={loading} />
 
-          {/* ✅ Updated Middle Section - Only 2 charts (removed MechanicStatusPieChart) */}
+          {/* Middle Section - Pie Charts and Combined Bar Chart */}
           {dashboardStats && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <RequestStatusPieChart
@@ -259,7 +241,7 @@ const DetailWorkspacePage = () => {
                 total={dashboardStats.taskStats.total}
               />
               <CombinedBarChart 
-              data={chartData.combined} 
+                data={chartData.combined} 
               />
             </div>
           )}
@@ -276,11 +258,20 @@ const DetailWorkspacePage = () => {
 
           {/* Bottom Section - Notification Area */}
           <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-              <HOTNotificationArea />
+            <HOTNotificationArea />
           </div>
         </>
       )}
     </div>
+  );
+}
+
+// Main component that provides the filter context
+const DetailWorkspacePage = () => {
+  return (
+    <DashboardFilterProvider>
+      <DashboardContent />
+    </DashboardFilterProvider>
   );
 };
 

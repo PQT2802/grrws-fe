@@ -1,17 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Bell, ArrowRight, FileText, Clock, MapPin, CalendarDays } from "lucide-react";
+import { Bell, ArrowRight, FileText, Clock, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { REQUEST_ITEM } from "@/types/dashboard.type";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useDashboardFilters } from "@/components/HOTChartCpn/DashboardFilterContext";
 
 interface NotificationState {
   requests: REQUEST_ITEM[];
@@ -23,12 +17,6 @@ interface NotificationState {
 interface RequestWithCreator extends REQUEST_ITEM {
   createdByName?: string;
 }
-
-const TIME_RANGES = [
-  { value: "24h", label: "24 giờ trước" },
-  { value: "3d", label: "3 ngày trước" },
-  { value: "7d", label: "7 ngày trước" },
-];
 
 // Vietnamese status mapping
 const getStatusLabel = (status: string): string => {
@@ -48,21 +36,21 @@ const getStatusLabel = (status: string): string => {
 // Vietnamese status badge colors
 const getStatusBadgeClass = (status: string): string => {
   const statusClasses: { [key: string]: string } = {
-    Pending: "bg-yellow-200 text-yellow-700",
-    Unconfirmed: "bg-yellow-200 text-yellow-700",
-    Confirmed: "bg-green-200 text-green-700",
-    InProgress: "bg-blue-200 text-blue-700",
-    Completed: "bg-green-200 text-green-700",
-    Rejected: "bg-red-200 text-red-700",
-    OnHold: "bg-gray-200 text-gray-700",
-    Cancelled: "bg-red-200 text-red-700",
+    Pending: "bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200",
+    Unconfirmed: "bg-yellow-200 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200",
+    Confirmed: "bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-200",
+    InProgress: "bg-blue-200 text-blue-700 dark:bg-blue-800 dark:text-blue-200",
+    Completed: "bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-200",
+    Rejected: "bg-red-200 text-red-700 dark:bg-red-800 dark:text-red-200",
+    OnHold: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
+    Cancelled: "bg-red-200 text-red-700 dark:bg-red-800 dark:text-red-200",
   };
-  return statusClasses[status] || "bg-gray-200 text-gray-700";
+  return statusClasses[status] || "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200";
 };
 
 export default function HOTNotificationArea() {
   const router = useRouter();
-  const [timeRange, setTimeRange] = useState("7d");
+  const { getApiParams } = useDashboardFilters();
 
   const [state, setState] = useState<NotificationState>({
     requests: [],
@@ -91,47 +79,45 @@ export default function HOTNotificationArea() {
         return user?.fullName || user?.name || createdBy;
       } catch (error) {
         console.error(`Failed to fetch user info for ${createdBy}:`, error);
-        return createdBy; // Return ID as fallback
+        return createdBy;
       }
     },
     []
   );
 
-  // Filter requests by time range
-  const filterRequestsByTimeRange = useCallback((requests: REQUEST_ITEM[]): REQUEST_ITEM[] => {
-    const now = new Date();
-    let startDate: Date;
-
-    switch (timeRange) {
-      case "24h":
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case "3d":
-        startDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-        break;
-      case "7d":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    }
-
+  // ✅ Fixed department filtering logic
+  const filterRequests = useCallback((requests: REQUEST_ITEM[]): REQUEST_ITEM[] => {
+    const filterParams = getApiParams();
+    
     return requests.filter(request => {
       // ✅ Exclude completed requests
       if (request.status.toLowerCase() === 'completed') {
         return false;
       }
 
-      // Filter by time range
-      const requestDate = new Date(request.createdDate);
-      return requestDate >= startDate && requestDate <= now;
+      // Date filtering
+      if (filterParams.startDate && filterParams.endDate) {
+        const requestDate = new Date(request.createdDate);
+        const startDate = new Date(filterParams.startDate);
+        const endDate = new Date(filterParams.endDate);
+        if (requestDate < startDate || requestDate > endDate) {
+          return false;
+        }
+      }
+
+      // ✅ Fixed area filtering - check against area names
+      if (filterParams.areaIds && filterParams.areaIds.length > 0) {
+        return request.areaName && filterParams.areaIds.includes(request.areaName);
+      }
+
+      return true;
     });
-  }, [timeRange]);
+  }, [getApiParams]);
 
   const processRequests = useCallback(
     async (rawRequests: REQUEST_ITEM[]) => {
-      // ✅ Filter out completed requests and apply time range filter
-      const filteredRequests = filterRequestsByTimeRange(rawRequests);
+      // ✅ Apply global filters
+      const filteredRequests = filterRequests(rawRequests);
       
       // Sort by creation date (newest first) and take the first 5
       const sortedRequests = filteredRequests
@@ -155,17 +141,17 @@ export default function HOTNotificationArea() {
 
       return {
         requests: requestsWithCreators,
-        totalCount: filteredRequests.length, // Use filtered count, not raw count
+        totalCount: filteredRequests.length, // Use filtered count
       };
     },
-    [fetchCreatorName, filterRequestsByTimeRange]
+    [fetchCreatorName, filterRequests]
   );
 
   const fetchNotificationData = useCallback(async () => {
     try {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      // Fetch all requests (increase page size to get more results)
+      // Fetch all requests
       const response = await apiClient.dashboard.getAllRequests(1, 200);
 
       let requests: REQUEST_ITEM[] = [];
@@ -178,11 +164,11 @@ export default function HOTNotificationArea() {
         requests = response;
       }
 
-      console.log(`Fetched ${requests.length} total requests for HOT`);
+      console.log(`📊 Fetched ${requests.length} total requests for HOT Notifications`);
 
       const processedData = await processRequests(requests);
 
-      console.log(`After filtering: ${processedData.totalCount} requests (excluding completed)`);
+      console.log(`📊 After filtering: ${processedData.totalCount} requests (excluding completed)`);
 
       setState((prev) => ({
         ...prev,
@@ -199,7 +185,7 @@ export default function HOTNotificationArea() {
     }
   }, [processRequests]);
 
-  // Fetch data when component mounts or time range changes
+  // ✅ Fetch data when global filters change
   useEffect(() => {
     fetchNotificationData();
   }, [fetchNotificationData]);
@@ -277,57 +263,44 @@ export default function HOTNotificationArea() {
     if (state.totalCount === 0) return null;
 
     return (
-      <div className="rounded-lg shadow-sm border p-6">
+      <div className="rounded-lg shadow-sm border border-border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-blue-500" />
-            <h2 className="font-semibold text-lg">Yêu cầu gần đây</h2>
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+            <Bell className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+            <h2 className="font-semibold text-lg text-card-foreground">Yêu cầu gần đây</h2>
+            <span className="bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded-full">
               {state.totalCount}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {/* ✅ Time Range Filter */}
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-32 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_RANGES.map((range) => (
-                  <SelectItem key={range.value} value={range.value}>
-                    {range.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <button
               onClick={handleViewAllRequests}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1"
             >
               Xem tất cả <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <ul className="divide-y divide-gray-200 dark:divide-slate-700">
+        <ul className="divide-y divide-border">
           {state.requests.map((req) => (
             <li
               key={req.id}
-              className="py-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer rounded transition-colors"
+              className="py-3 hover:bg-accent cursor-pointer rounded transition-colors"
               onClick={() => handleRequestClick(req.id)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   {/* Line 1: Request Title */}
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium text-blue-600">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-blue-600 dark:text-blue-400">
                       {req.requestTitle}
                     </span>
                   </div>
 
                   {/* Line 2: Created By + Timestamp + Time Ago */}
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
+                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                     Tạo bởi{" "}
                     {(req as RequestWithCreator).createdByName || req.createdBy}
                     <Clock className="w-3 h-3 ml-1" />
@@ -336,7 +309,7 @@ export default function HOTNotificationArea() {
                   </p>
 
                   {/* Line 3: Location */}
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
+                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {formatLocation(req)}
                   </p>
@@ -353,7 +326,7 @@ export default function HOTNotificationArea() {
           ))}
           {state.totalCount > state.requests.length && (
             <li className="pt-2 text-center">
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 và {state.totalCount - state.requests.length} yêu cầu khác...
               </span>
             </li>
@@ -364,7 +337,6 @@ export default function HOTNotificationArea() {
   }, [
     state.requests,
     state.totalCount,
-    timeRange,
     handleRequestClick,
     handleViewAllRequests,
   ]);
@@ -374,11 +346,11 @@ export default function HOTNotificationArea() {
   if (state.error) {
     return (
       <div className="space-y-6">
-        <div className="rounded-lg shadow-sm border p-6">
-          <p className="text-center text-red-500">{state.error}</p>
+        <div className="rounded-lg shadow-sm border border-border bg-card p-6">
+          <p className="text-center text-destructive">{state.error}</p>
           <button
             onClick={fetchNotificationData}
-            className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
           >
             Thử lại
           </button>
@@ -390,35 +362,20 @@ export default function HOTNotificationArea() {
   // Check if we have any sections to render
   if (state.totalCount === 0) {
     return (
-      <div className="rounded-lg shadow-sm border p-6">
+      <div className="rounded-lg shadow-sm border border-border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-blue-500" />
-            <h2 className="font-semibold text-lg">Yêu cầu gần đây</h2>
+            <Bell className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+            <h2 className="font-semibold text-lg text-card-foreground">Yêu cầu gần đây</h2>
           </div>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIME_RANGES.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <div className="text-center py-8">
-          <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">
+          <Bell className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-muted-foreground mb-2">
             Không có yêu cầu
           </h3>
-          <p className="text-gray-500">
-            Hiện tại không có yêu cầu nào trong khoảng thời gian đã chọn
-            {timeRange === "24h" && " (24 giờ qua)"}
-            {timeRange === "3d" && " (3 ngày qua)"}
-            {timeRange === "7d" && " (7 ngày qua)"}
+          <p className="text-muted-foreground">
+            Hiện tại không có yêu cầu nào phù hợp với bộ lọc đã chọn
           </p>
         </div>
       </div>

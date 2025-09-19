@@ -53,45 +53,29 @@ export function NavAdmin() {
       icon: UsersRound,
       items: [],
     },
-    {
-      title: "Máy móc",
-      url: `/workspace/admin/machineList`,
-      icon: WashingMachine,
-      items: [],
-    },
-    {
-      title: "Thiết bị",
-      url: `/workspace/admin/deviceList`,
-      icon: Smartphone,
-      items: [],
-    },
-    {
-      title: "Linh kiện",
-      url: `/workspace/admin/spare-parts`,
-      icon: PackageSearch,
-      items: [],
-    },
+    // {
+    //   title: "Máy móc",
+    //   url: `/workspace/admin/machineList`,
+    //   icon: WashingMachine,
+    //   items: [],
+    // },
+    // {
+    //   title: "Thiết bị",
+    //   url: `/workspace/admin/deviceList`,
+    //   icon: Smartphone,
+    //   items: [],
+    // },
+    // {
+    //   title: "Linh kiện",
+    //   url: `/workspace/admin/spare-parts`,
+    //   icon: PackageSearch,
+    //   items: [],
+    // },
     {
       title: "Phòng ban",
-      url: "#",
+      url: `/workspace/admin/location/areas`,
       icon: MapPin,
-      items: [
-        {
-          title: "Khu vực",
-          url: `/workspace/admin/location/areas`,
-          icon: MapPin,
-        },
-        {
-          title: "Khu",
-          url: `/workspace/admin/location/zones`,
-          icon: MapPin,
-        },
-        {
-          title: "Vị trí",
-          url: `/workspace/admin/location/positions`,
-          icon: MapPin,
-        },
-      ],
+      items: [],
     },
     {
       title: "Yêu cầu",
