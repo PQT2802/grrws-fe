@@ -18,7 +18,7 @@ export interface CREATE_REPAIR_TASK_V2 {
   StartDate: string; // ISO string format
   AssigneeId?: string | null; // User ID of the assignee, can be null if not assigned yet
   AddingErrors: string[]; // Required - List of error IDs
-  TaskType:"Repair"
+  TaskType: "Repair";
 }
 
 
@@ -264,6 +264,7 @@ export interface REPAIR_TASK_DETAIL {
   assigneeName: string;
   isInstall: boolean;
   isSigned: boolean;
+  isOnSiteRepair: boolean;
   errorDetails: ErrorDetail[];
   machineActionConfirmations: MachineActionConfirmation[];
 }

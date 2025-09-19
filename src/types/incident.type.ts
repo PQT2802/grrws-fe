@@ -15,6 +15,7 @@ export interface TechnicalIssue {
 }
 
 export interface ErrorIncident {
+  id: string;
   errorCode: string;
   name: string;
   description: string;
