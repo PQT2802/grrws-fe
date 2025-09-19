@@ -21,6 +21,7 @@ import UpdateWarrantyClaimButton from "@/components/warranty/UpdateWarrantyClaim
 import CreateWarrantyReturnButton from "@/components/warranty/CreateWarrantyReturnButton";
 import CreateInstallUninstallTaskCpn from "@/components/CreateInstallUninstallTaskCpn/CreateInstallUninstallTaskCpn";
 import CreateReinstallTaskButton from "@/components/warranty/CreateReinstallTaskButton";
+import CreateReplacementTaskButton from "@/components/CreateReplacementTaskButton/CreateReplacementTaskButton";
 import {
   formatAPIDateToHoChiMinh,
   formatAPIDateUTC,
@@ -1095,6 +1096,18 @@ const GroupTaskDetailsPage = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Quay lại Nhiệm vụ
             </Button>
+
+            <CreateReplacementTaskButton
+              onSuccess={refreshTaskData}
+              buttonText="Tạo thay thế"
+              buttonVariant="secondary"
+              buttonSize="sm"
+              oldDeviceId={
+                warrantyTaskDetailForFooter?.deviceId ||
+                repairTaskDetail?.machineActionConfirmations[0]?.deviceId ||
+                ""
+              }
+            />
 
             {warrantySubmissionTask &&
               warrantyReturnTask?.status !== "Completed" &&

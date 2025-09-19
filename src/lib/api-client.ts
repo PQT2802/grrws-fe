@@ -27,6 +27,7 @@ import {
   CreateWarrantyReturnAfterDelayed,
   INSTALL_TASK_DETAIL,
   REPAIR_TASK_DETAIL,
+  REPLACEMENT_TASK,
   SPAREPART_WEB,
   STAFF_TASK_RESPONSE,
   TASK_GROUP_RESPONSE,
@@ -198,6 +199,9 @@ class APIClient {
       data: CreateWarrantyReturnAfterDelayed
     ): Promise<any> => {
       return http.post("/api/Task/delayed-return/create", data);
+    },
+    createReplacementTask: (data: REPLACEMENT_TASK): Promise<any> => {
+      return http.post("/api/Task/install-without-request", data);
     },
     getTaskGroups: (
       requestId: string,
