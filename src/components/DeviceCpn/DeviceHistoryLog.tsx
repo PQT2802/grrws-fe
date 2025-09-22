@@ -472,8 +472,7 @@ export default function DeviceHistoryLog({ deviceId, deviceCode, deviceName }: D
               const isCompleted = task.status?.toLowerCase() === 'completed' || task.status?.toLowerCase() === 'done';
               
               if (isDifferentDevice && isCompleted) {
-                // ✅ Use actual task date and subtract 1 second to ensure proper ordering
-                let taskDate = new Date(task.completedTime || task.endTime || task.startTime || task.createdDate);
+                const taskDate = new Date(task.completedTime || task.endTime || task.startTime || task.createdDate);
                 taskDate.setSeconds(taskDate.getSeconds() - 1); // Ensure removal happens 1 second before stock-in
                 
                 const removalEvent: DeviceLogEvent = {
