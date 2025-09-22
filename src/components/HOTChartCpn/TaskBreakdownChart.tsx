@@ -160,7 +160,7 @@ export default function TaskBreakdownChart({ className }: TaskBreakdownChartProp
         console.log("📊 Fetching tasks for TaskBreakdownChart with global filters...");
         
         const response = await apiClient.task.getAllTaskGroups(1, 100);
-        let tasksData: TaskData[] = [];
+        const tasksData: TaskData[] = [];
         
         if (response && response.data && Array.isArray(response.data)) {
           response.data.forEach((group: any) => {

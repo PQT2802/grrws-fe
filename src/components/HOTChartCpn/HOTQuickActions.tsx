@@ -371,7 +371,7 @@ export default function HOTQuickActions({ dashboardStats, loading }: HOTQuickAct
             value: taskBreakdown?.installation || 0,
             icon: Settings,
             color: "text-green-600",
-            hasWarning: true,
+            // hasWarning: true,
             warningTooltip: "Công việc thay thế/lắp đặt không tính vào tổng nhóm công việc"
           }
         ],
