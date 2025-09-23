@@ -224,6 +224,81 @@ function DashboardContent() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Move all useMemo hooks to the top, before any conditional returns
+  // Tính toán phần trăm và xu hướng
+  const analyticsData = useMemo(() => {
+    if (!dashboardStats) return null;
+
+    const requestCompletionRate = dashboardStats.totalRequests > 0 
+      ? (dashboardStats.completedRequests / dashboardStats.totalRequests) * 100 
+      : 0;
+
+    const taskCompletionRate = dashboardStats.totalTasks > 0 
+      ? (dashboardStats.completedTasks / dashboardStats.totalTasks) * 100 
+      : 0;
+
+    const deviceUtilizationRate = dashboardStats.totalDevices > 0 
+      ? (dashboardStats.inUseDevices / dashboardStats.totalDevices) * 100 
+      : 0;
+
+    return {
+      requestCompletionRate,
+      taskCompletionRate,
+      deviceUtilizationRate,
+      activeDeviceRate: dashboardStats.totalDevices > 0 
+        ? (dashboardStats.activeDevices / dashboardStats.totalDevices) * 100 
+        : 0
+    };
+  }, [dashboardStats]);
+
+  // ✅ Recalculate request status counts based on isCompleted flag
+  const recalculatedRequestStats = useMemo(() => {
+    if (!dashboardStats?.requests) return null;
+
+    let actualCompleted = 0;
+    let actualInProgress = 0;
+    let actualPending = 0;
+    let actualRejected = 0;
+
+    dashboardStats.requests.forEach(request => {
+      if (request.isCompleted) {
+        // If isCompleted is true, count as completed regardless of status
+        actualCompleted++;
+      } else {
+        // If not completed, count based on actual status
+        switch (request.status) {
+          case 'InProgress':
+            actualInProgress++;
+            break;
+          case 'Pending':
+            actualPending++;
+            break;
+          case 'Rejected':
+            actualRejected++;
+            break;
+          case 'Completed':
+            actualCompleted++;
+            break;
+          default:
+            // Handle any other statuses
+            if (request.status === 'Cancelled') {
+              actualRejected++;
+            } else {
+              actualPending++;
+            }
+        }
+      }
+    });
+
+    return {
+      actualCompleted,
+      actualInProgress,
+      actualPending,
+      actualRejected,
+      total: dashboardStats.totalRequests
+    };
+  }, [dashboardStats]);
+
   // Chuyển hướng nếu user không có quyền truy cập
   useEffect(() => {
     if (!authLoading && !canAccessWorkspace) {
@@ -273,32 +348,7 @@ function DashboardContent() {
     }
   }, [authLoading, canAccessWorkspace, getApiParams]);
 
-  // Tính toán phần trăm và xu hướng
-  const analyticsData = useMemo(() => {
-    if (!dashboardStats) return null;
-
-    const requestCompletionRate = dashboardStats.totalRequests > 0 
-      ? (dashboardStats.completedRequests / dashboardStats.totalRequests) * 100 
-      : 0;
-
-    const taskCompletionRate = dashboardStats.totalTasks > 0 
-      ? (dashboardStats.completedTasks / dashboardStats.totalTasks) * 100 
-      : 0;
-
-    const deviceUtilizationRate = dashboardStats.totalDevices > 0 
-      ? (dashboardStats.inUseDevices / dashboardStats.totalDevices) * 100 
-      : 0;
-
-    return {
-      requestCompletionRate,
-      taskCompletionRate,
-      deviceUtilizationRate,
-      activeDeviceRate: dashboardStats.totalDevices > 0 
-        ? (dashboardStats.activeDevices / dashboardStats.totalDevices) * 100 
-        : 0
-    };
-  }, [dashboardStats]);
-
+  // ✅ Now all the conditional returns come after the hooks
   // Hiển thị loading khi đang kiểm tra xác thực
   if (authLoading) {
     return (
@@ -394,7 +444,7 @@ function DashboardContent() {
           <div className="flex items-center gap-3">
             <GlobalFilters />
             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" /> {/* Separator */}
-
+            <ModeToggle />
           </div>
         </div>
       </div>
@@ -428,37 +478,37 @@ function DashboardContent() {
 
           {/* Phần Tổng quan Trạng thái */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Trạng thái Yêu cầu */}
+            {/* ✅ Updated Request Status with recalculated values */}
             <ChartContainer title="Trạng thái Yêu cầu" className="lg:col-span-1">
               <div className="space-y-4">
                 <ProgressBar 
                   label="Hoàn thành" 
-                  value={dashboardStats.completedRequests} 
+                  value={recalculatedRequestStats?.actualCompleted || dashboardStats.completedRequests} 
                   total={dashboardStats.totalRequests}
                   color="green"
                 />
                 <ProgressBar 
                   label="Đang xử lý" 
-                  value={dashboardStats.inProgressRequests} 
+                  value={recalculatedRequestStats?.actualInProgress || dashboardStats.inProgressRequests} 
                   total={dashboardStats.totalRequests}
                   color="blue"
                 />
                 <ProgressBar 
                   label="Chờ xử lý" 
-                  value={dashboardStats.pendingRequests} 
+                  value={recalculatedRequestStats?.actualPending || dashboardStats.pendingRequests} 
                   total={dashboardStats.totalRequests}
                   color="orange"
                 />
                 <ProgressBar 
                   label="Từ chối" 
-                  value={dashboardStats.rejectedRequests} 
+                  value={recalculatedRequestStats?.actualRejected || dashboardStats.rejectedRequests} 
                   total={dashboardStats.totalRequests}
                   color="red"
                 />
               </div>
             </ChartContainer>
 
-            {/* Trạng thái Công việc */}
+            {/* Task status remains unchanged */}
             <ChartContainer title="Trạng thái Công việc" className="lg:col-span-1">
               <div className="space-y-4">
                 <ProgressBar 
@@ -482,7 +532,7 @@ function DashboardContent() {
               </div>
             </ChartContainer>
 
-            {/* Trạng thái Thiết bị */}
+            {/* Device status remains unchanged */}
             <ChartContainer title="Trạng thái Thiết bị" className="lg:col-span-1">
               <div className="space-y-4">
                 <ProgressBar 
