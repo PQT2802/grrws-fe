@@ -5,7 +5,6 @@ import { Calendar, MapPin, X, CalendarDays, Filter, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDashboardFilters, DateFilter, DepartmentFilter } from '@/components/HOTChartCpn/DashboardFilterContext';
@@ -23,6 +22,7 @@ const QUICK_SELECT_OPTIONS = [
   { value: '7d', label: '7 ngày qua' },
   { value: '30d', label: '30 ngày qua' },
   { value: '12m', label: '12 tháng qua' },
+  { value: 'current_month', label: 'Tháng hiện tại' },
 ];
 
 export default function GlobalFilters() {
@@ -63,11 +63,11 @@ export default function GlobalFilters() {
     setTempDepartmentFilter(filters.department);
   }, [filters]);
 
-  // Date filter handlers - ✅ Only update temp state
+  // Date filter handlers
   const handleTempDateModeChange = (mode: 'range' | 'quick') => {
     const newDateFilter: DateFilter = {
       mode,
-      ...(mode === 'quick' ? { quickSelect: 'all' } : {})
+      ...(mode === 'quick' ? { quickSelect: 'current_month' } : {})
     };
     setTempDateFilter(newDateFilter);
   };
@@ -80,10 +80,14 @@ export default function GlobalFilters() {
   };
 
   const handleTempDateRangeChange = (startDate?: Date, endDate?: Date) => {
+    // Prevent future dates
+    const now = new Date();
+    const validEndDate = endDate && endDate > now ? now : endDate;
+    
     setTempDateFilter({
       mode: 'range',
       startDate,
-      endDate
+      endDate: validEndDate
     });
   };
 
@@ -97,32 +101,19 @@ export default function GlobalFilters() {
     setDatePopoverOpen(false);
   };
 
-  // Department filter handlers - ✅ Only update temp state
-  const handleTempAreaToggle = (areaId: string, checked: boolean) => {
-    const currentSelected = tempDepartmentFilter.selectedAreas;
-    let newSelected: string[];
-
-    if (checked) {
-      newSelected = [...currentSelected, areaId];
+  // ✅ Fixed Department filter handlers for single area ID
+  const handleTempAreaChange = (areaId: string) => {
+    if (areaId === 'all') {
+      setTempDepartmentFilter({
+        selectedAreaId: '',
+        allSelected: true
+      });
     } else {
-      newSelected = currentSelected.filter(id => id !== areaId);
+      setTempDepartmentFilter({
+        selectedAreaId: areaId,
+        allSelected: false
+      });
     }
-
-    // ✅ If all areas are selected, mark as allSelected = true
-    const allSelected = newSelected.length === areas.length;
-
-    setTempDepartmentFilter({
-      selectedAreas: allSelected ? [] : newSelected,
-      allSelected
-    });
-  };
-
-  // ✅ Fixed "Bỏ chọn tất cả" / "Chọn tất cả" logic for temp state
-  const handleTempSelectAllAreas = (selectAll: boolean) => {
-    setTempDepartmentFilter({
-      selectedAreas: selectAll ? [] : areas.map(area => area.id),
-      allSelected: selectAll
-    });
   };
 
   const confirmDepartmentFilter = () => {
@@ -143,7 +134,7 @@ export default function GlobalFilters() {
   const getDateDisplayText = () => {
     if (filters.date.mode === 'quick') {
       const option = QUICK_SELECT_OPTIONS.find(opt => opt.value === filters.date.quickSelect);
-      return option?.label || 'Tất cả thời gian';
+      return option?.label || 'Tháng hiện tại';
     } else if (filters.date.startDate && filters.date.endDate) {
       return `${format(filters.date.startDate, 'dd/MM/yyyy')} - ${format(filters.date.endDate, 'dd/MM/yyyy')}`;
     }
@@ -152,17 +143,14 @@ export default function GlobalFilters() {
 
   const getDepartmentDisplayText = () => {
     if (filters.department.allSelected) {
-      return 'Tất cả phòng ban';
+      return 'Tất cả khu vực';
     }
-    if (filters.department.selectedAreas.length === 1) {
-      const area = areas.find(a => a.id === filters.department.selectedAreas[0]);
-      return area?.areaName || '1 phòng ban';
-    }
-    return `${filters.department.selectedAreas.length} phòng ban`;
+    const area = areas.find(a => a.id === filters.department.selectedAreaId);
+    return area?.areaName || 'Chọn khu vực';
   };
 
   const hasActiveFilters = 
-    (filters.date.mode === 'quick' && filters.date.quickSelect !== 'all') ||
+    (filters.date.mode === 'quick' && filters.date.quickSelect !== 'current_month') ||
     (filters.date.mode === 'range' && filters.date.startDate && filters.date.endDate) ||
     !filters.department.allSelected;
 
@@ -173,7 +161,7 @@ export default function GlobalFilters() {
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className={`justify-start gap-2 min-w-[200px] hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground ${hasDateChanges ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}`}
+            className={`justify-start gap-2 min-w-[200px] hover:bg-accent hover:text-accent-foreground ${hasDateChanges ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}`}
           >
             <CalendarDays className="h-4 w-4" />
             <span className="truncate">{getDateDisplayText()}</span>
@@ -203,7 +191,7 @@ export default function GlobalFilters() {
                 <div>
                   <Label className="text-sm font-medium text-foreground">Khoảng thời gian</Label>
                   <Select 
-                    value={tempDateFilter.quickSelect || 'all'} 
+                    value={tempDateFilter.quickSelect || 'current_month'} 
                     onValueChange={handleTempQuickSelectChange}
                   >
                     <SelectTrigger className="w-full mt-2">
@@ -229,6 +217,7 @@ export default function GlobalFilters() {
                       onSelect={(date) => handleTempDateRangeChange(date, tempDateFilter.endDate)}
                       locale={vi}
                       className="rounded-md border mt-2"
+                      disabled={(date) => date > new Date()} // Disable future dates
                     />
                   </div>
                   <div>
@@ -239,7 +228,10 @@ export default function GlobalFilters() {
                       onSelect={(date) => handleTempDateRangeChange(tempDateFilter.startDate, date)}
                       locale={vi}
                       className="rounded-md border mt-2"
-                      disabled={(date) => tempDateFilter.startDate ? date < tempDateFilter.startDate : false}
+                      disabled={(date) => {
+                        const now = new Date();
+                        return date > now || (tempDateFilter.startDate ? date < tempDateFilter.startDate : false);
+                      }}
                     />
                   </div>
                 </div>
@@ -268,12 +260,12 @@ export default function GlobalFilters() {
         </PopoverContent>
       </Popover>
 
-      {/* Department Filter - ✅ Renamed to "Chọn phòng ban" */}
+      {/* ✅ Fixed Department Filter - Single Area Selection */}
       <Popover open={departmentPopoverOpen} onOpenChange={setDepartmentPopoverOpen}>
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className={`justify-start gap-2 min-w-[160px] hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground ${hasDepartmentChanges ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}`}
+            className={`justify-start gap-2 min-w-[160px] hover:bg-accent hover:text-accent-foreground ${hasDepartmentChanges ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : ''}`}
           >
             <MapPin className="h-4 w-4" />
             <span className="truncate">{getDepartmentDisplayText()}</span>
@@ -283,48 +275,29 @@ export default function GlobalFilters() {
         <PopoverContent className="w-80" align="start">
           <div className="p-4 bg-background border rounded-lg shadow-lg">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-foreground">Chọn phòng ban</Label>
-                {/* ✅ Fixed toggle all logic for temp state */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleTempSelectAllAreas(!tempDepartmentFilter.allSelected)}
-                  className="text-xs"
-                >
-                  {tempDepartmentFilter.allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                </Button>
-              </div>
-
-              {loadingAreas ? (
-                <div className="text-sm text-muted-foreground">Đang tải...</div>
-              ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {areas.map((area) => {
-                    // ✅ Fixed checkbox state logic for temp state
-                    const isChecked = tempDepartmentFilter.allSelected || 
-                      tempDepartmentFilter.selectedAreas.includes(area.id);
-                    
-                    return (
-                      <div key={area.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={area.id}
-                          checked={isChecked}
-                          onCheckedChange={(checked) => 
-                            handleTempAreaToggle(area.id, checked as boolean)
-                          }
-                        />
-                        <Label
-                          htmlFor={area.id}
-                          className="text-sm font-normal cursor-pointer flex-1 text-foreground"
-                        >
+              <div>
+                <Label className="text-sm font-medium text-foreground">Chọn khu vực</Label>
+                {loadingAreas ? (
+                  <div className="text-sm text-muted-foreground mt-2">Đang tải...</div>
+                ) : (
+                  <Select 
+                    value={tempDepartmentFilter.allSelected ? 'all' : tempDepartmentFilter.selectedAreaId} 
+                    onValueChange={handleTempAreaChange}
+                  >
+                    <SelectTrigger className="w-full mt-2">
+                      <SelectValue placeholder="Chọn khu vực" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả khu vực</SelectItem>
+                      {areas.map((area) => (
+                        <SelectItem key={area.id} value={area.id}>
                           {area.areaName}
-                        </Label>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
 
               {/* ✅ Action Buttons for Department Filter */}
               <div className="flex justify-end gap-2 pt-2 border-t">
@@ -355,7 +328,7 @@ export default function GlobalFilters() {
           variant="ghost" 
           size="sm" 
           onClick={resetFilters} 
-          className="h-9 px-2 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent dark:hover:text-accent-foreground"
+          className="h-9 px-2 hover:bg-accent hover:text-accent-foreground"
         >
           <X className="h-4 w-4" />
         </Button>

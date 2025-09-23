@@ -75,6 +75,7 @@ export interface TASK_IN_GROUP {
   assigneeName: string;
   assigneeId: string;
   createdDate: string;
+  
 }
 
 export interface TASK_GROUP_RESPONSE {
@@ -311,5 +312,20 @@ export interface SparePartUsage {
   sparepartName: string;
   quantityNeeded: number;
 }
-
+export interface REPLACEMENT_TASK{
+    NewDeviceId?: string;     // The device to be installed
+  OldDeviceId: string;      // The device being replaced/removed
+  AssigneeId?: string;      // Mechanic assigned to this task
+  StartDate?: Date;         // When the task starts
+  TaskGroupId?: string;     // Optional existing task group
+  PositionId: string;       // Where the device will be installed
+  IsReinstall: boolean;     // Whether this is a reinstallation of existing device
+  Priority: Priority;       // Task priority
+  Notes?: string;           // Optional notes about the replacement
+}
+export enum Priority {
+  Low = "Low",
+  Medium = "Medium",
+  High = "High",
+}
 /////////////////////////////////////////////////////////////////////////////////////

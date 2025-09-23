@@ -513,7 +513,7 @@ export default function RequestReportsHOT({
                   <TableRow className="bg-muted/30">
                     <TableHead className="font-medium w-[300px]">Mã yêu cầu</TableHead>
                     <TableHead className="font-medium">Người tạo</TableHead>
-                    <TableHead className="font-medium">Loại yêu cầu</TableHead>
+
                     <TableHead className="font-medium w-[140px]">Trạng thái</TableHead>
                     <TableHead className="font-medium">Thiết bị</TableHead>
                     <TableHead className="font-medium">Ngày tạo</TableHead>
@@ -547,14 +547,7 @@ export default function RequestReportsHOT({
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div
-                            className={`flex items-center gap-2 ${reportType.color}`}
-                          >
-                            <ReportIcon className="h-4 w-4" />
-                            <span className="text-sm">{reportType.label}</span>
-                          </div>
-                        </TableCell>
+
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Badge

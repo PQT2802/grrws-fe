@@ -117,3 +117,55 @@ export interface ALL_REQUESTS_RESPONSE {
 export interface REQUESTS_WITH_REPORT_RESPONSE {
   data: REQUEST_WITH_REPORT[];
 }
+
+export interface RequestSummaryDTO {
+  id: string; // Guid
+  title: string;
+  requestedBy: string;
+  status: string;
+  isCompleted: boolean;
+  createdDate: string; // DateTime (ISO string)
+  location: string; // Area-Zone-Position format
+  areaName: string;
+  zoneName: string;
+  positionIndex?: number | null;
+  deviceName: string;
+}
+
+export interface HOTDashboardFilteredStatsDTO {
+  // Filter criteria
+  areaId?: string | null; // Guid
+  areaName?: string | null;
+  startDate?: string | null; // DateTime (ISO string)
+  endDate?: string | null;   // DateTime (ISO string)
+
+  // Request statistics
+  totalRequests: number;
+  completedRequests: number;
+  pendingRequests: number;
+  inProgressRequests: number;
+  rejectedRequests: number;
+
+  // Device statistics
+  totalDevices: number;
+  activeDevices: number;
+  inactiveDevices: number;
+  inUseDevices: number;
+  inRepairDevices: number;
+  inWarrantyDevices: number;
+  decommissionedDevices: number;
+
+  // Task statistics
+  totalTasks: number;
+  completedTasks: number;
+  pendingTasks: number;
+  inProgressTasks: number;
+
+  // Task type statistics
+  warrantyTasks: number;
+  repairTasks: number;
+  replacementTasks: number;
+
+  // Request details
+  requests: RequestSummaryDTO[];
+}
