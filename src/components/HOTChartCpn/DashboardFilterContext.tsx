@@ -6,11 +6,11 @@ export interface DateFilter {
   mode: 'range' | 'quick';
   startDate?: Date;
   endDate?: Date;
-  quickSelect?: 'all' | '7d' | '30d' | '12m';
+  quickSelect?: 'all' | '7d' | '30d' | '12m' | 'current_month';
 }
 
 export interface DepartmentFilter {
-  selectedAreas: string[]; // Array of area IDs
+  selectedAreaId: string; // ✅ Changed to single area ID
   allSelected: boolean;
 }
 
@@ -27,17 +27,23 @@ interface DashboardFilterContextType {
   getApiParams: () => {
     startDate?: string;
     endDate?: string;
-    areaIds?: string[];
+    areaId?: string; // ✅ Changed to single areaId
   };
 }
+
+// ✅ Set default to current month (first day to today)
+const now = new Date();
+const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
 const defaultFilters: DashboardFilters = {
   date: {
     mode: 'quick',
-    quickSelect: 'all'
+    quickSelect: 'current_month',
+    startDate: firstDayOfMonth,
+    endDate: now
   },
   department: {
-    selectedAreas: [],
+    selectedAreaId: '', // ✅ Single area ID
     allSelected: true
   }
 };
@@ -62,22 +68,36 @@ export function DashboardFilterProvider({ children }: { children: ReactNode }) {
       department: departmentFilter
     }));
   }, []);
-
+  
   const resetFilters = useCallback(() => {
     console.log('📊 Resetting all filters');
-    setFilters(defaultFilters);
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    setFilters({
+      ...defaultFilters,
+      date: {
+        mode: 'quick',
+        quickSelect: 'current_month',
+        startDate: firstDayOfMonth,
+        endDate: now
+      }
+    });
   }, []);
 
   const getApiParams = useCallback(() => {
-    const params: { startDate?: string; endDate?: string; areaIds?: string[] } = {};
+    const params: { startDate?: string; endDate?: string; areaId?: string } = {};
+    const now = new Date();
 
-    // Handle date filter
+    // Handle date filter with proper defaults
     if (filters.date.mode === 'range' && filters.date.startDate && filters.date.endDate) {
+      // Ensure endDate is not in the future
+      const endDate = filters.date.endDate > now ? now : filters.date.endDate;
       params.startDate = filters.date.startDate.toISOString();
-      params.endDate = filters.date.endDate.toISOString();
-    } else if (filters.date.mode === 'quick' && filters.date.quickSelect && filters.date.quickSelect !== 'all') {
-      const now = new Date();
+      params.endDate = endDate.toISOString();
+    } else if (filters.date.mode === 'quick' && filters.date.quickSelect) {
       let startDate: Date;
+      let endDate: Date = now; // Always current date as max
 
       switch (filters.date.quickSelect) {
         case '7d':
@@ -89,19 +109,32 @@ export function DashboardFilterProvider({ children }: { children: ReactNode }) {
         case '12m':
           startDate = new Date(now.getFullYear(), now.getMonth() - 12, now.getDate());
           break;
+        case 'current_month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
+          endDate = now; // Current date
+          break;
+        case 'all':
         default:
-          startDate = new Date(0); // Beginning of time
+          // For 'all', don't set date restrictions
+          startDate = new Date(2020, 0, 1); // Some reasonable start date
+          endDate = now;
+          break;
       }
 
       params.startDate = startDate.toISOString();
+      params.endDate = endDate.toISOString();
+    } else {
+      // Default fallback: current month
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      params.startDate = firstDay.toISOString();
       params.endDate = now.toISOString();
     }
 
-    // ✅ Fixed department filter logic
-    if (!filters.department.allSelected && filters.department.selectedAreas.length > 0) {
-      params.areaIds = filters.department.selectedAreas;
+    // ✅ Handle single area filter
+    if (!filters.department.allSelected && filters.department.selectedAreaId) {
+      params.areaId = filters.department.selectedAreaId;
     }
-    // ✅ If allSelected is true, don't include areaIds (means all areas)
+    // ✅ If allSelected is true or no area selected, don't include areaId (means all areas)
 
     console.log('📊 Generated API params:', params);
     return params;

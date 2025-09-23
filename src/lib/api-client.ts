@@ -53,6 +53,7 @@ import {
   TOP_ERROR_DEVICE,
   TOP_MECHANIC,
   MONTHLY_REQUEST_COUNT,
+  HOTDashboardFilteredStatsDTO,
 } from "@/types/dashboard.type";
 import { create } from "domain";
 import {
@@ -807,6 +808,12 @@ class APIClient {
         "/api/Dashboard/get-requests-contain-report"
       );
     },
+
+    getFilterdStats:(areaId:string, startDate:string,endDate:string):Promise<HOTDashboardFilteredStatsDTO>=>{
+      console.log(`Fetching filtered stats for area ${areaId} from ${startDate} to ${endDate}`);
+      return http.get<HOTDashboardFilteredStatsDTO>(`/api/Dashboard/filtered-stats?areaId=${areaId}&startDate=${startDate}&endDate=${endDate}`);
+    }
+
   };
   Notification = {
     getNotifications: (
