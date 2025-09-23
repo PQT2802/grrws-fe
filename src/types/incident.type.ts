@@ -1,4 +1,5 @@
 export interface Issue {
+  id: string; 
   issueKey: string;
   displayName: string;
   description: string;
@@ -7,6 +8,7 @@ export interface Issue {
 }
 
 export interface TechnicalIssue {
+  id: string; 
   symptomCode: string;
   name: string;
   description: string;

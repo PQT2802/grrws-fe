@@ -376,6 +376,26 @@ class APIClient {
     // getErrorGuidelines: (errorId: string): Promise<ErrorGuideline[]> => {
     //   return http.get(`/api/ErrorGuideline/by-error/${errorId}`);
     // },
+    createError: (data: {
+      Name: string;
+      Description: string;
+      EstimatedRepairTime: string;
+      IsCommon: boolean;
+      OccurrenceCount: number;
+      Severity: string;
+      IsPendingConfirmation: boolean;
+      ConfirmedById?: string;
+      ConfirmedDate?: string;
+      IssueIds: string[];
+      TechnicalSymptomIds: string[];
+      SparepartMappings: Array<{
+        SparepartId: string;
+        QuantityNeeded: number;
+      }>;
+    }): Promise<any> => {
+      console.log("Creating new error with data:", data);
+      return http.post("/api/Error/create", data);
+    },
   };
   warranty = {
     getWarrantyHistory: (

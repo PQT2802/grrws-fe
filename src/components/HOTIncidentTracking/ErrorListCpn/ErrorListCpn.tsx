@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   Clock,
   Timer,
+  Plus, // ✅ Added Plus icon
 } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorIncident } from "@/types/incident.type";
@@ -48,6 +49,7 @@ import {
   translateCommonStatus, 
   translateSeverity
 } from "@/utils/textTypeTask";
+import AddErrorModal from "./AddErrorModal"; // ✅ Import the new modal
 
 interface ErrorListCpnProps {
   onEditError: (error: ErrorIncident) => void;
@@ -67,6 +69,9 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [pageSize, setPageSize] = useState(10);
+    
+    // ✅ Add Error Modal state
+    const [showAddModal, setShowAddModal] = useState(false);
     
     // ✅ Use debounce for search
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -191,6 +196,11 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
       setPageSize(Number(newPageSize));
     }, []);
 
+    // ✅ Handle add error success
+    const handleAddErrorSuccess = () => {
+      fetchErrors(); // Refresh the list
+    };
+
     const getSeverityColor = (severity: string) => {
       switch (severity?.toLowerCase()) {
         case "critical":
@@ -240,6 +250,14 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* ✅ Add Error Button */}
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Tạo lỗi
+            </Button>
             <Button
               variant="outline"
               className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
@@ -247,7 +265,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
               <Download className="mr-2 h-4 w-4" />
               Xuất danh sách lỗi
             </Button>
-            <Button className="bg-green-600 hover:bg-green-700">
+            <Button className="bg-orange-600 hover:bg-orange-700">
               <Upload className="mr-2 h-4 w-4" />
               Nhập lỗi
             </Button>
@@ -321,7 +339,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                           {searchTerm ? `Không tìm thấy lỗi nào cho "${searchTerm}"` : "Không tìm thấy lỗi nào"}
                         </p>
                         <p className="text-sm text-muted-foreground/80 mt-1">
-                          Thử điều chỉnh tiêu chí tìm kiếm
+                          Thử điều chỉnh tiêu chí tìm kiếm hoặc tạo lỗi mới
                         </p>
                       </div>
                     </td>
@@ -470,6 +488,13 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
             </div>
           </div>
         </div>
+
+        {/* ✅ Add Error Modal */}
+        <AddErrorModal
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          onSuccess={handleAddErrorSuccess}
+        />
       </div>
     );
   }

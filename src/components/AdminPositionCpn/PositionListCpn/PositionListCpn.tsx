@@ -110,6 +110,23 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
         : "bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-400";
     };
 
+    // ✅ FIXED: Helper function to convert device data to DEVICE_WEB format
+    const convertToDeviceWeb = (deviceData: any, position: Position): DEVICE_WEB => {
+      // Find zone and area information for the device
+      const zone = zones.find(z => z.id === position.zoneId);
+      const area = areas.find(a => a.id === zone?.areaId);
+
+      return {
+        ...deviceData,
+        // ✅ Add missing required DEVICE_WEB properties
+        positionIndex: position.index,
+        zoneName: zone?.zoneName || position.zoneName || 'Khu không xác định',
+        areaName: area?.areaName || position.areaName || 'Khu vực không xác định',
+        machineId: deviceData.machineId || '', // Ensure machineId is always a string
+        positionId: position.id, // Add positionId for reference
+      };
+    };
+
     // Fetch areas for dropdown filter and position mapping
     const fetchAreas = useCallback(async () => {
       try {
@@ -218,12 +235,20 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
             if (position.deviceId && !position.device) {
               try {
                 console.log(`🔄 Fetching device data using getDeviceById for position ${position.id}, deviceId: ${position.deviceId}`);
-                deviceData = await apiClient.device.getDeviceById(position.deviceId);
-                console.log(`✅ Device data fetched for position ${position.id}:`, deviceData);
+                const fetchedDevice = await apiClient.device.getDeviceById(position.deviceId);
+                
+                // ✅ Convert fetched device to DEVICE_WEB format
+                if (fetchedDevice) {
+                  deviceData = convertToDeviceWeb(fetchedDevice, position);
+                }
+                console.log(`✅ Device data fetched and converted for position ${position.id}:`, deviceData);
               } catch (error) {
                 console.warn(`⚠️ Could not fetch device ${position.deviceId} for position ${position.id}:`, error);
                 deviceData = undefined;
               }
+            } else if (position.device) {
+              // ✅ Convert existing device data to DEVICE_WEB format
+              deviceData = convertToDeviceWeb(position.device, position);
             }
 
             // Create enhanced position with all required fields
@@ -360,15 +385,49 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
       [fetchPositions, hasFullAccess]
     );
 
+    // ✅ FIXED: Device modal handlers with proper event handling
+    const handleViewDevice = useCallback((device: DEVICE_WEB, event?: React.MouseEvent) => {
+      // Prevent event bubbling if this is called from a click handler
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      
+      console.log("🔍 Opening device modal for device:", device);
+      setSelectedDevice(device);
+      setShowDeviceModal(true);
+    }, []);
+
+    const handleCloseDeviceModal = useCallback(() => {
+      console.log("🔒 Closing device modal");
+      setShowDeviceModal(false);
+      setSelectedDevice(null);
+    }, []);
+
+    // ✅ FIXED: Device badge click handler
+    const handleDeviceBadgeClick = useCallback((device: DEVICE_WEB, event: React.MouseEvent) => {
+      console.log("🎯 Device badge clicked for device:", device.deviceName);
+      handleViewDevice(device, event);
+    }, [handleViewDevice]);
+
+    // ✅ FIXED: Device name click handler  
+    const handleDeviceNameClick = useCallback((device: DEVICE_WEB, event: React.MouseEvent) => {
+      console.log("🎯 Device name clicked for device:", device.deviceName);
+      handleViewDevice(device, event);
+    }, [handleViewDevice]);
+
+    // Update the handleViewPosition to show device modal if device exists
     const handleViewPosition = useCallback(
       (position: Position) => {
-        if (onViewPosition) {
-          onViewPosition(position);
+        if (position.device) {
+          // If position has a device, show device modal
+          handleViewDevice(position.device as DEVICE_WEB);
         } else {
-          toast.info("View functionality will be implemented when needed.");
+          // If no device, show position info or default message
+          toast.info("Vị trí này chưa có thiết bị.");
         }
       },
-      [onViewPosition]
+      [handleViewDevice]
     );
 
     const handleEditPosition = useCallback(
@@ -548,7 +607,7 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
           </div>
         </div>
 
-        {/* ✅ Updated Positions Table - Structure: Chỉ số vị trí | Thiết bị | Tên thiết bị | Bảo hành | Thao tác */}
+        {/* ✅ FIXED: Updated Positions Table with proper click handlers */}
         <div className="rounded-md border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -607,14 +666,15 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                           Vị trí {position.index}
                         </TableCell>
                         
-                        {/* Thiết bị - Status Badge */}
+                        {/* ✅ FIXED: Thiết bị - Status Badge with proper click handler */}
                         <TableCell>
                           {position.device ? (
                             <div className="flex items-center gap-2">
                               <Monitor className="h-4 w-4 text-green-600 dark:text-green-400" />
                               <Badge 
                                 variant="outline" 
-                                className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50"
+                                className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                                onClick={(e) => handleDeviceBadgeClick(position.device as DEVICE_WEB, e)}
                               >
                                 Có thiết bị
                               </Badge>
@@ -632,10 +692,13 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                           )}
                         </TableCell>
                         
-                        {/* ✅ Tên thiết bị - Just normal text, no click function */}
+                        {/* ✅ FIXED: Tên thiết bị - Clickable when device exists with proper event handling */}
                         <TableCell>
                           {position.device ? (
-                            <span className="text-sm font-medium text-foreground">
+                            <span 
+                              className="text-sm font-medium text-foreground cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+                              onClick={(e) => handleDeviceNameClick(position.device as DEVICE_WEB, e)}
+                            >
                               {position.device.deviceName}
                             </span>
                           ) : (
@@ -668,7 +731,7 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                           )}
                         </TableCell>
                         
-                        {/* Thao tác */}
+                        {/* ✅ FIXED: Thao tác - Updated dropdown menu with proper device modal opening */}
                         <TableCell className="text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -677,10 +740,18 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40">
-                              <DropdownMenuItem onClick={() => handleViewPosition(position)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Xem chi tiết
-                              </DropdownMenuItem>
+                              {/* ✅ FIXED: Show different options based on whether device exists */}
+                              {position.device ? (
+                                <DropdownMenuItem onClick={() => handleViewDevice(position.device as DEVICE_WEB)}>
+                                  <Monitor className="mr-2 h-4 w-4" />
+                                  Xem chi tiết
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => handleViewPosition(position)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Xem vị trí
+                                </DropdownMenuItem>
+                              )}
                               {hasFullAccess && (
                                 <>
                                   <DropdownMenuItem onClick={() => handleEditPosition(position)}>
@@ -778,10 +849,10 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
           />
         )}
 
-        {/* Device Detail Modal */}
+        {/* ✅ FIXED: Device Detail Modal with proper close handler */}
         <DeviceDetailModal
           open={showDeviceModal}
-          onOpenChange={setShowDeviceModal}
+          onOpenChange={handleCloseDeviceModal}
           device={selectedDevice}
         />
       </div>
