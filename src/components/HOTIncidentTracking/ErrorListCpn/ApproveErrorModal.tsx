@@ -22,8 +22,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Plus,
-  Trash2,
   Loader2,
   Clock,
   Bug,
@@ -32,15 +30,18 @@ import {
   X,
   Search,
   Minus,
+  Plus,
+  Shield,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
-import { Issue, TechnicalIssue } from "@/types/incident.type";
+import { ErrorIncident, Issue, TechnicalIssue } from "@/types/incident.type";
 import { SPAREPART_INVENTORY_ITEM } from "@/types/sparePart.type";
 
-interface AddErrorModalProps {
+interface ApproveErrorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  error: ErrorIncident | null;
   onSuccess: () => void;
 }
 
@@ -51,19 +52,19 @@ interface SparepartMapping {
   sparepartCode?: string;
 }
 
-export default function AddErrorModal({
+export default function ApproveErrorModal({
   open,
   onOpenChange,
+  error,
   onSuccess,
-}: AddErrorModalProps) {
-  // Form state
+}: ApproveErrorModalProps) {
+  // ✅ Form state with existing error data
   const [formData, setFormData] = useState({
     Name: "",
     Description: "",
     EstimatedRepairTime: "",
     IsCommon: false,
     OccurrenceCount: 0,
-    IsPendingConfirmation: false, 
   });
 
   // Mapping states
@@ -94,7 +95,32 @@ export default function AddErrorModal({
   const [timeHours, setTimeHours] = useState("");
   const [timeMinutes, setTimeMinutes] = useState("0");
 
-  // Filter effects (same as before)
+  // ✅ Initialize form data when error prop changes
+  useEffect(() => {
+    if (error && open) {
+      setFormData({
+        Name: error.name || "",
+        Description: error.description || "",
+        EstimatedRepairTime: error.estimatedRepairTime || "",
+        IsCommon: error.isCommon || false,
+        OccurrenceCount: error.occurrenceCount || 0,
+      });
+
+      // ✅ Parse existing time for display
+      if (error.estimatedRepairTime) {
+        const timeParts = error.estimatedRepairTime.split(':');
+        if (timeParts.length >= 2) {
+          setTimeHours(parseInt(timeParts[0]).toString());
+          setTimeMinutes(parseInt(timeParts[1]).toString());
+        }
+      } else {
+        setTimeHours("");
+        setTimeMinutes("0");
+      }
+    }
+  }, [error, open]);
+
+  // Filter effects
   useEffect(() => {
     if (!issueSearchTerm.trim()) {
       setFilteredIssues(issues);
@@ -139,6 +165,7 @@ export default function AddErrorModal({
     if (open) {
       fetchData();
     } else {
+      // ✅ FIX: Reset form when modal closes (same as AddErrorModal)
       resetForm();
     }
   }, [open]);
@@ -163,7 +190,7 @@ export default function AddErrorModal({
         apiClient.sparePart.getInventory(1, 1000),
       ]);
 
-      // Extract data (same logic as before)
+      // Extract data (same logic as AddErrorModal)
       let issuesData: Issue[] = [];
       if (issuesResponse) {
         if (issuesResponse.extensions?.data?.data && Array.isArray(issuesResponse.extensions.data.data)) {
@@ -219,9 +246,8 @@ export default function AddErrorModal({
       Name: "",
       Description: "",
       EstimatedRepairTime: "",
-      IsCommon: false, 
+      IsCommon: false,
       OccurrenceCount: 0,
-      IsPendingConfirmation: false,
     });
     setSelectedIssues([]);
     setSelectedTechnicalIssues([]);
@@ -235,9 +261,7 @@ export default function AddErrorModal({
 
   const toggleIssueSelection = (issueId: string) => {
     const issue = issues.find(i => i.id === issueId);
-    if (!issue) {
-      return;
-    }
+    if (!issue) return;
     
     setSelectedIssues(prev =>
       prev.includes(issueId)
@@ -248,9 +272,7 @@ export default function AddErrorModal({
 
   const toggleTechnicalIssueSelection = (technicalIssueId: string) => {
     const techIssue = technicalIssues.find(t => t.id === technicalIssueId);
-    if (!techIssue) {
-      return;
-    }
+    if (!techIssue) return;
     
     setSelectedTechnicalIssues(prev =>
       prev.includes(technicalIssueId)
@@ -261,9 +283,7 @@ export default function AddErrorModal({
 
   const toggleSparepartSelection = (sparepartId: string) => {
     const sparepart = spareparts.find(sp => sp.id === sparepartId);
-    if (!sparepart) {
-      return;
-    }
+    if (!sparepart) return;
 
     setSelectedSpareparts(prev => {
       const existingIndex = prev.findIndex(sp => sp.SparepartId === sparepartId);
@@ -295,12 +315,17 @@ export default function AddErrorModal({
 
   const handleSubmit = async () => {
     try {
-      // Validation
-      if (!formData.Name.trim()) {
+      if (!error) {
+        toast.error("Không tìm thấy thông tin lỗi");
+        return;
+      }
+
+      // ✅ Enhanced validation
+      if (!formData.Name?.trim()) {
         toast.error("Vui lòng nhập tên lỗi");
         return;
       }
-      if (!formData.Description.trim()) {
+      if (!formData.Description?.trim()) {
         toast.error("Vui lòng nhập mô tả lỗi");
         return;
       }
@@ -309,56 +334,147 @@ export default function AddErrorModal({
         return;
       }
 
+      // ✅ More robust validation
       const validIssueIds = selectedIssues.filter(issueId => {
         const exists = issues.some(issue => issue.id === issueId);
         const isValidUUID = issueId && typeof issueId === 'string' && issueId.length > 0;
+        console.log(`Issue ${issueId}: exists=${exists}, valid=${isValidUUID}`);
         return exists && isValidUUID;
       });
 
       const validTechnicalIssueIds = selectedTechnicalIssues.filter(techId => {
         const exists = technicalIssues.some(tech => tech.id === techId);
         const isValidUUID = techId && typeof techId === 'string' && techId.length > 0;
+        console.log(`Tech issue ${techId}: exists=${exists}, valid=${isValidUUID}`);
         return exists && isValidUUID;
       });
 
       const validSparepartMappings = selectedSpareparts.filter(mapping => {
         const exists = spareparts.some(sp => sp.id === mapping.SparepartId);
         const validQuantity = mapping.QuantityNeeded > 0;
+        console.log(`Sparepart ${mapping.SparepartId}: exists=${exists}, validQty=${validQuantity}`);
         return exists && validQuantity;
       });
 
+      // ✅ Validate time format more strictly
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+      if (!timeRegex.test(formData.EstimatedRepairTime)) {
+        toast.error("Định dạng thời gian không hợp lệ (HH:mm:ss)");
+        return;
+      }
+
+      // ✅ Validate occurrence count
+      const occurrenceCount = Number(formData.OccurrenceCount);
+      if (isNaN(occurrenceCount) || occurrenceCount < 0) {
+        toast.error("Số lần xuất hiện phải là số không âm");
+        return;
+      }
+
       setLoading(true);
 
-      // Prepare request data with default severity "Low"
+      // ✅ SIMPLIFIED request data - Remove potentially problematic fields
       const requestData = {
-        Name: formData.Name.trim(),
-        Description: formData.Description.trim(),
-        EstimatedRepairTime: formData.EstimatedRepairTime,
-        IsCommon: formData.IsCommon,
-        OccurrenceCount: formData.OccurrenceCount,
-        Severity: "Low", // Default to "Low"
-        IsPendingConfirmation: formData.IsPendingConfirmation,
+        Name: String(formData.Name).trim(),
+        Description: String(formData.Description).trim(),
+        EstimatedRepairTime: String(formData.EstimatedRepairTime),
+        IsCommon: Boolean(formData.IsCommon),
+        OccurrenceCount: Number(formData.OccurrenceCount),
+        Severity: "Low",
+        IsPendingConfirmation: false,
         IssueIds: validIssueIds,
         TechnicalSymptomIds: validTechnicalIssueIds,
         SparepartMappings: validSparepartMappings.map(mapping => ({
-          SparepartId: mapping.SparepartId,
-          QuantityNeeded: mapping.QuantityNeeded,
+          SparepartId: String(mapping.SparepartId),
+          QuantityNeeded: Number(mapping.QuantityNeeded),
         })),
       };
 
-      await apiClient.error.createError(requestData);
+      console.log("🚀 APPROVE ERROR - Final request payload:");
+      console.log(JSON.stringify(requestData, null, 2));
+      console.log("🎯 API Endpoint: /api/Error/create");
+      console.log("🔍 Original error info:", {
+        id: error.id,
+        errorCode: error.errorCode,
+        name: error.name
+      });
 
-      toast.success(`Tạo lỗi "${formData.Name}" thành công!`);
+      // ✅ FIX: Call API with better error handling
+      let response;
+      try {
+        response = await apiClient.error.createError(requestData);
+        console.log("✅ API call successful, response:", response);
+      } catch (apiError: any) {
+        console.error("❌ API call failed:", apiError);
+        
+        // ✅ Check if it's a network error vs API error
+        if (!apiError.response) {
+          throw new Error(`Network error: ${apiError.message || 'Unknown network error'}`);
+        }
+        
+        // ✅ Check if response has data
+        if (apiError.response.data) {
+          console.error("❌ API error response data:", apiError.response.data);
+          throw apiError; // Re-throw with API error details
+        }
+        
+        // ✅ Unknown API error
+        throw new Error(`API error: Status ${apiError.response.status} - ${apiError.response.statusText || 'Unknown error'}`);
+      }
+
+      toast.success(`Đã duyệt lỗi "${formData.Name}" thành công!`);
 
       onOpenChange(false);
       onSuccess();
 
     } catch (error: any) {
-      console.error("❌ Failed to create error:", error);
+      console.error("❌ APPROVE ERROR - Complete error details:");
+      console.error("- Error object:", error);
+      console.error("- Error message:", error.message);
+      console.error("- Error stack:", error.stack);
       
-      let errorMessage = "Không thể tạo lỗi. Vui lòng thử lại.";
+      if (error.response) {
+        console.error("- Response status:", error.response.status);
+        console.error("- Response statusText:", error.response.statusText);
+        console.error("- Response data:", error.response.data);
+        console.error("- Response headers:", error.response.headers);
+      } else {
+        console.error("- No response object available");
+      }
       
-      if (error.response?.data) {
+      let errorMessage = "Không thể duyệt lỗi. Vui lòng thử lại.";
+      
+      if (error.response?.status === 400) {
+        console.error("❌ 400 Bad Request Details:", {
+          data: error.response.data,
+          status: error.response.status,
+          statusText: error.response.statusText
+        });
+        
+        if (error.response.data) {
+          const errorData = error.response.data;
+          
+          if (typeof errorData === 'string') {
+            errorMessage = `Lỗi 400: ${errorData}`;
+          } else if (errorData.message) {
+            errorMessage = `Lỗi 400: ${errorData.message}`;
+          } else if (errorData.title) {
+            errorMessage = `Lỗi 400: ${errorData.title}`;
+          } else if (errorData.errors) {
+            const validationErrors = Object.entries(errorData.errors).map(([field, messages]) => {
+              return `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
+            });
+            errorMessage = `Lỗi validation: ${validationErrors.join('; ')}`;
+          } else if (errorData.detail) {
+            errorMessage = `Lỗi 400: ${errorData.detail}`;
+          } else {
+            errorMessage = `Lỗi 400: ${JSON.stringify(errorData)}`;
+          }
+        } else {
+          errorMessage = `Lỗi 400: ${error.response.statusText || 'Bad Request'}`;
+        }
+      } else if (error.message.includes('Network error')) {
+        errorMessage = `Lỗi kết nối: ${error.message}`;
+      } else if (error.response?.data) {
         const errorData = error.response.data;
         
         if (typeof errorData === 'string') {
@@ -367,11 +483,6 @@ export default function AddErrorModal({
           errorMessage = errorData.message;
         } else if (errorData.title) {
           errorMessage = errorData.title;
-        } else if (errorData.errors) {
-          const validationErrors = Object.entries(errorData.errors).map(([field, messages]) => {
-            return `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`;
-          });
-          errorMessage = validationErrors.join('; ');
         } else if (errorData.detail) {
           errorMessage = errorData.detail;
         }
@@ -389,6 +500,9 @@ export default function AddErrorModal({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Đang tải dữ liệu</DialogTitle> 
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -405,24 +519,41 @@ export default function AddErrorModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bug className="h-5 w-5 text-red-500" />
-            Tạo lỗi mới
+            <Shield className="h-5 w-5 text-green-500" />
+            Duyệt lỗi: {error?.errorCode}
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Hoàn thiện thông tin và mapping để duyệt lỗi này
+          </p>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* ✅ Show existing error info */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">Thông tin lỗi hiện tại:</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Mã lỗi:</span> {error?.errorCode}
+              </div>
+              <div>
+                <span className="font-medium">Trạng thái:</span> 
+                <Badge className="ml-2 bg-yellow-500/10 text-yellow-600">Chờ duyệt</Badge>
+              </div>
+            </div>
+          </div>
+
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Thông tin cơ bản</h3>
             
-            {/* Updated grid to remove severity field */}
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Tên lỗi *</Label>
                 <Input
                   id="name"
                   value={formData.Name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, Name: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, Name: e.target.value }))
+                  }
                   placeholder="Nhập tên lỗi..."
                 />
               </div>
@@ -432,7 +563,7 @@ export default function AddErrorModal({
               <Label htmlFor="description">Mô tả *</Label>
               <Textarea
                 id="description"
-                value={formData.Description}
+                value={formData.Description || ""} 
                 onChange={(e) => setFormData(prev => ({ ...prev, Description: e.target.value }))}
                 placeholder="Nhập mô tả chi tiết về lỗi..."
                 rows={3}
@@ -485,7 +616,8 @@ export default function AddErrorModal({
                   id="occurrenceCount"
                   type="number"
                   value={formData.OccurrenceCount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, OccurrenceCount: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, OccurrenceCount: parseInt(e.target.value) || 0 }))
+                  }
                   min="0"
                 />
               </div>
@@ -495,7 +627,8 @@ export default function AddErrorModal({
                   <Checkbox
                     id="isCommon"
                     checked={formData.IsCommon}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, IsCommon: !!checked }))}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, IsCommon: !!checked }))
+                    }
                   />
                   <Label htmlFor="isCommon">Lỗi phổ biến</Label>
                 </div>
@@ -503,14 +636,13 @@ export default function AddErrorModal({
             </div>
           </div>
 
-          {/* ✅ Issues Selection with Search */}
+          {/* Issues Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Bug className="h-5 w-5 text-blue-500" />
               Triệu chứng ({selectedIssues.length} đã chọn)
             </h3>
             
-            {/* ✅ Search Input for Issues */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -579,14 +711,13 @@ export default function AddErrorModal({
             )}
           </div>
 
-          {/* ✅ Technical Issues Selection with Search */}
+          {/* Technical Issues Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Wrench className="h-5 w-5 text-orange-500" />
               Triệu chứng kỹ thuật ({selectedTechnicalIssues.length} đã chọn)
             </h3>
             
-            {/* ✅ Search Input for Technical Issues */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -655,14 +786,13 @@ export default function AddErrorModal({
             )}
           </div>
 
-          {/* ✅ NEW: Spareparts Selection with Search (Multi-select Style) */}
+          {/* Spareparts Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Package className="h-5 w-5 text-green-500" />
               Linh kiện cần thiết ({selectedSpareparts.length} đã chọn)
             </h3>
             
-            {/* ✅ Search Input for Spareparts */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -685,7 +815,6 @@ export default function AddErrorModal({
               </div>
             )}
             
-            {/* ✅ Spareparts Multi-select Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded-lg p-3">
               {filteredSpareparts.map((sparepart) => {
                 const sparepartId = sparepart.id;
@@ -717,7 +846,6 @@ export default function AddErrorModal({
               })}
             </div>
 
-            {/* ✅ Selected Spareparts with Quantity Controls */}
             {selectedSpareparts.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-foreground">Linh kiện đã chọn:</h4>
@@ -741,7 +869,6 @@ export default function AddErrorModal({
                           </p>
                         </div>
                         
-                        {/* ✅ Quantity Controls */}
                         <div className="flex items-center gap-2">
                           <Button
                             type="button"
@@ -789,7 +916,7 @@ export default function AddErrorModal({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => onOpenChange(false)} // ✅ FIX: Consistent close behavior
             disabled={loading}
           >
             Hủy
@@ -798,10 +925,11 @@ export default function AddErrorModal({
             type="button"
             onClick={handleSubmit}
             disabled={loading || !formData.Name || !formData.Description || !formData.EstimatedRepairTime}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Tạo lỗi
+            <Shield className="h-4 w-4" />
+            Duyệt lỗi
           </Button>
         </DialogFooter>
       </DialogContent>

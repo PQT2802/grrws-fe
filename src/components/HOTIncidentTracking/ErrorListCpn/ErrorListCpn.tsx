@@ -39,7 +39,8 @@ import {
   CheckCircle2,
   Clock,
   Timer,
-  Plus, // ✅ Added Plus icon
+  Plus,
+  Shield, // ✅ Added for approve action
 } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorIncident } from "@/types/incident.type";
@@ -49,7 +50,8 @@ import {
   translateCommonStatus, 
   translateSeverity
 } from "@/utils/textTypeTask";
-import AddErrorModal from "./AddErrorModal"; // ✅ Import the new modal
+import AddErrorModal from "./AddErrorModal";
+import ApproveErrorModal from "./ApproveErrorModal"; 
 
 interface ErrorListCpnProps {
   onEditError: (error: ErrorIncident) => void;
@@ -70,16 +72,20 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
     const [totalCount, setTotalCount] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     
-    // ✅ Add Error Modal state
-    const [showAddModal, setShowAddModal] = useState(false);
+    // ✅ Add filter state for pending confirmation - FIX: use boolean values
+    const [pendingFilter, setPendingFilter] = useState<string>("all");
     
-    // ✅ Use debounce for search
+    // ✅ Add modal states
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [selectedErrorForApproval, setSelectedErrorForApproval] = useState<ErrorIncident | null>(null);
+    
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     const fetchErrors = useCallback(async () => {
       try {
         setLoading(true);
-        console.log(`🔄 Fetching errors (page ${page}, search: "${debouncedSearchTerm}")`);
+        console.log(`🔄 Fetching errors (page ${page}, search: "${debouncedSearchTerm}", pending: "${pendingFilter}")`);
         
         const response = await apiClient.incident.getErrors(
           page,
@@ -89,75 +95,40 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
 
         console.log("📋 Errors API response:", response);
 
-        // ✅ Enhanced response handling for multiple possible structures
+        // Extract data (same logic as before)
         let errorsData: ErrorIncident[] = [];
         let totalCountValue = 0;
 
         if (response && typeof response === 'object') {
           const responseAny = response as any;
-          // Structure 1: { extensions: { data: { data: [], totalCount: number } } }
           if (responseAny.extensions?.data?.data && Array.isArray(responseAny.extensions.data.data)) {
             errorsData = responseAny.extensions.data.data;
             totalCountValue = responseAny.extensions.data.totalCount || errorsData.length;
-            console.log("✅ Using structure: extensions.data.data");
-          }
-          // Structure 2: { data: { data: [], totalCount: number } }
-          else if (responseAny.data?.data && Array.isArray(responseAny.data.data)) {
+          } else if (responseAny.data?.data && Array.isArray(responseAny.data.data)) {
             errorsData = responseAny.data.data;
             totalCountValue = responseAny.data.totalCount || errorsData.length;
-            console.log("✅ Using structure: data.data");
-          }
-          // Structure 3: { data: [] } with totalCount at root
-          else if (responseAny.data && Array.isArray(responseAny.data)) {
+          } else if (responseAny.data && Array.isArray(responseAny.data)) {
             errorsData = responseAny.data;
             totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
-            console.log("✅ Using structure: data (array)");
-          }
-          // Structure 4: Direct array response
-          else if (Array.isArray(response)) {
+          } else if (Array.isArray(response)) {
             errorsData = response;
             totalCountValue = errorsData.length;
-            console.log("✅ Using structure: direct array");
           }
-          // Structure 5: { errors: [] } (alternative field name)
-          else if (responseAny.errors && Array.isArray(responseAny.errors)) {
-            errorsData = responseAny.errors;
-            totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
-            console.log("✅ Using structure: errors field");
-          }
-          // Structure 6: { items: [] } (pagination wrapper)
-          else if (responseAny.items && Array.isArray(responseAny.items)) {
-            errorsData = responseAny.items;
-            totalCountValue = responseAny.totalCount || responseAny.totalItems || errorsData.length;
-            console.log("✅ Using structure: items field");
-          }
-          else {
-            console.warn("⚠️ Unrecognized response structure, attempting to find array data...");
-            console.log("🔍 Response keys:", Object.keys(response));
-            
-            // Try to find any array in the response object
-            const possibleArrays = Object.values(response).filter(value => Array.isArray(value));
-            if (possibleArrays.length > 0) {
-              errorsData = possibleArrays[0] as ErrorIncident[];
-              totalCountValue = errorsData.length;
-              console.log("✅ Found array data in response:", errorsData.length, "items");
-            } else {
-              console.error("❌ No array data found in response");
-              errorsData = [];
-              totalCountValue = 0;
-            }
-          }
-        } else {
-          console.error("❌ Invalid response type:", typeof response);
-          errorsData = [];
-          totalCountValue = 0;
         }
 
-        // Set the extracted data
-        setErrors(errorsData);
-        setTotalCount(totalCountValue);
+        // ✅ Apply client-side filtering for pending status - FIX: use boolean comparison
+        let filteredErrorsData = errorsData;
+        if (pendingFilter === "pending") {
+          filteredErrorsData = errorsData.filter(error => error.isPendingConfirmation === true); // ✅ true for pending
+        } else if (pendingFilter === "approved") {
+          filteredErrorsData = errorsData.filter(error => error.isPendingConfirmation === false); // ✅ false for approved
+        }
+        // If "all", keep all data
+
+        setErrors(filteredErrorsData);
+        setTotalCount(filteredErrorsData.length); // Update total count for filtered data
         
-        console.log(`✅ Successfully loaded ${errorsData.length} errors (total: ${totalCountValue})`);
+        console.log(`✅ Successfully loaded ${filteredErrorsData.length} errors after filtering (total: ${totalCountValue})`);
         
       } catch (error) {
         console.error("❌ Failed to fetch errors:", error);
@@ -167,18 +138,18 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
       } finally {
         setLoading(false);
       }
-    }, [page, pageSize, debouncedSearchTerm]);
+    }, [page, pageSize, debouncedSearchTerm, pendingFilter]); // ✅ Add pendingFilter dependency
 
     useEffect(() => {
       fetchErrors();
     }, [fetchErrors]);
 
-    // ✅ Reset to page 1 when search term or page size changes
+    // ✅ Reset to page 1 when filters change
     useEffect(() => {
-      if (page !== 1 && debouncedSearchTerm) {
+      if (page !== 1 && (debouncedSearchTerm || pendingFilter !== "all")) {
         setPage(1);
       }
-    }, [debouncedSearchTerm]);
+    }, [debouncedSearchTerm, pendingFilter]);
 
     useEffect(() => {
       setPage(1);
@@ -196,9 +167,32 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
       setPageSize(Number(newPageSize));
     }, []);
 
-    // ✅ Handle add error success
+    // ✅ Handle pending filter change
+    const handlePendingFilterChange = useCallback((value: string) => {
+      setPendingFilter(value);
+    }, []);
+
+    // ✅ Handle approve error
+    const handleApproveError = useCallback((error: ErrorIncident) => {
+      setSelectedErrorForApproval(error);
+      setShowApproveModal(true);
+    }, []);
+
     const handleAddErrorSuccess = () => {
-      fetchErrors(); // Refresh the list
+      fetchErrors();
+    };
+
+    // ✅ Handle approve success
+    const handleApproveErrorSuccess = () => {
+      fetchErrors();
+      setSelectedErrorForApproval(null);
+    };
+
+    // ✅ Get pending status badge
+    const getPendingStatusBadge = (isPending: boolean) => {
+      return isPending
+        ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-300"
+        : "bg-green-500/10 text-green-400 border-green-500/20 dark:bg-green-500/20 dark:text-green-300";
     };
 
     const getSeverityColor = (severity: string) => {
@@ -250,7 +244,6 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* ✅ Add Error Button */}
             <Button
               onClick={() => setShowAddModal(true)}
               className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
@@ -272,7 +265,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
           </div>
         </div>
 
-        {/* ✅ Search Bar matching DeviceListCpn style */}
+        {/* ✅ Updated Search Bar with Pending Filter */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex flex-1 gap-2">
             <div className="relative w-1/3">
@@ -289,6 +282,20 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                 </span>
               )}
             </div>
+            
+            {/* ✅ Pending Status Filter - FIX: Update labels */}
+            <div className="w-48">
+              <Select value={pendingFilter} onValueChange={handlePendingFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trạng thái duyệt" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="pending">Chờ duyệt</SelectItem>
+                  <SelectItem value="approved">Đã duyệt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -299,7 +306,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left font-semibold">Chi tiết lỗi</th>
-                  <th className="px-4 py-3 text-left font-semibold">Mức độ nghiêm trọng</th>
+                  <th className="px-4 py-3 text-left font-semibold">Trạng thái duyệt</th>
                   <th className="px-4 py-3 text-left font-semibold">Loại</th>
                   <th className="px-4 py-3 text-left font-semibold">Thời gian sửa chữa</th>
                   <th className="px-4 py-3 text-left font-semibold">Số lần xuất hiện</th>
@@ -349,15 +356,12 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                     <tr key={error.errorCode} className="border-b hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="space-y-2">
-                          {/* ✅ Name/Title at the top */}
                           <div className="font-medium text-foreground text-base">
                             {error.name}
                           </div>
-                          {/* ✅ Description below the name */}
                           <div className="text-sm text-muted-foreground line-clamp-2 max-w-md">
                             {error.description}
                           </div>
-                          {/* ✅ Code at the bottom with orange color for Error */}
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-medium text-orange-500">
                               {error.errorCode}
@@ -365,11 +369,24 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                           </div>
                         </div>
                       </td>
+                      
+                      {/* ✅ Pending Status Column */}
                       <td className="px-4 py-3">
-                        <Badge className={getSeverityColor(error.severity)}>
-                          {translateSeverity(error.severity)}
+                        <Badge className={getPendingStatusBadge(error.isPendingConfirmation)}>
+                          {error.isPendingConfirmation ? (
+                            <>
+                              <Clock className="h-3 w-3 mr-1" />
+                              Chờ duyệt
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Đã duyệt
+                            </>
+                          )}
                         </Badge>
                       </td>
+                      
                       <td className="px-4 py-3">
                         <Badge className={getCommonBadgeVariant(error.isCommon)}>
                           {error.isCommon ? (
@@ -413,10 +430,20 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                               <Eye className="mr-2 h-4 w-4" />
                               Xem chi tiết
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onEditError(error)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Cập nhật trạng thái
-                            </DropdownMenuItem>
+                            
+                            {/* ✅ Conditional action based on pending status */}
+                            {error.isPendingConfirmation ? (
+                              <DropdownMenuItem onClick={() => handleApproveError(error)}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                Duyệt lỗi
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => onEditError(error)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Cập nhật trạng thái
+                              </DropdownMenuItem>
+                            )}
+                            
                             <DropdownMenuItem 
                               onClick={() => onDeleteError(error)}
                               className="text-red-600"
@@ -434,7 +461,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
             </table>
           </div>
 
-          {/* ✅ DeviceListCpn-style Pagination */}
+          {/* Pagination (same as before) */}
           <div className="flex items-center justify-between px-4 py-3 border-t">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -489,11 +516,19 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
           </div>
         </div>
 
-        {/* ✅ Add Error Modal */}
+        {/* Modals */}
         <AddErrorModal
           open={showAddModal}
           onOpenChange={setShowAddModal}
           onSuccess={handleAddErrorSuccess}
+        />
+
+        {/* ✅ New Approve Error Modal */}
+        <ApproveErrorModal
+          open={showApproveModal}
+          onOpenChange={setShowApproveModal}
+          error={selectedErrorForApproval}
+          onSuccess={handleApproveErrorSuccess}
         />
       </div>
     );

@@ -25,6 +25,7 @@ export interface ErrorIncident {
   isCommon: boolean;
   occurrenceCount: number;
   severity: string;
+  isPendingConfirmation: boolean;
 }
 
 // API Response interfaces

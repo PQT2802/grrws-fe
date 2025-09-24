@@ -401,6 +401,33 @@ class APIClient {
       console.log("Creating new error with data:", data);
       return http.post("/api/Error/create", data);
     },
+
+    // ✅ NEW: API để duyệt/cập nhật lỗi hiện có
+    approveError: (errorId: string, data: {
+      Name: string;
+      Description: string;
+      EstimatedRepairTime: string;
+      IsCommon: boolean;
+      OccurrenceCount: number;
+      Severity: string;
+      IsPendingConfirmation: false; // ✅ Luôn false khi duyệt
+      IssueIds: string[];
+      TechnicalSymptomIds: string[];
+      SparepartMappings: Array<{
+        SparepartId: string;
+        QuantityNeeded: number;
+      }>;
+    }): Promise<any> => {
+      console.log(`✅ API Client - Approving error ${errorId} with endpoint: /api/Error/approve/${errorId}`);
+      console.log("✅ API Client - Request data:", JSON.stringify(data, null, 2));
+      return http.put(`/api/Error/approve/${errorId}`, data);
+    },
+    
+    // Hoặc có thể dùng endpoint update chung
+    updateError: (errorId: string, data: any): Promise<any> => {
+      console.log(`✅ API Client - Updating error ${errorId} with endpoint: /api/Error/update/${errorId}`);
+      return http.put(`/api/Error/update/${errorId}`, data);
+    },
   };
   warranty = {
     getWarrantyHistory: (
