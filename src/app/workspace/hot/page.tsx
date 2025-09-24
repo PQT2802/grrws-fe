@@ -46,6 +46,9 @@ const getCorrectStatus = (status: string, isCompleted: boolean): string => {
   if (isCompleted) {
     return 'Completed';
   }
+  else if (status ==="InProgress" && isCompleted ) {
+    return 'Completed';
+  }
   
   // Otherwise return the original status
   return status;
@@ -261,32 +264,30 @@ function DashboardContent() {
     let actualRejected = 0;
 
     dashboardStats.requests.forEach(request => {
-      if (request.isCompleted) {
-        // If isCompleted is true, count as completed regardless of status
-        actualCompleted++;
-      } else {
-        // If not completed, count based on actual status
-        switch (request.status) {
-          case 'InProgress':
-            actualInProgress++;
-            break;
-          case 'Pending':
-            actualPending++;
-            break;
-          case 'Rejected':
-            actualRejected++;
-            break;
-          case 'Completed':
-            actualCompleted++;
-            break;
-          default:
-            // Handle any other statuses
-            if (request.status === 'Cancelled') {
-              actualRejected++;
-            } else {
-              actualPending++;
-            }
-        }
+      // ✅ Fix: Use the getCorrectStatus function to determine the real status
+      const correctStatus = getCorrectStatus(request.status, request.isCompleted);
+      
+      // Count based on the corrected status
+      switch (correctStatus) {
+        case 'Completed':
+          actualCompleted++;
+          break;
+        case 'InProgress':
+          actualInProgress++;
+          break;
+        case 'Pending':
+          actualPending++;
+          break;
+        case 'Rejected':
+        case 'Cancelled':
+          actualRejected++;
+          break;
+        case 'Approved':
+          actualCompleted++; // Treat approved as completed
+          break;
+        default:
+          actualPending++; // Default unknown statuses to pending
+          break;
       }
     });
 
@@ -298,7 +299,7 @@ function DashboardContent() {
       total: dashboardStats.totalRequests
     };
   }, [dashboardStats]);
-
+  console.log("🔄 Recalculated Request Stats:", recalculatedRequestStats);
   // Chuyển hướng nếu user không có quyền truy cập
   useEffect(() => {
     if (!authLoading && !canAccessWorkspace) {
