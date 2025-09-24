@@ -10,6 +10,7 @@ import {
   AddTaskErrorPayload,
   CREATE_ERROR_DETAIL,
   ErrorGuideline,
+  UpdateErrorPayload,
 } from "@/types/error.type";
 import {
   REQUEST_SUMMARY,
@@ -427,6 +428,9 @@ class APIClient {
     updateError: (errorId: string, data: any): Promise<any> => {
       console.log(`✅ API Client - Updating error ${errorId} with endpoint: /api/Error/update/${errorId}`);
       return http.put(`/api/Error/update/${errorId}`, data);
+    },
+    updateErrorNew:(payload : UpdateErrorPayload):Promise<any>=>{
+      return http.put("/api/Error/update-new",payload);
     },
   };
   warranty = {

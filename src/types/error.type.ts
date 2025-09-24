@@ -251,3 +251,22 @@ export interface IncidentTrendData {
   technicalIssues: number;
   errorLogs: number;
 }
+
+export interface UpdateErrorPayload {
+  Id: string;
+  Name: string;
+  Description: string;
+  EstimatedRepairTime: string;
+  IsCommon: boolean;
+  OccurrenceCount: number;
+  Severity: string;
+  IsPendingConfirmation: boolean;
+  ConfirmedById: string;
+  ConfirmedDate: string;
+  IssueIds: string[];
+  TechnicalSymptomIds: string[];
+  SparepartMappings: {
+    SparepartId: string;
+    QuantityNeeded: number;
+  }[];
+}

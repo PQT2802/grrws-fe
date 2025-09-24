@@ -52,6 +52,7 @@ import {
 } from "@/utils/textTypeTask";
 import AddErrorModal from "./AddErrorModal";
 import ApproveErrorModal from "./ApproveErrorModal"; 
+import UpdateErrorModal from "./UpdateErrorModal"; // ✅ Add this import
 
 interface ErrorListCpnProps {
   onEditError: (error: ErrorIncident) => void;
@@ -79,6 +80,10 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
     const [showAddModal, setShowAddModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [selectedErrorForApproval, setSelectedErrorForApproval] = useState<ErrorIncident | null>(null);
+    
+    // ✅ Add state for update modal
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [selectedErrorForUpdate, setSelectedErrorForUpdate] = useState<ErrorIncident | null>(null);
     
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -178,6 +183,18 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
       setShowApproveModal(true);
     }, []);
 
+    // ✅ Handle update error (replaces the existing handleEditError if needed)
+    const handleUpdateError = useCallback((error: ErrorIncident) => {
+      // Only allow updating errors that are pending confirmation
+      if (!error.isPendingConfirmation) {
+        toast.info("Chỉ có thể cập nhật các lỗi đang chờ duyệt");
+        return;
+      }
+      
+      setSelectedErrorForUpdate(error);
+      setShowUpdateModal(true);
+    }, []);
+
     const handleAddErrorSuccess = () => {
       fetchErrors();
     };
@@ -186,6 +203,12 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
     const handleApproveErrorSuccess = () => {
       fetchErrors();
       setSelectedErrorForApproval(null);
+    };
+
+    // ✅ Handle update success
+    const handleUpdateErrorSuccess = () => {
+      fetchErrors();
+      setSelectedErrorForUpdate(null);
     };
 
     // ✅ Get pending status badge
@@ -433,12 +456,12 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                             
                             {/* ✅ Conditional action based on pending status */}
                             {error.isPendingConfirmation ? (
-                              <DropdownMenuItem onClick={() => handleApproveError(error)}>
+                              <DropdownMenuItem onClick={() => handleUpdateError(error)}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 Duyệt lỗi
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem onClick={() => onEditError(error)}>
+                              <DropdownMenuItem onClick={() => handleUpdateError(error)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Cập nhật trạng thái
                               </DropdownMenuItem>
@@ -523,12 +546,19 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
           onSuccess={handleAddErrorSuccess}
         />
 
-        {/* ✅ New Approve Error Modal */}
         <ApproveErrorModal
           open={showApproveModal}
           onOpenChange={setShowApproveModal}
           error={selectedErrorForApproval}
           onSuccess={handleApproveErrorSuccess}
+        />
+
+        {/* ✅ New Update Error Modal */}
+        <UpdateErrorModal
+          open={showUpdateModal}
+          onOpenChange={setShowUpdateModal}
+          error={selectedErrorForUpdate}
+          onSuccess={handleUpdateErrorSuccess}
         />
       </div>
     );
