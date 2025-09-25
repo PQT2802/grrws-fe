@@ -40,7 +40,7 @@ const getVietnamTime = () => {
 const createVietnamDate = (year: number, month: number, day: number = 1, hour: number = 0, minute: number = 0) => {
   // Create date string in Vietnam timezone format
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-  return new Date(dateStr + '+07:00'); // Vietnam is UTC+7
+  return new Date(dateStr + '+07:30'); // Vietnam is UTC+7
 };
 
 // ✅ Set default to current month (first day to today) in Vietnam time
