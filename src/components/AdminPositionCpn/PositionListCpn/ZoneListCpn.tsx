@@ -414,7 +414,7 @@ const ZoneListCpn = forwardRef<ZoneListCpnRef, ZoneListCpnProps>(
             )}
             <MapPin className="h-6 w-6 text-green-600 dark:text-green-400" />
             <h1 className="text-2xl font-semibold">
-              {selectedArea ? `Quản lý khu (${totalCount} khu) - Khu vực: ${selectedArea.areaName}` : 'Quản lý khu'}
+              {selectedArea ? `Danh sách khu (${totalCount} khu) - Khu vực: ${selectedArea.areaName}` : 'Danh sách khu'}
             </h1>
             {!selectedArea && (
               <Badge variant="secondary" className="text-sm">
@@ -483,11 +483,11 @@ const ZoneListCpn = forwardRef<ZoneListCpnRef, ZoneListCpnProps>(
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border">
-                  <TableHead className="font-semibold text-foreground">Tên khu</TableHead>
+                  <TableHead className="font-semibold text-foreground w-[350px]">Tên khu</TableHead>
                   {!selectedArea && <TableHead className="font-semibold text-foreground">Khu vực</TableHead>}
                   <TableHead className="font-semibold text-center text-foreground">Vị trí</TableHead>
                   <TableHead className="font-semibold text-center text-foreground">Thiết bị</TableHead>
-                  <TableHead className="font-semibold text-foreground">Ngày tạo</TableHead>
+                  {/* <TableHead className="font-semibold text-foreground">Ngày tạo</TableHead> */}
                   <TableHead className="font-semibold text-center w-[100px] text-foreground">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -561,9 +561,9 @@ const ZoneListCpn = forwardRef<ZoneListCpnRef, ZoneListCpnProps>(
                           {isLoadingCounts ? '...' : zone.deviceCount}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      {/* <TableCell className="text-muted-foreground">
                         {formatDate(zone.createdDate)}
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

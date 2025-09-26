@@ -304,9 +304,9 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
         }}
       >
         <DialogHeader>
-          <DialogTitle>Create New User</DialogTitle>
+          <DialogTitle>Thêm người dùng mới</DialogTitle>
           <DialogDescription>
-            Fill in the details to create a new user account.
+            Điền thông tin để tạo tài khoản người dùng mới.
           </DialogDescription>
         </DialogHeader>
         
@@ -315,7 +315,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             {/* Full Name - Now Required */}
             <div className="space-y-2">
               <Label htmlFor="fullName">
-                Full Name <span className="text-red-500">*</span>
+                Tên <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="fullName"
@@ -323,7 +323,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 value={formData.fullName}
                 onChange={handleChange}
                 onBlur={() => handleBlur('fullName')}
-                placeholder="Enter full name"
+                placeholder="Nhập tên"
                 className={errors.fullName && touched.fullName ? "border-red-500" : ""}
                 autoFocus={false}
                 autoComplete="off"
@@ -344,7 +344,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 value={formData.userName}
                 onChange={handleChange}
                 onBlur={() => handleBlur('userName')}
-                placeholder="Enter username"
+                placeholder="Nhập username"
                 className={errors.userName && touched.userName ? "border-red-500" : ""}
                 autoComplete="off"
               />
@@ -377,7 +377,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">
-                Password <span className="text-red-500">*</span>
+                Mật khẩu <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="password"
@@ -386,7 +386,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 value={formData.password}
                 onChange={handleChange}
                 onBlur={() => handleBlur('password')}
-                placeholder="Enter password"
+                placeholder="Nhập mật khẩu"
                 className={errors.password && touched.password ? "border-red-500" : ""}
                 autoComplete="new-password"
               />
@@ -398,7 +398,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             {/* Phone Number - Now Required with Vietnamese validation */}
             <div className="space-y-2">
               <Label htmlFor="phoneNumber">
-                Phone Number <span className="text-red-500">*</span>
+                Số điện thoại <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="phoneNumber"
@@ -418,7 +418,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             {/* Date of Birth - Now with Improved Date Picker */}
             <div className="space-y-2">
               <Label htmlFor="dateOfBirth">
-                Date of Birth <span className="text-red-500">*</span>
+                Ngày sinh <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="dateOfBirth"
@@ -443,7 +443,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             {/* Role */}
             <div className="space-y-2">
               <Label htmlFor="role">
-                Role <span className="text-red-500">*</span>
+                Vai trò <span className="text-red-500">*</span>
               </Label>
               <Select 
                 value={formData.role} 
@@ -452,7 +452,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
                 key={`role-select-${open}`} // Force re-render when modal opens
               >
                 <SelectTrigger id="role" className={errors.role && touched.role ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Head Department">Head Department</SelectItem>
@@ -474,14 +474,14 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               onClick={() => handleModalClose(false)}
               disabled={isLoading}
             >
-              Cancel
+              Hủy
             </Button>
             <Button 
               type="submit" 
               disabled={isLoading}
               className={isLoading ? "opacity-70" : ""}
             >
-              {isLoading ? "Creating..." : "Create User"}
+              {isLoading ? "Đang tạo..." : "Tạo người dùng"}
             </Button>
           </DialogFooter>
         </form>

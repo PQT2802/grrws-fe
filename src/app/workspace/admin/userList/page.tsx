@@ -400,7 +400,7 @@ export default function UserList() {
   return (
     <div className="flex flex-col gap-6 p-2">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Users Management</h1>
+        <h1 className="text-2xl font-semibold">Danh sách người dùng</h1>
         <Button
           onClick={handleCreateUser}
           className="bg-blue-600 hover:bg-blue-700"
@@ -478,23 +478,23 @@ export default function UserList() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disable User</AlertDialogTitle>
+            <AlertDialogTitle>Vô hiệu người dùng</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to disable the user
+              Bạn có chắc chắn muốn vô hiệu hóa người dùng này
               {selectedUser &&
                 ` "${selectedUser.fullName || selectedUser.userName}"`}
-              ? This action will remove the user&apos;s access to the system and
-              cannot be undone easily.
+              ? Hành động này sẽ xóa quyền truy cập của người dùng khỏi hệ thống và
+              không thể hoàn tác dễ dàng.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Hủy</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteUser}
               className="bg-red-600 hover:bg-red-700"
               disabled={isDeleting}
             >
-              {isDeleting ? "Disabling..." : "Disable User"}
+              {isDeleting ? "Đang vô hiệu..." : "Vô hiệu người dùng"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -362,7 +362,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Quản lý máy</h1>
+          <h1 className="text-2xl font-semibold">Danh sách loại máy</h1>
           {hasFullAccess && (
             <div className="flex items-center gap-2">
               <Button

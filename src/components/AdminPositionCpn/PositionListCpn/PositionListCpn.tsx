@@ -476,9 +476,9 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
     // Dynamic title based on context
     const getPageTitle = () => {
       if (selectedZoneId && selectedZone) {
-        return `Quản lý vị trí (${totalCount} vị trí) - Khu: ${selectedZone.zoneName}`;
+        return `Danh sách vị trí (${totalCount} vị trí) - Khu: ${selectedZone.zoneName}`;
       }
-      return 'Quản lý vị trí';
+      return 'Danh sách vị trí';
     };
 
     const totalPages = Math.ceil(totalCount / pageSize);

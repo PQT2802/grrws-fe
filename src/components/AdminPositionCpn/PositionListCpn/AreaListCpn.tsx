@@ -378,7 +378,7 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MapPin className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            <h1 className="text-2xl font-semibold">Quản lý khu vực</h1>
+            <h1 className="text-2xl font-semibold">Danh sách khu vực</h1>
             <Badge variant="secondary" className="text-sm">
               {totalCount}
             </Badge>
@@ -432,7 +432,7 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
                   <TableHead className="font-semibold text-center text-foreground">Khu</TableHead>
                   <TableHead className="font-semibold text-center text-foreground">Vị trí</TableHead>
                   <TableHead className="font-semibold text-center text-foreground">Thiết bị</TableHead>
-                  <TableHead className="font-semibold text-foreground">Ngày tạo</TableHead>
+                  {/* <TableHead className="font-semibold text-foreground">Ngày tạo</TableHead> */}
                   <TableHead className="font-semibold text-center w-[100px] text-foreground">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -502,9 +502,9 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
                           {isLoadingCounts ? '...' : area.deviceCount}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      {/* <TableCell className="text-muted-foreground">
                         {formatDate(area.createdDate)}
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

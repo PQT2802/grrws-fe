@@ -323,7 +323,7 @@ export const UserListCpn = ({
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Vô hiệu hóa người dùng
+                            Vô hiệu người dùng
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

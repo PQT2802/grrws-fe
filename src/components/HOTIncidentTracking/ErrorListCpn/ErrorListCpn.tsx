@@ -260,7 +260,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Lỗi thiết bị
+              Danh sách lỗi
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Giám sát và quản lý lỗi thiết bị trong xưởng may
@@ -274,13 +274,13 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
               <Plus className="h-4 w-4" />
               Tạo lỗi
             </Button>
-            <Button
+            {/* <Button
               variant="outline"
               className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
             >
               <Download className="mr-2 h-4 w-4" />
               Xuất danh sách lỗi
-            </Button>
+            </Button> */}
             <Button className="bg-orange-600 hover:bg-orange-700">
               <Upload className="mr-2 h-4 w-4" />
               Nhập lỗi

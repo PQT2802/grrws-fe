@@ -216,23 +216,23 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Sự cố thiết bị
+              Danh sách triệu chứng
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Theo dõi và quản lý tất cả các triệu chứng được báo cáo trong xưởng may
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
+            {/* <Button
               variant="outline"
               className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
             >
               <Download className="mr-2 h-4 w-4" />
               Xuất danh sách vấn đề
-            </Button>
+            </Button> */}
             <Button className="bg-green-600 hover:bg-green-700">
               <Upload className="mr-2 h-4 w-4" />
-              Nhập vấn đề
+              Nhập triệu chứng
             </Button>
           </div>
         </div>

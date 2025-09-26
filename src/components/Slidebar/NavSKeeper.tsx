@@ -38,7 +38,7 @@ export function NavSKeeper() {
       icon: Smartphone,
     },
     {
-      title: "Máy móc",
+      title: "Loại máy móc",
       url: `/workspace/stock_keeper/machines`,
       icon: WashingMachine,
     },

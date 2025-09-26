@@ -26,10 +26,10 @@ export interface ErrorSparepart {
 
 export interface ErrorGuideline {
   id: string;
-  errorId?: string; // ✅ Add optional errorId field
+  errorId?: string; 
   title: string;
   estimatedRepairTime: string;
-  priority: string | number; // ✅ Allow both string and number
+  priority: string | number; 
   errorFixSteps: ErrorFixStep[];
   errorSpareparts: ErrorSparepart[];
 }

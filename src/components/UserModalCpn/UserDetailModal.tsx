@@ -50,9 +50,9 @@ export const UserDetailModal = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px]" onEscapeKeyDown={() => handleOpenChange(false)}>
         <DialogHeader>
-          <DialogTitle>User Details</DialogTitle>
+          <DialogTitle>Chi tiết người dùng</DialogTitle>
           <DialogDescription>
-            View user information
+            Xem thông tin người dùng
           </DialogDescription>
         </DialogHeader>
 
@@ -76,10 +76,10 @@ export const UserDetailModal = ({
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-lg font-medium">Detailed Information</h4>
+            <h4 className="text-lg font-medium">Thông tin chi tiết</h4>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Full Name</Label>
+                <Label className="text-muted-foreground">Họ và tên</Label>
                 <div className="flex items-center gap-2">
                   <span>{user.fullName || "Chưa cung cấp"}</span>
                 </div>
@@ -98,21 +98,21 @@ export const UserDetailModal = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Phone</Label>
+                <Label className="text-muted-foreground">Số điện thoại</Label>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span>{user.phoneNumber || "Chưa cung cấp"}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Date Of Birth</Label>
+                <Label className="text-muted-foreground">Ngày sinh</Label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>{formatDate(user.dateOfBirth)}</span>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-muted-foreground">Created Date</Label>
+                <Label className="text-muted-foreground">Ngày tạo tài khoản</Label>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>{formatDate(user.createdDate)}</span>
