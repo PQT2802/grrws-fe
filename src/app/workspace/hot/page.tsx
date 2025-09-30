@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import PageTitle from "@/components/PageTitle/PageTitle";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
@@ -25,6 +25,7 @@ import {
   Calendar,
   MapPin
 } from "lucide-react";
+import useSignalRStore from "@/store/useSignalRStore"; // Added import for SignalR store
 
 // Add this function at the top of your file, before the components
 const getVietnameseStatus = (status: string): string => {
@@ -44,9 +45,6 @@ const getVietnameseStatus = (status: string): string => {
 const getCorrectStatus = (status: string, isCompleted: boolean): string => {
   // If isCompleted is true, always return 'Completed' regardless of status
   if (isCompleted) {
-    return 'Completed';
-  }
-  else if (status ==="InProgress" && isCompleted ) {
     return 'Completed';
   }
   
@@ -227,6 +225,42 @@ function DashboardContent() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Extracted fetchDashboardStats as useCallback for reusability
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const filterParams = getApiParams();
+      console.log("📊 Đang lấy thống kê dashboard với bộ lọc:", filterParams);
+      
+      // ✅ Use single areaId from the filter context
+      const areaId = filterParams.areaId || '';
+      
+      // Set default dates if not provided: first day of current month to today
+      const now = new Date();
+      const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
+      const defaultEndDate = now; // Current date
+      
+      const startDate = filterParams.startDate || defaultStartDate.toISOString();
+      const endDate = filterParams.endDate || defaultEndDate.toISOString();
+      
+      // ✅ Always call the filtered stats API with proper parameters
+      const response = await apiClient.dashboard.getFilterdStats(
+        areaId,
+        startDate,
+        endDate
+      );
+      setDashboardStats(response);
+      
+    } catch (error) {
+      console.error("Lỗi khi lấy thống kê dashboard:", error);
+      setError("Không thể tải dữ liệu dashboard. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  }, [getApiParams]);
+
   // ✅ Move all useMemo hooks to the top, before any conditional returns
   // Tính toán phần trăm và xu hướng
   const analyticsData = useMemo(() => {
@@ -307,47 +341,38 @@ function DashboardContent() {
     }
   }, [authLoading, canAccessWorkspace, router]);
 
-  // Lấy thống kê dashboard với bộ lọc
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const filterParams = getApiParams();
-        console.log("📊 Đang lấy thống kê dashboard với bộ lọc:", filterParams);
-        
-        // ✅ Use single areaId from the filter context
-        const areaId = filterParams.areaId || '';
-        
-        // Set default dates if not provided: first day of current month to today
-        const now = new Date();
-        const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1); // First day of current month
-        const defaultEndDate = now; // Current date
-        
-        const startDate = filterParams.startDate || defaultStartDate.toISOString();
-        const endDate = filterParams.endDate || defaultEndDate.toISOString();
-        
-        // ✅ Always call the filtered stats API with proper parameters
-        const response = await apiClient.dashboard.getFilterdStats(
-          areaId,
-          startDate,
-          endDate
-        );
-        setDashboardStats(response);
-        
-      } catch (error) {
-        console.error("Lỗi khi lấy thống kê dashboard:", error);
-        setError("Không thể tải dữ liệu dashboard. Vui lòng thử lại.");
-      } finally {
-        setLoading(false);
+    useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
+    if (!token) return;
+
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const roleName = "HOT";
+    const { connect, disconnect } = useSignalRStore.getState();
+
+    const handleEvent = async (eventName: string, data: any) => {
+      console.log(`📩 SignalR event: ${eventName}`, data);
+      if (eventName === "NotificationReceived") {
+        await fetchDashboardStats();
       }
     };
 
+    connect(token, backendUrl, [`role:${roleName}`], handleEvent);
+
+    return () => {
+      disconnect();
+    };
+  }, [fetchDashboardStats]);
+
+  // Lấy thống kê dashboard với bộ lọc
+  useEffect(() => {
     if (!authLoading && canAccessWorkspace) {
       fetchDashboardStats();
     }
-  }, [authLoading, canAccessWorkspace, getApiParams]);
+  }, [authLoading, canAccessWorkspace, fetchDashboardStats]);
 
   // ✅ Now all the conditional returns come after the hooks
   // Hiển thị loading khi đang kiểm tra xác thực
@@ -490,7 +515,7 @@ function DashboardContent() {
                 />
                 <ProgressBar 
                   label="Đang xử lý" 
-                  value={recalculatedRequestStats?.actualInProgress || dashboardStats.inProgressRequests} 
+                  value={recalculatedRequestStats?.actualInProgress || 0 } 
                   total={dashboardStats.totalRequests}
                   color="blue"
                 />
