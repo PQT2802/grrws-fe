@@ -123,7 +123,9 @@ const TaskManagementPage = () => {
       console.log("Single Tasks Response:", response);
       if (response) {
         setSingleTasks(response.data);
-        setSingleTasksTotalCount(response.data.totalCount || 0);
+        // Fix: Get totalCount from the correct location in the response
+        setSingleTasksTotalCount(response.totalCount || 0);
+        console.log("Updated single tasks count:", response.totalCount);
       } else {
         setSingleTasks([]);
         setSingleTasksTotalCount(0);
