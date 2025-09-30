@@ -161,7 +161,16 @@ const TaskManagementPage = () => {
         eventName === "TaskGroupUpdated" ||
         eventName === "NotificationReceived"
       ) {
-        // Refresh both lists
+        // Reset filters and search to fetch all data
+        setTaskGroupsSearch("");
+        setTaskGroupsPage(1);
+        setSingleTasksSearch("");
+        setSingleTasksPage(1);
+        setTaskTypeFilter("all");
+        setStatusFilter("all");
+        setPriorityFilter("all");
+
+        // Refresh both lists with all data
         await fetchTaskGroups();
         await fetchSingleTasks();
       }
