@@ -123,7 +123,9 @@ const TaskManagementPage = () => {
       console.log("Single Tasks Response:", response);
       if (response) {
         setSingleTasks(response.data);
-        setSingleTasksTotalCount(response.data.totalCount || 0);
+        // Fix: Get totalCount from the correct location in the response
+        setSingleTasksTotalCount(response.totalCount || 0);
+        console.log("Updated single tasks count:", response.totalCount);
       } else {
         setSingleTasks([]);
         setSingleTasksTotalCount(0);
@@ -161,7 +163,16 @@ const TaskManagementPage = () => {
         eventName === "TaskGroupUpdated" ||
         eventName === "NotificationReceived"
       ) {
-        // Refresh both lists
+        // Reset filters and search to fetch all data
+        setTaskGroupsSearch("");
+        setTaskGroupsPage(1);
+        setSingleTasksSearch("");
+        setSingleTasksPage(1);
+        setTaskTypeFilter("all");
+        setStatusFilter("all");
+        setPriorityFilter("all");
+
+        // Refresh both lists with all data
         await fetchTaskGroups();
         await fetchSingleTasks();
       }
