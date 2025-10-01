@@ -42,7 +42,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { DEVICE_WEB } from "@/types/device.type";
 import OperationStatsCpn from "../ChartCpn/OperationStatsCpn";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import DeviceExportModal from "@/components/DeviceCpn/DeviceExportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
@@ -266,6 +266,37 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
       setShowImportModal(false);
     }, []);
 
+    // Load machines for device import
+    const loadMachinesForDeviceImport = useCallback(async () => {
+      try {
+        console.log('📡 Loading machines for device import...');
+        const response = await apiClient.machine.getMachines(1, 1000); // Get all machines
+        
+        let machinesData: any[] = [];
+        if (Array.isArray(response)) {
+          machinesData = response;
+        } else if ((response as any).data && Array.isArray((response as any).data)) {
+          machinesData = (response as any).data;
+        } else if ((response as any).data?.data && Array.isArray((response as any).data.data)) {
+          machinesData = (response as any).data.data;
+        }
+
+        // Transform to required format
+        const machineOptions = machinesData.map(machine => ({
+          id: machine.id,
+          name: machine.machineName,
+          code: machine.machineCode
+        }));
+
+        console.log(`✅ Loaded ${machineOptions.length} machines for selection`);
+        return machineOptions;
+      } catch (error) {
+        console.error('❌ Failed to load machines:', error);
+        throw error;
+      }
+    }, []);
+
+    // Handle file import with processed data (including machineId and positionId = null)
     const handleFileImport = useCallback(
       async (file: File) => {
         if (!hasFullAccess) {
@@ -273,11 +304,21 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
           return;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
+        console.log(`📂 Importing device file: ${file.name}`);
 
-        await apiClient.device.importDevice(formData);
-        await fetchDevices();
+        try {
+          // ✅ Create FormData and send file directly to API (like MachineListCpn)
+          const formData = new FormData();
+          formData.append("file", file);
+
+          await apiClient.device.importDevice(formData);
+
+          // Refresh the device list
+          await fetchDevices();
+        } catch (error) {
+          console.error("❌ Import failed:", error);
+          throw error; // Re-throw to be handled by modal
+        }
       },
       [fetchDevices, hasFullAccess]
     );
@@ -677,12 +718,14 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
         </div>
 
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
-            title="Nhập thiết bị từ Excel"
+            title="Nhập thiết bị từ Excel/CSV"
             successMessage="Nhập thiết bị thành công"
+            importType="device"
+            onLoadMachines={loadMachinesForDeviceImport}
           />
         )}
 

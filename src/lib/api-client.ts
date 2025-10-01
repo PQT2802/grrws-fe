@@ -376,12 +376,6 @@ class APIClient {
       return http.get<ErrorIncident[]>(`/api/Error/mapped-by-ti/${deviceId}`);
     },
 
-    // createErrorDetail: (errorDetail: CREATE_ERROR_DETAIL): Promise<any> => {
-    //   return http.post("/api/Error/create-error-detail", errorDetail);
-    // },
-    // getErrorGuidelines: (errorId: string): Promise<ErrorGuideline[]> => {
-    //   return http.get(`/api/ErrorGuideline/by-error/${errorId}`);
-    // },
     createError: (data: {
       Name: string;
       Description: string;
@@ -473,19 +467,20 @@ class APIClient {
       return http.get<DEVICE_WEB>(`/api/Device/${deviceId}`);
     },
 
-    // Import devices from Excel file
-    importDevice: async (formData: FormData): Promise<any> => {
-      console.log("Importing device from Excel file");
-      try {
-        const response = await http.post("/api/Device/import", formData, {
+    importDevice: async (data: FormData | any[]): Promise<any> => {
+      console.log("🚀 API Client - Import device called with:", data);
+      
+      if (Array.isArray(data)) {
+        console.log("📤 Sending as JSON array");
+        return http.post("/api/Device/import", data, {
           headers: {
-            "Content-Type": "multipart/form-data",
+            'Content-Type': 'application/json',
           },
         });
-        return response;
-      } catch (error) {
-        console.error("Error importing devices:", error);
-        throw error;
+      } else {
+        console.log("📤 Sending as FormData");
+        return http.post("/api/Device/import", data, {
+        });
       }
     },
 
@@ -539,19 +534,20 @@ class APIClient {
       );
     },
 
-    // Import machines from Excel file
-    importMachine: async (formData: FormData): Promise<any> => {
-      console.log("Importing machine from Excel file");
-      try {
-        const response = await http.post("/api/Machine/import", formData, {
+    importMachine: async (data: FormData | any[]): Promise<any> => {
+      console.log("🚀 API Client - Import machine called with:", data);
+      
+      if (Array.isArray(data)) {
+        console.log("📤 Sending as JSON array");
+        return http.post("/api/Machine/import", data, {
           headers: {
-            "Content-Type": "multipart/form-data",
+            'Content-Type': 'application/json',
           },
         });
-        return response;
-      } catch (error) {
-        console.error("Error importing machines:", error);
-        throw error;
+      } else {
+        console.log("📤 Sending as FormData");
+        return http.post("/api/Machine/import", data, {
+        });
       }
     },
 
@@ -1040,6 +1036,26 @@ class APIClient {
         return response;
       } catch (error) {
         console.error("Error deleting position:", error);
+        throw error;
+      }
+    },
+
+    // ✅ NEW: Create area with zones and positions
+    createAreaWithZonePosition: async (data: {
+      AreaName: string;
+      AreaCode: string;
+      Zones: Array<{
+        ZoneName: string;
+        ZoneCode: string;
+        NumberOfPositions: number;
+      }>;
+    }): Promise<any> => {
+      console.log("Creating area with zones and positions:", data);
+      try {
+        const response = await http.post("/api/Area/area-with-zone-position", data);
+        return response;
+      } catch (error) {
+        console.error("Error creating area with zones:", error);
         throw error;
       }
     },

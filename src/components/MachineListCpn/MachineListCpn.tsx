@@ -42,7 +42,7 @@ import { toast } from "react-toastify";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { MACHINE_WEB } from "@/types/device.type";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
 
@@ -255,7 +255,7 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(
       setShowImportModal(false);
     }, []);
 
-    // Handle file import
+    // ✅ Handle file import - Accept File object like original ExcelImportModal
     const handleFileImport = useCallback(
       async (file: File) => {
         if (!hasFullAccess) {
@@ -263,15 +263,21 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(
           return;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
+        console.log(`📂 Importing machine file: ${file.name}`);
 
-        console.log(`📂 Đang nhập tệp máy: ${file.name}`);
+        try {
+          // ✅ Create FormData and send file directly to API (like original)
+          const formData = new FormData();
+          formData.append("file", file);
 
-        await apiClient.machine.importMachine(formData);
+          await apiClient.machine.importMachine(formData);
 
-        // Refresh the machine list
-        await fetchMachines();
+          // Refresh the machine list
+          await fetchMachines();
+        } catch (error) {
+          console.error("❌ Import failed:", error);
+          throw error; // Re-throw to be handled by modal
+        }
       },
       [fetchMachines, hasFullAccess]
     );
@@ -611,14 +617,15 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(
           </div>
         </div>
 
-        {/* ✅ Import Modal - Available for both Admin and Stock Keeper */}
+        {/* ✅ Enhanced Import Modal with Auto GUID Generation */}
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
-            title="Nhập máy từ Excel"
+            title="Nhập máy từ Excel/CSV"
             successMessage="Nhập máy thành công"
+            importType="machine"
           />
         )}
       </div>

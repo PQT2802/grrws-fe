@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import AreaListCpn, { AreaListCpnRef } from "@/components/AdminPositionCpn/PositionListCpn/AreaListCpn"
 import AreaModal from "@/components/AdminPositionCpn/PositionModalCpn/AreaModal"
-import { Area, CreateAreaRequest, UpdateAreaRequest } from "@/types/location.type"
+import EnhancedAreaModal from "@/components/AdminPositionCpn/PositionModalCpn/EnhancedAreaModal"
+import { Area, CreateAreaRequest, UpdateAreaRequest, CreateAreaWithZonesRequest } from "@/types/location.type"
 import { toast } from "react-toastify"
 import { apiClient } from "@/lib/api-client"
 import {
@@ -22,8 +23,10 @@ import { useRouter } from "next/navigation"
 export default function AreasPage() {
     const [selectedArea, setSelectedArea] = useState<Area | null>(null)
     const [showAreaModal, setShowAreaModal] = useState(false)
+    const [showEnhancedAreaModal, setShowEnhancedAreaModal] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isCreatingArea, setIsCreatingArea] = useState(false)
     
     // Create ref to access AreaListCpn methods
     const areaListRef = useRef<AreaListCpnRef>(null)
@@ -126,6 +129,10 @@ export default function AreasPage() {
         }
     }, [])
 
+    const handleEnhancedAreaModalClose = useCallback(() => {
+        setShowEnhancedAreaModal(false)
+    }, [])
+
     const handleDeleteDialogClose = useCallback((open: boolean) => {
         setDeleteDialogOpen(open)
         
@@ -162,6 +169,41 @@ export default function AreasPage() {
         }
     }, [selectedArea])
 
+    // ✅ New handler for enhanced area creation
+    const handleCreateAreaWithZones = useCallback(async (data: CreateAreaWithZonesRequest) => {
+        try {
+            setIsCreatingArea(true)
+            console.log("Creating area with zones:", data)
+            
+            await apiClient.location.createAreaWithZonePosition(data)
+            
+            toast.success(`Đã tạo khu vực "${data.AreaName}" thành công với ${data.Zones.length} khu và ${data.Zones.reduce((sum, zone) => sum + zone.NumberOfPositions, 0)} vị trí!`)
+            
+            setShowEnhancedAreaModal(false)
+            
+            // Refresh the list
+            if (areaListRef.current) {
+                await areaListRef.current.refetchAreas()
+            }
+        } catch (error: any) {
+            console.error("Error creating area with zones:", error)
+            
+            let errorMessage = "Tạo khu vực thất bại"
+            
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+            } else if (error.response?.data?.error) {
+                errorMessage = error.response.data.error
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+            
+            toast.error(errorMessage)
+        } finally {
+            setIsCreatingArea(false)
+        }
+    }, [])
+
     const breadcrumbItems = [
         { label: 'Khu vực', isActive: true }
     ];
@@ -176,15 +218,24 @@ export default function AreasPage() {
                     onEditArea={handleEditArea}
                     onDeleteArea={handleDeleteArea}
                     onViewArea={handleViewArea}
+                    onCreateArea={() => setShowEnhancedAreaModal(true)} // ✅ Connect create handler
                 />
 
-                {/* Area Modal */}
+                {/* Original Area Modal */}
                 <AreaModal
                     isOpen={showAreaModal}
                     onClose={() => handleAreaModalClose(false)}
                     onSubmit={handleAreaSubmit}
                     area={selectedArea}
                     isLoading={false}
+                />
+
+                {/* ✅ NEW: Enhanced Area Modal */}
+                <EnhancedAreaModal
+                    isOpen={showEnhancedAreaModal}
+                    onClose={handleEnhancedAreaModalClose}
+                    onSubmit={handleCreateAreaWithZones}
+                    isLoading={isCreatingArea}
                 />
 
                 {/* Delete Confirmation Dialog */}

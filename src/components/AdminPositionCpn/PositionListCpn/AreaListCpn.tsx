@@ -42,6 +42,7 @@ import {
   Upload,
   Loader2,
   MapPin,
+  Plus,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "react-toastify";
@@ -63,6 +64,7 @@ interface AreaListCpnProps {
   onEditArea?: (area: Area) => void;
   onDeleteArea?: (area: Area) => void;
   onViewArea?: (area: Area) => void;
+  onCreateArea?: () => void; // ✅ NEW: Add create handler
 }
 
 // Add ref interface for parent component access
@@ -71,7 +73,7 @@ export interface AreaListCpnRef {
 }
 
 const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
-  ({ onEditArea, onDeleteArea, onViewArea }, ref) => {
+  ({ onEditArea, onDeleteArea, onViewArea, onCreateArea }, ref) => {
     const { user } = useAuth();
     const router = useRouter();
     const [areas, setAreas] = useState<AreaWithCounts[]>([]);
@@ -391,6 +393,16 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
           </div>
           {hasFullAccess && (
             <div className="flex items-center gap-2">
+              {/* ✅ NEW: Create Area Button */}
+              {onCreateArea && (
+                <Button
+                  onClick={onCreateArea}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tạo khu vực
+                </Button>
+              )}
               <Button
                 onClick={handleImportClick}
                 className="bg-green-600 hover:bg-green-700"

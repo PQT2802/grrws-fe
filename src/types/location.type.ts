@@ -107,3 +107,20 @@ export interface UpdateZoneRequest extends CreateZoneRequest {
 export interface UpdatePositionRequest extends CreatePositionRequest {
   id: string;
 }
+
+export interface CreateAreaWithZonesRequest {
+  AreaName: string;
+  AreaCode: string;
+  Zones: Array<{
+    ZoneName: string;
+    ZoneCode: string;
+    NumberOfPositions: number;
+  }>;
+}
+
+export interface ZoneInput {
+  id: string; // For UI management
+  ZoneName: string;
+  ZoneCode: string;
+  NumberOfPositions: number;
+}
