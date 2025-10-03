@@ -21,12 +21,12 @@ export default function LocationBreadcrumb({ items }: LocationBreadcrumbProps) {
   return (
     <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
       <MapPin className="h-4 w-4" />
-      <Link 
+      {/* <Link 
         href={`/workspace/${workspaceId}/admin/location/areas`}
         className="hover:text-primary transition-colors"
       >
         Location Management
-      </Link>
+      </Link> */}
       
       {items.map((item, index) => (
         <div key={index} className="flex items-center space-x-2">

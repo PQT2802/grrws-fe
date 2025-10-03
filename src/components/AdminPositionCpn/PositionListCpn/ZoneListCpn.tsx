@@ -49,7 +49,7 @@ import { toast } from "react-toastify";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { Zone, Area } from "@/types/location.type";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
 import { useRouter } from "next/navigation";
@@ -578,10 +578,10 @@ const ZoneListCpn = forwardRef<ZoneListCpnRef, ZoneListCpnProps>(
                             </DropdownMenuItem>
                             {hasFullAccess && (
                               <>
-                                <DropdownMenuItem onClick={() => handleEditZone(zone)}>
+                                {/* <DropdownMenuItem onClick={() => handleEditZone(zone)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Chỉnh sửa
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteZone(zone)}
                                   className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
@@ -663,12 +663,15 @@ const ZoneListCpn = forwardRef<ZoneListCpnRef, ZoneListCpnProps>(
 
         {/* Import Modal */}
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
             title="Nhập khu từ Excel"
             successMessage="Nhập khu thành công"
+            importType="zone" // ✅ Use enhanced modal for zone
+            currentAreaId={selectedAreaId} // ✅ Pass current area ID
+            currentAreaName={selectedArea?.areaName} // ✅ Pass area name for display
           />
         )}
       </div>

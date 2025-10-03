@@ -28,7 +28,6 @@ interface RequestPart {
   specification: string;
   isTakenFromStock: boolean;
   usageId: string;
-  // ✅ NEW: Additional spare part details from API
   description?: string;
   categoryName?: string;
   unit?: string;
@@ -36,7 +35,6 @@ interface RequestPart {
   createdDate?: string;
 }
 
-// ✅ NEW: Interface for unified machine action confirmation response
 interface UnifiedSparePartRequest {
   id: string;
   confirmationCode: string;
@@ -48,7 +46,6 @@ interface UnifiedSparePartRequest {
   notes?: string;
   mechanicConfirm: boolean;
   stockkeeperConfirm: boolean;
-  // ✅ NEW: SparePartUsages array from unified API
   sparePartUsages?: {
     sparePartUsageId: string;
     sparePartId: string;
@@ -56,7 +53,6 @@ interface UnifiedSparePartRequest {
     quantityUsed: number;
     isTakenFromStock: boolean;
   }[];
-  // Keep error details for backward compatibility
   errorDetails?: {
     errorId: string;
     errorName: string;

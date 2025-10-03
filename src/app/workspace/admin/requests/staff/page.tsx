@@ -83,13 +83,13 @@ export default function StaffRequestsPage() {
             Làm mới
           </Button>
           
-          <Button 
+          {/* <Button 
             variant="outline" 
             className="border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400"
           >
             <Download className="mr-2 h-4 w-4" />
             Xuất file
-          </Button>
+          </Button> */}
         </div>
       </div>
 

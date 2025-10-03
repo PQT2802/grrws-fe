@@ -49,7 +49,7 @@ import { toast } from "react-toastify";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { Area } from "@/types/location.type";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
 import { useRouter } from "next/navigation";
@@ -531,10 +531,10 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
                             </DropdownMenuItem>
                             {hasFullAccess && (
                               <>
-                                <DropdownMenuItem onClick={() => handleEditArea(area)}>
+                                {/* <DropdownMenuItem onClick={() => handleEditArea(area)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Chỉnh sửa
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteArea(area)}
                                   className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
@@ -616,12 +616,13 @@ const AreaListCpn = forwardRef<AreaListCpnRef, AreaListCpnProps>(
 
         {/* Import Modal */}
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
             title="Nhập khu vực từ Excel"
             successMessage="Nhập khu vực thành công"
+            importType="area"
           />
         )}
       </div>

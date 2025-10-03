@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "react-toastify";
 import { apiClient } from "@/lib/api-client";
-import { CREATE_USER_REQUEST, ROLE_MAPPING } from "@/types/user.type";
+import { CREATE_USER_REQUEST, ROLE_MAPPING, USER_LIST_ITEM } from "@/types/user.type";
 
 interface CreateUserModalProps {
   open: boolean;
@@ -41,6 +41,10 @@ const INITIAL_FORM_STATE = {
 export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // ✅ NEW: Add state for role validation
+  const [isValidatingRole, setIsValidatingRole] = useState(false);
+  const [roleValidationError, setRoleValidationError] = useState<string>("");
   
   // Form state - using a function to ensure we get a fresh object each time
   const [formData, setFormData] = useState(() => ({ ...INITIAL_FORM_STATE }));
@@ -151,7 +155,8 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
-  const handleRoleChange = (value: string) => {
+  // ✅ UPDATED: Handle role change with validation
+  const handleRoleChange = async (value: string) => {
     setFormData(prev => ({
       ...prev,
       role: value
@@ -159,12 +164,18 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     
     setTouched(prev => ({...prev, role: true}));
     
-    // Clear error when user selects a role
+    // Clear previous errors
+    setRoleValidationError("");
     if (errors.role) {
       setErrors(prev => ({
         ...prev,
         role: ""
       }));
+    }
+
+    // ✅ NEW: Validate Head of Technical role limit
+    if (value === "Head of Technical") {
+      await validateHeadOfTechnicalRole(value);
     }
   };
 
@@ -185,11 +196,87 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }
   };
 
-  const validateForm = (): boolean => {
+  // ✅ NEW: Validate Head of Technical role limit
+  const validateHeadOfTechnicalRole = async (selectedRole: string): Promise<boolean> => {
+    if (selectedRole !== "Head of Technical") {
+      setRoleValidationError("");
+      return true;
+    }
+
+    try {
+      setIsValidatingRole(true);
+      setRoleValidationError("");
+
+      console.log("🔍 Checking existing Head of Technical users...");
+
+      // Get users with Head of Technical role (role number = 2)
+      const headOfTechnicalUsers = await apiClient.user.getUserRole(2);
+      
+      console.log("👥 Existing Head of Technical users:", headOfTechnicalUsers);
+
+      // Check if we got an array of users
+      let existingUsers: any[] = [];
+      
+      if (Array.isArray(headOfTechnicalUsers)) {
+        existingUsers = headOfTechnicalUsers;
+      } else if (headOfTechnicalUsers?.data && Array.isArray(headOfTechnicalUsers.data)) {
+        existingUsers = headOfTechnicalUsers.data;
+      } else if (headOfTechnicalUsers?.data?.data && Array.isArray(headOfTechnicalUsers.data.data)) {
+        existingUsers = headOfTechnicalUsers.data.data;
+      }
+
+      console.log("📊 Processed existing users:", existingUsers);
+
+      // Check if there's already an active Head of Technical
+      if (existingUsers.length > 0) {
+        const activeHeadOfTechnical = existingUsers.find(user => 
+          user.role === 2 || 
+          user.Role === 2 ||
+          (typeof user.role === 'string' && user.role.toLowerCase().includes('head of technical'))
+        );
+
+        if (activeHeadOfTechnical) {
+          const errorMessage = `Hệ thống chỉ cho phép có 1 Head of Technical. Hiện tại đã có: ${activeHeadOfTechnical.fullName || activeHeadOfTechnical.userName || 'Unnamed User'}`;
+          setRoleValidationError(errorMessage);
+          
+          // Also set it in form errors for consistent display
+          setErrors(prev => ({
+            ...prev,
+            role: errorMessage
+          }));
+          
+          toast.error(errorMessage);
+          return false;
+        }
+      }
+
+      console.log("✅ No existing Head of Technical found, can create new one");
+      return true;
+
+    } catch (error) {
+      console.error("❌ Error validating Head of Technical role:", error);
+      
+      // On API error, assume validation passed but log the issue
+      const fallbackMessage = "Không thể kiểm tra role Head of Technical. Vui lòng thử lại.";
+      setRoleValidationError(fallbackMessage);
+      setErrors(prev => ({
+        ...prev,
+        role: fallbackMessage
+      }));
+      
+      toast.error(fallbackMessage);
+      return false;
+    } finally {
+      setIsValidatingRole(false);
+    }
+  };
+
+  // ✅ UPDATED: Enhanced form validation
+  const validateForm = async (): Promise<boolean> => {
     const fieldErrors: Record<string, string> = {};
     let valid = true;
 
-    // Validate all required fields
+    // Validate all required fields (existing validation)
     Object.entries({
       fullName: formData.fullName,
       userName: formData.userName,
@@ -206,10 +293,20 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       }
     });
 
+    // ✅ NEW: Additional role validation for Head of Technical
+    if (formData.role === "Head of Technical") {
+      const roleValid = await validateHeadOfTechnicalRole(formData.role);
+      if (!roleValid) {
+        valid = false;
+        // Error already set in validateHeadOfTechnicalRole
+      }
+    }
+
     setErrors(prev => ({...prev, ...fieldErrors}));
     return valid;
   };
 
+  // ✅ UPDATED: Handle form submission with role validation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -220,9 +317,9 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
     }, {} as Record<string, boolean>);
     setTouched(allTouched);
     
-    // Validate all fields before submission
-    if (!validateForm()) {
-      toast.error("Please correct the errors in the form");
+    // ✅ UPDATED: Validate all fields including role restriction
+    if (!(await validateForm())) {
+      toast.error("Vui lòng kiểm tra lại thông tin nhập vào");
       return;
     }
     
@@ -241,8 +338,8 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       
       // Extra validation for role
       if (payload.Role === 0) {
-        toast.error("Please select a valid role");
-        setErrors(prev => ({...prev, role: "A valid role is required"}));
+        toast.error("Vui lòng chọn vai trò hợp lệ");
+        setErrors(prev => ({...prev, role: "Vai trò hợp lệ là bắt buộc"}));
         setIsLoading(false);
         return;
       }
@@ -251,7 +348,7 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
       
       await apiClient.user.createUser(payload);
       
-      toast.success("User created successfully!");
+      toast.success("Tạo người dùng thành công!");
       resetForm();
       onOpenChange(false);
       if (onSuccess) {
@@ -269,11 +366,11 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
         });
         
         setErrors(validationErrors);
-        toast.error("Please correct the errors in the form");
+        toast.error("Vui lòng kiểm tra lại thông tin trong form");
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error("Failed to create user. Please try again.");
+        toast.error("Tạo người dùng thất bại. Vui lòng thử lại.");
       }
     } finally {
       setIsLoading(false);
@@ -444,25 +541,50 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
             <div className="space-y-2">
               <Label htmlFor="role">
                 Vai trò <span className="text-red-500">*</span>
+                {isValidatingRole && (
+                  <span className="ml-2 text-xs text-blue-600">Đang kiểm tra...</span>
+                )}
               </Label>
               <Select 
                 value={formData.role} 
                 onValueChange={handleRoleChange}
                 onOpenChange={() => setTouched(prev => ({...prev, role: true}))}
-                key={`role-select-${open}`} // Force re-render when modal opens
+                key={`role-select-${open}`}
+                disabled={isValidatingRole || isLoading}
               >
-                <SelectTrigger id="role" className={errors.role && touched.role ? "border-red-500" : ""}>
+                <SelectTrigger 
+                  id="role" 
+                  className={`${
+                    (errors.role || roleValidationError) && touched.role ? "border-red-500" : ""
+                  } ${isValidatingRole ? "opacity-70" : ""}`}
+                >
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Head Department">Head Department</SelectItem>
-                  <SelectItem value="Head of Technical">Head of Technical</SelectItem>
+                  <SelectItem value="Head of Technical">
+                    <div className="flex items-center gap-2">
+                      <span>Head of Technical</span>
+                      <span className="text-xs text-orange-600">(Chỉ 1 người)</span>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="Mechanic">Mechanic</SelectItem>
                   <SelectItem value="Stock Keeper">Stock Keeper</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.role && touched.role && (
-                <p className="text-xs text-red-500">{errors.role}</p>
+              
+              {/* ✅ NEW: Display role validation error */}
+              {((errors.role || roleValidationError) && touched.role) && (
+                <div className="space-y-1">
+                  <p className="text-xs text-red-500">
+                    {roleValidationError || errors.role}
+                  </p>
+                  {roleValidationError && (
+                    <p className="text-xs text-gray-500">
+                      💡 Tip: Kiểm tra danh sách người dùng để xem Head of Technical hiện tại
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -472,16 +594,22 @@ export const CreateUserModal = ({ open, onOpenChange, onSuccess }: CreateUserMod
               type="button"
               variant="outline"
               onClick={() => handleModalClose(false)}
-              disabled={isLoading}
+              disabled={isLoading || isValidatingRole}
             >
               Hủy
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading}
-              className={isLoading ? "opacity-70" : ""}
+              disabled={isLoading || isValidatingRole || !!roleValidationError}
+              className={`${
+                (isLoading || isValidatingRole) ? "opacity-70" : ""
+              } ${
+                roleValidationError ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              {isLoading ? "Đang tạo..." : "Tạo người dùng"}
+              {isLoading ? "Đang tạo..." : 
+               isValidatingRole ? "Đang kiểm tra..." : 
+               "Tạo người dùng"}
             </Button>
           </DialogFooter>
         </form>

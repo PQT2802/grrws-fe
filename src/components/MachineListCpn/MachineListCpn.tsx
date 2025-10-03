@@ -532,12 +532,12 @@ const MachineListCpn = forwardRef<MachineListCpnRef, MachineListCpnProps>(
                             </DropdownMenuItem>
                             {hasFullAccess && (
                               <>
-                                <DropdownMenuItem
+                                {/* <DropdownMenuItem
                                   onClick={() => handleEditMachine(machine)}
                                 >
                                   <Pencil className="mr-2 h-4 w-4" />
                                   Sửa máy
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteMachine(machine)}
                                   className="text-red-600"

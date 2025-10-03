@@ -47,11 +47,11 @@ export function NavSKeeper() {
       url: `/workspace/stock_keeper/inventory`,
       icon: Box,
     },
-    {
-      title: "Lịch sử nhập/xuất kho",
-      url: `/workspace/stock_keeper/logs`,
-      icon: FileText,
-    },
+    // {
+    //   title: "Lịch sử nhập/xuất kho",
+    //   url: `/workspace/stock_keeper/logs`,
+    //   icon: FileText,
+    // },
   ];
 
   return (

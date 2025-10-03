@@ -51,7 +51,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { apiClient } from "@/lib/api-client";
 import { Position, Zone, Area } from "@/types/location.type";
 import { DEVICE_WEB } from "@/types/device.type";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import DeviceDetailModal from "@/components/DeviceCpn/DeviceDetailModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
@@ -754,10 +754,10 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
                               )}
                               {hasFullAccess && (
                                 <>
-                                  <DropdownMenuItem onClick={() => handleEditPosition(position)}>
+                                  {/* <DropdownMenuItem onClick={() => handleEditPosition(position)}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Chỉnh sửa
-                                  </DropdownMenuItem>
+                                  </DropdownMenuItem> */}
                                   <DropdownMenuItem
                                     onClick={() => handleDeletePosition(position)}
                                     className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
@@ -840,12 +840,15 @@ const PositionListCpn = forwardRef<PositionListCpnRef, PositionListCpnProps>(
 
         {/* Import Modal */}
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
             title="Nhập vị trí từ Excel"
             successMessage="Nhập vị trí thành công"
+            importType="position" 
+            currentZoneId={selectedZoneId}
+            currentZoneName={selectedZone?.zoneName} 
           />
         )}
 

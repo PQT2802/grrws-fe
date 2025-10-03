@@ -93,6 +93,32 @@ class APIClient {
       return http.get<GET_MECHANIC_USER>(`/api/User/role?role=${role}`);
     },
 
+    getUserRole: (role: number): Promise<any> => {
+      console.log(`Fetching users with role: ${role}`);
+      return http.get(`/api/User/role?role=${role}`);
+    },
+
+    getActiveUsers: (
+      pageNumber: number = 1,
+      pageSize: number = 1000,
+      searchTerm?: string,
+      roleFilter?: string
+    ): Promise<any> => {
+      const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      if (searchTerm) {
+        params.append('searchTerm', searchTerm);
+      }
+      if (roleFilter) {
+        params.append('role', roleFilter);
+      }
+
+      return http.get(`/api/User/users/search?${params.toString()}`);
+    },
+
     getUsersList: (
       pageNumber: number = 1,
       pageSize: number = 10

@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SkeletonCard } from "@/components/SkeletonCard/SkeletonCard";
-import ExcelImportModal from "@/components/ExcelImportModal/ExcelImportModal";
+import EnhancedExcelImportModal from "@/components/ExcelImportModal/EnhancedExcelImportModal";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { USER_ROLES } from "@/types/auth.type";
 
@@ -755,12 +755,13 @@ export default function InventoryPage() {
 
         {/* ✅ Excel Import Modal - Available for both Admin and Stock Keeper */}
         {hasFullAccess && (
-          <ExcelImportModal
+          <EnhancedExcelImportModal
             isOpen={showImportModal}
             onClose={handleImportModalClose}
             onImport={handleFileImport}
             title="Nhập linh kiện từ Excel"
             successMessage="Nhập linh kiện thành công"
+            importType="sparepart" 
           />
         )}
       </div>

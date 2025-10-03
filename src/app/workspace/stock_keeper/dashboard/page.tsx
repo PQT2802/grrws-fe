@@ -35,10 +35,10 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div className="rounded-lg p-6 border">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Welcome back, {user?.fullName || "Stock Keeper"}!
+          Dashboard thủ kho
         </h1>
         <p className="text-gray-600 dark:text-gray-300">
-          Here&apos;s an overview of your inventory and pending tasks.
+          Đây là tổng quan về kho và các nhiệm vụ đang chờ xử lý của bạn.
         </p>
       </div>
 

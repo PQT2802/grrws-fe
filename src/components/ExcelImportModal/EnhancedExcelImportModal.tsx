@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, X, RefreshCw, Loader2, Settings, FileText } from 'lucide-react'; // ✅ Changed File to FileText
+import { Upload, X, RefreshCw, Loader2, Settings, FileText, MapPin } from 'lucide-react'; // ✅ Changed File to FileText
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -15,9 +15,14 @@ interface EnhancedExcelImportModalProps {
   onImport: (data: any) => Promise<void>;
   title: string;
   successMessage?: string;
-  importType: 'machine' | 'device';
+  importType: 'machine' | 'device' | 'area' | 'zone' | 'position' | 'sparepart'; 
   machineOptions?: Array<{ id: string; name: string; code: string }>;
-  onLoadMachines?: () => Promise<Array<{ id: string; name: string; code: string }>>
+  onLoadMachines?: () => Promise<Array<{ id: string; name: string; code: string }>>;
+ 
+  currentAreaId?: string;
+  currentAreaName?: string;
+  currentZoneId?: string;
+  currentZoneName?: string;
 }
 
 export default function EnhancedExcelImportModal({
@@ -28,7 +33,12 @@ export default function EnhancedExcelImportModal({
   successMessage = "Import successful",
   importType,
   machineOptions = [],
-  onLoadMachines
+  onLoadMachines,
+
+  currentAreaId,
+  currentAreaName,
+  currentZoneId,
+  currentZoneName
 }: EnhancedExcelImportModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -96,8 +106,8 @@ export default function EnhancedExcelImportModal({
           const data = e.target?.result;
           let jsonData: any[] = [];
 
+          // Parse file (existing CSV/Excel logic)
           if (originalFile.type === 'text/csv' || originalFile.name.endsWith('.csv')) {
-            // Parse CSV
             const text = data as string;
             const lines = text.split('\n');
             const headers = lines[0].split(',').map(h => h.trim());
@@ -113,14 +123,13 @@ export default function EnhancedExcelImportModal({
               }
             }
           } else {
-            // Parse Excel
             const workbook = XLSX.read(data, { type: 'binary' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             jsonData = XLSX.utils.sheet_to_json(worksheet);
           }
 
-          // ✅ Process data: Add GUIDs and machine assignment
+          // ✅ Process data based on import type
           const processedData = jsonData.map(record => {
             const enhancedRecord = { ...record };
 
@@ -133,12 +142,43 @@ export default function EnhancedExcelImportModal({
               delete enhancedRecord.id;
             }
 
-            // ✅ For device import, add machine assignment and set position to null
-            if (importType === 'device' && selectedMachineId) {
-              enhancedRecord.MachineId = selectedMachineId;
-              enhancedRecord.PositionId = null; // ✅ ALWAYS NULL - Device goes to warehouse
-              console.log(`✅ Added MachineId to device:`, selectedMachineId);
-              console.log(`✅ Set PositionId to null for warehouse storage`);
+            // ✅ Handle different import types
+            switch (importType) {
+              case 'device':
+                if (selectedMachineId) {
+                  enhancedRecord.MachineId = selectedMachineId;
+                  enhancedRecord.PositionId = null; // Device goes to warehouse
+                  console.log(`✅ Added MachineId to device:`, selectedMachineId);
+                }
+                break;
+
+              case 'zone':
+                if (currentAreaId) {
+                  enhancedRecord.AreaId = currentAreaId;
+                  console.log(`✅ Added AreaId to zone:`, currentAreaId);
+                }
+                break;
+
+              case 'position':
+                if (currentZoneId) {
+                  enhancedRecord.ZoneId = currentZoneId;
+                  enhancedRecord.DeviceId = null; // Position starts empty
+                  console.log(`✅ Added ZoneId to position:`, currentZoneId);
+                  console.log(`✅ Set DeviceId to null for empty position`);
+                }
+                break;
+
+              // ✅ NEW: Handle spare part imports
+              case 'sparepart':
+                enhancedRecord.SupplierId = null; // Auto-set supplierId to null
+                console.log(`✅ Set SupplierId to null for spare part import`);
+                break;
+
+              case 'area':
+              case 'machine':
+              default:
+                // No additional processing needed
+                break;
             }
 
             return enhancedRecord;
@@ -146,12 +186,11 @@ export default function EnhancedExcelImportModal({
 
           console.log(`✅ Enhanced ${processedData.length} ${importType} records:`, processedData);
 
-          // ✅ Convert back to Excel/CSV format
+          // Create enhanced file (existing logic)
           let enhancedFileContent: Blob;
           let fileName: string;
 
           if (originalFile.type === 'text/csv' || originalFile.name.endsWith('.csv')) {
-            // Create enhanced CSV
             const headers = Object.keys(processedData[0] || {});
             const csvContent = [
               headers.join(','),
@@ -163,7 +202,6 @@ export default function EnhancedExcelImportModal({
             enhancedFileContent = new Blob([csvContent], { type: 'text/csv' });
             fileName = originalFile.name.replace('.csv', '_enhanced.csv');
           } else {
-            // Create enhanced Excel
             const worksheet = XLSX.utils.json_to_sheet(processedData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Enhanced Data');
@@ -175,7 +213,6 @@ export default function EnhancedExcelImportModal({
             fileName = originalFile.name.replace('.xlsx', '_enhanced.xlsx');
           }
 
-          // ✅ FIXED: Use native File constructor explicitly
           const enhancedFile = new globalThis.File([enhancedFileContent], fileName, {
             type: enhancedFileContent.type
           });
@@ -199,42 +236,46 @@ export default function EnhancedExcelImportModal({
         reader.readAsBinaryString(originalFile);
       }
     });
-  }, [importType, selectedMachineId]);
+  }, [importType, selectedMachineId, currentAreaId, currentZoneId]);
 
-  // Handle import action
+  // ✅ UPDATED: Enhanced validation
   const handleImport = useCallback(async () => {
     if (!selectedFile) {
       toast.error("Vui lòng chọn file trước khi nhập");
       return;
     }
 
-    // Validate machine selection for device import
+    // Validate based on import type
     if (importType === 'device' && !selectedMachineId) {
       toast.error("Vui lòng chọn loại máy cho thiết bị");
+      return;
+    }
+
+    if (importType === 'zone' && !currentAreaId) {
+      toast.error("Không xác định được khu vực hiện tại");
+      return;
+    }
+
+    if (importType === 'position' && !currentZoneId) {
+      toast.error("Không xác định được khu hiện tại");
       return;
     }
 
     try {
       setIsImporting(true);
 
-      // ✅ Create enhanced file with auto-generated GUIDs and machine assignment
       const enhancedFile = await createEnhancedFile(selectedFile);
-
-      // ✅ Pass enhanced file to API (same as original ExcelImportModal)
       await onImport(enhancedFile);
 
       toast.success(successMessage);
-
-      // Reset state and close modal
       setSelectedFile(null);
       setSelectedMachineId('');
       onClose();
 
     } catch (error: any) {
       console.error("Import error:", error);
-
+      
       let errorMessage = "Không thể nhập file";
-
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.error) {
@@ -247,7 +288,7 @@ export default function EnhancedExcelImportModal({
     } finally {
       setIsImporting(false);
     }
-  }, [selectedFile, importType, selectedMachineId, createEnhancedFile, onImport, successMessage, onClose]);
+  }, [selectedFile, importType, selectedMachineId, currentAreaId, currentZoneId, createEnhancedFile, onImport, successMessage, onClose]);
 
   // Handle modal close
   const handleClose = useCallback(() => {
@@ -283,12 +324,25 @@ export default function EnhancedExcelImportModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col"> 
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"> 
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {title}
-          </h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {title}
+            </h2>
+            {/* ✅ NEW: Context subtitle */}
+            {(currentAreaName || currentZoneName) && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {importType === 'zone' && currentAreaName && (
+                  <>📍 Khu vực: <span className="font-medium text-blue-600">{currentAreaName}</span></>
+                )}
+                {importType === 'position' && currentZoneName && (
+                  <>📍 Khu: <span className="font-medium text-green-600">{currentZoneName}</span></>
+                )}
+              </p>
+            )}
+          </div>
           <button
             onClick={handleClose}
             disabled={isImporting}
@@ -299,7 +353,7 @@ export default function EnhancedExcelImportModal({
         </div>
 
         {/* Body - Scrollable */}
-        <div className="p-6 overflow-y-auto flex-1"> 
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Hidden file input */}
           <input
             ref={fileInputRef}
@@ -309,7 +363,7 @@ export default function EnhancedExcelImportModal({
             className="hidden"
           />
 
-          {/* Machine Selection for Device Import */}
+          {/* ✅ UPDATED: Machine Selection for Device Import (existing) */}
           {importType === 'device' && (
             <div className="mb-6">
               <Label htmlFor="machine-select" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
@@ -435,8 +489,50 @@ export default function EnhancedExcelImportModal({
             </div>
           )}
 
+          {/* ✅ NEW: Zone Import Context Info */}
+          {importType === 'zone' && currentAreaName && (
+            <div className="mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Nhập khu cho khu vực
+                    </h4>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                      Khu vực: {currentAreaName} • Các khu mới sẽ được thêm vào khu vực này
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ NEW: Position Import Context Info */}
+          {importType === 'position' && currentZoneName && (
+            <div className="mb-6">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-green-900 dark:text-green-100">
+                      Nhập vị trí cho khu
+                    </h4>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
+                      Khu: {currentZoneName} • Các vị trí mới sẽ được thêm vào khu này (trống, không có thiết bị)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File selection/display area (existing) */}
           {!selectedFile ? (
-            /* File selection area */
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Upload className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -459,7 +555,6 @@ export default function EnhancedExcelImportModal({
               </p>
             </div>
           ) : (
-            /* File selected display */
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-8 h-8 text-green-600 dark:text-green-400" />
@@ -491,7 +586,7 @@ export default function EnhancedExcelImportModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0"> 
+        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <Button
             onClick={handleClose}
             disabled={isImporting}
@@ -507,7 +602,9 @@ export default function EnhancedExcelImportModal({
               !selectedFile ||
               isImporting ||
               isLoadingMachines ||
-              (importType === 'device' && !selectedMachineId)
+              (importType === 'device' && !selectedMachineId) ||
+              (importType === 'zone' && !currentAreaId) ||
+              (importType === 'position' && !currentZoneId)
             }
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
           >

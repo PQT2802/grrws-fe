@@ -633,12 +633,12 @@ const DeviceListCpn = forwardRef<DeviceListCpnRef, DeviceListCpnProps>(
                             )}
                             {hasFullAccess && (
                               <>
-                                <DropdownMenuItem
+                                {/* <DropdownMenuItem
                                   onClick={() => handleEditDevice(device)}
                                 >
                                   <Pencil className="mr-2 h-4 w-4" />
                                   Sửa thiết bị
-                                </DropdownMenuItem>
+                                </DropdownMenuItem> */}
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteDevice(device)}
                                   className="text-red-600"

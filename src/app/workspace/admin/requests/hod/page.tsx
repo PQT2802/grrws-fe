@@ -462,7 +462,7 @@ export default function RequestListPage() {
             Xem và quản lý tất cả các báo cáo sự cố được trưởng phòng may tạo
           </p>
         </div>
-        <DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline">
               <MoreHorizontal className="mr-2 h-4 w-4" />
@@ -479,7 +479,7 @@ export default function RequestListPage() {
               Export (Excel)
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu> */}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

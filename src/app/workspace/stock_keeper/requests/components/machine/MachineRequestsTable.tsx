@@ -119,37 +119,66 @@ export default function MachineRequestsTable() {
           totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         }
 
-        // ✅ FIXED: Always filter out SparePartRequest for machine requests
-        const machineRequests: UNIFIED_SKEEPER_REQUEST[] = machineActionData
-          .filter((req) => {
-            // ALWAYS exclude SparePartRequest from machine requests
-            return req.actionType?.toLowerCase() !== "sparepartrequest";
-          })
-          .map((req) => ({
-            id: req.id,
-            type: "machineAction" as const,
-            title: req.confirmationCode,
-            description: `${safeTranslateActionType(req.actionType)} - ${
-              req.notes || "Không có ghi chú"
-            }`,
-            requestDate: req.startDate,
-            status: req.status,
-            assigneeName: req.assigneeName,
-            actionType: req.actionType,
-            confirmationCode: req.confirmationCode,
-            mechanicConfirm: req.mechanicConfirm,
-            stockkeeperConfirm: req.stockkeeperConfirm,
-            originalData: req,
-          }));
-
-        console.log(
-          `Processed machine data: ${machineRequests.length} items, ${totalItems} total, ${totalPages} pages`
+        // ✅ ENHANCED: Process requests with additional details
+        const processedRequests = await Promise.all(
+          machineActionData
+            .filter((req) => {
+              // ALWAYS exclude SparePartRequest from machine requests
+              return req.actionType?.toLowerCase() !== "sparepartrequest";
+            })
+            .map(async (req) => {
+              try {
+                // ✅ NEW: Fetch detailed information for each request
+                const detailResponse = await apiClient.machineActionConfirmation.getById(req.id);
+                const detailData = detailResponse.data || detailResponse;
+                
+                return {
+                  id: req.id,
+                  type: "machineAction" as const,
+                  title: req.confirmationCode,
+                  description: `${safeTranslateActionType(req.actionType)} - ${
+                    req.notes || "Không có ghi chú"
+                  }`,
+                  requestDate: detailData.createdDate || req.createdDate || req.startDate, // ✅ Use createdDate
+                  status: req.status,
+                  assigneeName: detailData.requestedByName || req.assigneeName, // ✅ Use requestedByName
+                  actionType: req.actionType,
+                  confirmationCode: req.confirmationCode,
+                  mechanicConfirm: req.mechanicConfirm,
+                  stockkeeperConfirm: req.stockkeeperConfirm,
+                  originalData: req,
+                };
+              } catch (detailError) {
+                console.warn(`Could not fetch details for request ${req.id}:`, detailError);
+                // Fallback to original data
+                return {
+                  id: req.id,
+                  type: "machineAction" as const,
+                  title: req.confirmationCode,
+                  description: `${safeTranslateActionType(req.actionType)} - ${
+                    req.notes || "Không có ghi chú"
+                  }`,
+                  requestDate: req.createdDate || req.startDate,
+                  status: req.status,
+                  assigneeName: req.assigneeName,
+                  actionType: req.actionType,
+                  confirmationCode: req.confirmationCode,
+                  mechanicConfirm: req.mechanicConfirm,
+                  stockkeeperConfirm: req.stockkeeperConfirm,
+                  originalData: req,
+                };
+              }
+            })
         );
 
-        setRequests(machineRequests);
+        console.log(
+          `Processed machine data: ${processedRequests.length} items, ${totalItems} total, ${totalPages} pages`
+        );
+
+        setRequests(processedRequests);
 
         // ✅ FIXED: Recalculate pagination based on filtered results
-        const filteredTotal = machineRequests.length;
+        const filteredTotal = processedRequests.length;
         const recalculatedPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
 
         setPagination({
@@ -281,12 +310,9 @@ export default function MachineRequestsTable() {
         request.assigneeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // ✅ Remove status and actionType filtering - handled by backend
-      // ✅ Remove date filtering - add to backend API if needed
-
       return matchesSearch;
     });
-  }, [requests, searchTerm]); // ✅ Remove other filter dependencies
+  }, [requests, searchTerm]);
 
   // Generate page numbers for pagination
   const generatePageNumbers = () => {
@@ -523,9 +549,9 @@ export default function MachineRequestsTable() {
                     <th className="px-4 py-3 text-left font-medium">
                       Ngày yêu cầu
                     </th>
-                    <th className="px-4 py-3 text-left font-medium">
+                    {/* <th className="px-4 py-3 text-left font-medium">
                       Người thực hiện
-                    </th>
+                    </th> */}
                     <th className="px-4 py-3 text-left font-medium">
                       Trạng thái
                     </th>
@@ -580,7 +606,7 @@ export default function MachineRequestsTable() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        {/* <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4 text-gray-400" />
                             <span
@@ -595,7 +621,7 @@ export default function MachineRequestsTable() {
                                 "Chưa có người thực hiện"}
                             </span>
                           </div>
-                        </td>
+                        </td> */}
                         <td className="px-4 py-3">
                           <Badge className={getStatusColor(request.status)}>
                             {getVietnameseStatus(request.status)}
