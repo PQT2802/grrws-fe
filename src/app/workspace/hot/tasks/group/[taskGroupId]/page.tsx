@@ -1097,7 +1097,7 @@ const GroupTaskDetailsPage = () => {
               Quay lại Nhiệm vụ
             </Button>
 
-            <CreateReplacementTaskButton
+            {/* <CreateReplacementTaskButton
               onSuccess={refreshTaskData}
               buttonText="Tạo thay thế"
               buttonVariant="secondary"
@@ -1107,7 +1107,7 @@ const GroupTaskDetailsPage = () => {
                 repairTaskDetail?.machineActionConfirmations[0]?.deviceId ||
                 ""
               }
-            />
+            /> */}
 
             {warrantySubmissionTask &&
               warrantyReturnTask?.status !== "Completed" &&

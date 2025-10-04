@@ -38,3 +38,10 @@ export interface MACHINE_WEB {
   createdDate: string; // ISO Date string
   modifiedDate: string; // ISO Date string
 }
+export interface DEVICE_HISTORY {
+  deviceId: string;
+  actionType: "Installation" | "StockIn" | "StockOut" | "Uninstallation";
+  eventDate: string; // ISO Date string
+  description: string; // User who performed the action
+
+}

@@ -4,7 +4,7 @@ import {
   SUGGEST_OBJECT_REQUEST,
   SUGGEST_OBJECT_RESPONSE,
 } from "@/types/comon.type";
-import { DEVICE_WEB, MACHINE_WEB } from "@/types/device.type";
+import { DEVICE_HISTORY, DEVICE_WEB, MACHINE_WEB } from "@/types/device.type";
 import {
   AddError,
   AddTaskErrorPayload,
@@ -62,6 +62,10 @@ import {
   NotificationResponse,
 } from "@/types/notification.type";
 import { IssueResponse, TechnicalIssueResponse, ErrorIncidentResponse, ErrorIncident } from "@/types/incident.type";
+import { get } from "http";
+import { Holiday, Shift } from "@/types/time.type";
+import { add } from "date-fns";
+import { de } from "date-fns/locale";
 
 class APIClient {
   // Auth methods - these are public (no token needed)
@@ -521,6 +525,9 @@ class APIClient {
         throw error;
       }
     },
+    getDeviceHistory: (deviceId: string): Promise<DEVICE_HISTORY[]> => {
+      return http.get<DEVICE_HISTORY[]>(`/api/DeviceHistory/${deviceId}`);
+    }
   };
 
   machine = {
@@ -1149,7 +1156,50 @@ class APIClient {
       console.log(`Fetching errors: ${params.toString()}`);
       return http.get<ErrorIncidentResponse>(`/api/Error/all?${params.toString()}`);
     },
+  };
+  time = {
+    getHolidays: (year: number): Promise<Holiday[]> => {
+      return http.get<Holiday[]>(`/api/holidays?year=${year}`);
+    },
+    addHoliday: (data: { holidayDate: string; description: string }): Promise<Holiday> => {
+      return http.post<Holiday>("/api/holidays", data);
+    },
+    updateHoliday: (id: string, data: { holidayDate: string; description: string }): Promise<Holiday> => {
+      return http.put<Holiday>(`/api/holidays/${id}`, data);
+    },
+    deleteHoliday: (id: string): Promise<void> => {
+      return http.delete<void>(`/api/holidays/${id}`);
+    },
+    getShifts: (): Promise<Shift[]> => {
+      return http.get<Shift[]>("/api/shifts");
+    },
+    updateShift: (id: string, data: { shiftName: string; startTime: string; endTime: string; isActive: boolean; isOfficeHour: boolean }): Promise<Shift> => {
+      return http.put<Shift>(`/api/shifts/${id}`, data);
+    },
+    checkWoringHours: (dateTime: string): Promise<{ isWithinWorkingHours: boolean }> => {
+      return http.get<{ isWithinWorkingHours: boolean }>(`/api/working-hours/check?dateTime=${encodeURIComponent(dateTime)}`);
+    },
+    getWorkingHoursConfig: (): Promise<{ workingDays: string[]; officeHourShifts: Shift[] }> => {
+      return http.get<{ workingDays: string[]; officeHourShifts: Shift[] }>("/api/working-hours/config");
+    },
+    updateWorkingHoursConfig: (data: { workingDays: string[]; officeHourShiftIds: string[] }): Promise<{ workingDays: string[]; officeHourShifts: Shift[] }> => {
+      return http.put<{ workingDays: string[]; officeHourShifts: Shift[] }>("/api/working-hours/config", data);
+    },
+    updateWorkingDays: (data: { workingDays: string[] }): Promise<{ workingDays: string[]; officeHourShifts: Shift[] }> => {
+      return http.put<{ workingDays: string[]; officeHourShifts: Shift[] }>("/api/working-hours/working-days", data);
+    },
+    updateOfficeHourShifts: (data: { officeHourShiftIds: string[] }): Promise<{ workingDays: string[]; officeHourShifts: Shift[] }> => {
+      return http.put<{ workingDays: string[]; officeHourShifts: Shift[] }>("/api/working-hours/office-hour-shifts", data);
+    },
+    addWorkingDay: (day: string): Promise<any> => {
+      return http.post<any>("/api/working-hours/working-days", { day });
+    },
+    removeWorkingDay: (day: string): Promise<any> => {
+      return http.delete<any>(`/api/working-hours/working-days/${day}`);
+    }
   }
+
+
 }
 
 export const apiClient = new APIClient();
