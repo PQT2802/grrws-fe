@@ -399,36 +399,7 @@ const RequestDetailPage = () => {
                       );
                     })}
                   </TabsList>
-                  <div className="flex items-center gap-2">
-                    {/* Thêm lỗi mới */}
-                    {activeTab === "errors" && (
-                      <>
-                        <ButtonCpn
-                          type="button"
-                          title="Thêm lỗi mới"
-                          icon={<Plus />}
-                          onClick={() => setShowAddErrorModal(true)}
-                        />
-                        {selectedErrors.length > 0 && (
-                          <ButtonCpn
-                            type="button"
-                            title={`Tạo nhiệm vụ sửa chữa (${selectedErrors.length})`}
-                            icon={<Plus />}
-                            onClick={handleCreateTaskFromErrors}
-                          />
-                        )}
-                      </>
-                    )}
-                    {/* Thêm nhiệm vụ mới */}
-                    {activeTab === "tasks" && (
-                      <ButtonCpn
-                        type="button"
-                        title="Thêm nhiệm vụ mới"
-                        icon={<Plus />}
-                        onClick={() => setShowCreateInstallUninstallTask(true)}
-                      />
-                    )}
-                  </div>
+                  
                 </div>
               </CardHeader>
               <CardContent className="px-4 pt-0 pb-3">

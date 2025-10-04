@@ -16,7 +16,8 @@ import {
   Users,
   History,
   MapPin,
-  PackageSearch, // New icon for spare parts
+  PackageSearch,
+  CalendarIcon, // New icon for spare parts
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
@@ -36,6 +37,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { ChevronRight } from "lucide-react";
+import { title } from "process";
 
 export function NavAdmin() {
   const pathname = usePathname();
@@ -75,6 +77,12 @@ export function NavAdmin() {
       title: "Phòng ban",
       url: `/workspace/admin/location/areas`,
       icon: MapPin,
+      items: [],
+    },
+    {
+      title: "Cấu hình thời gian",
+      url: `/workspace/admin/time`,
+      icon: CalendarIcon,
       items: [],
     },
     {
