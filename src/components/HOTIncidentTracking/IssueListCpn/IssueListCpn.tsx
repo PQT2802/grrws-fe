@@ -360,14 +360,14 @@ const IssueListCpn = forwardRef<IssueListCpnRef, IssueListCpnProps>(
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onViewIssue(issue)}>
+                            {/* <DropdownMenuItem onClick={() => onViewIssue(issue)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Xem chi tiết
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onEditIssue(issue)}>
+                            </DropdownMenuItem> */}
+                            {/* <DropdownMenuItem onClick={() => onEditIssue(issue)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Chỉnh sửa
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuItem 
                               onClick={() => onDeleteIssue(issue)}
                               className="text-red-600"

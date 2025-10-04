@@ -92,10 +92,21 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
         setLoading(true);
         console.log(`🔄 Fetching errors (page ${page}, search: "${debouncedSearchTerm}", pending: "${pendingFilter}")`);
         
+        // ✅ UPDATED: Use API filter instead of client-side filtering
+        let isPendingConfirmationFilter: boolean | undefined = undefined;
+        
+        if (pendingFilter === "pending") {
+          isPendingConfirmationFilter = true;
+        } else if (pendingFilter === "approved") {
+          isPendingConfirmationFilter = false;
+        }
+        // If "all", keep undefined (no filter)
+
         const response = await apiClient.incident.getErrors(
           page,
           pageSize,
-          debouncedSearchTerm || undefined
+          debouncedSearchTerm || undefined,
+          isPendingConfirmationFilter // ✅ NEW: Pass isPendingConfirmation filter to API
         );
 
         console.log("📋 Errors API response:", response);
@@ -121,19 +132,11 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
           }
         }
 
-        // ✅ Apply client-side filtering for pending status - FIX: use boolean comparison
-        let filteredErrorsData = errorsData;
-        if (pendingFilter === "pending") {
-          filteredErrorsData = errorsData.filter(error => error.isPendingConfirmation === true); // ✅ true for pending
-        } else if (pendingFilter === "approved") {
-          filteredErrorsData = errorsData.filter(error => error.isPendingConfirmation === false); // ✅ false for approved
-        }
-        // If "all", keep all data
-
-        setErrors(filteredErrorsData);
-        setTotalCount(filteredErrorsData.length); // Update total count for filtered data
+        // ✅ REMOVED: Client-side filtering (now handled by API)
+        setErrors(errorsData);
+        setTotalCount(totalCountValue);
         
-        console.log(`✅ Successfully loaded ${filteredErrorsData.length} errors after filtering (total: ${totalCountValue})`);
+        console.log(`✅ Successfully loaded ${errorsData.length} errors (total: ${totalCountValue})`);
         
       } catch (error) {
         console.error("❌ Failed to fetch errors:", error);
@@ -143,7 +146,7 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
       } finally {
         setLoading(false);
       }
-    }, [page, pageSize, debouncedSearchTerm, pendingFilter]); // ✅ Add pendingFilter dependency
+    }, [page, pageSize, debouncedSearchTerm, pendingFilter]); // Keep pendingFilter dependency
 
     useEffect(() => {
       fetchErrors();
@@ -449,13 +452,13 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onViewError(error)}>
+                            {/* <DropdownMenuItem onClick={() => onViewError(error)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Xem chi tiết
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             
                             {/* ✅ Conditional action based on pending status */}
-                            {error.isPendingConfirmation ? (
+                            {/* {error.isPendingConfirmation ? (
                               <DropdownMenuItem onClick={() => handleUpdateError(error)}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 Duyệt lỗi
@@ -465,8 +468,15 @@ const ErrorListCpn = forwardRef<ErrorListCpnRef, ErrorListCpnProps>(
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Cập nhật trạng thái
                               </DropdownMenuItem>
-                            )}
+                            )} */}
                             
+                            {error.isPendingConfirmation && (
+                              <DropdownMenuItem onClick={() => handleUpdateError(error)}>
+                                <Shield className="mr-2 h-4 w-4" />
+                                Duyệt lỗi
+                              </DropdownMenuItem>
+                            )}
+
                             <DropdownMenuItem 
                               onClick={() => onDeleteError(error)}
                               className="text-red-600"

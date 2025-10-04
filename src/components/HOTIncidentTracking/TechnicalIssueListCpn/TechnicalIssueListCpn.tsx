@@ -371,14 +371,14 @@ const TechnicalIssueListCpn = forwardRef<
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onViewTechnicalIssue(issue)}>
+                            {/* <DropdownMenuItem onClick={() => onViewTechnicalIssue(issue)}>
                               <Eye className="mr-2 h-4 w-4" />
                               Xem chi tiết
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onEditTechnicalIssue(issue)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Chỉnh sửa
-                            </DropdownMenuItem>
+                            </DropdownMenuItem> */}
                             <DropdownMenuItem 
                               onClick={() => onDeleteTechnicalIssue(issue)}
                               className="text-red-600"

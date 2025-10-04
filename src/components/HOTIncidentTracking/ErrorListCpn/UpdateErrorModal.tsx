@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -140,13 +140,22 @@ export default function UpdateErrorModal({
     }
   }, [spareparts, sparepartSearchTerm]);
 
+  // ✅ FIXED: Close modal handler (same pattern as AddErrorModal)
+  const handleModalClose = useCallback((openState: boolean) => {
+    if (!openState) {
+      // Reset form when closing
+      resetForm();
+    }
+    onOpenChange(openState);
+  }, [onOpenChange]);
+
   // Initialize form data when error changes
   useEffect(() => {
     if (error && open) {
       // Only allow updating errors that are pending confirmation
       if (!error.isPendingConfirmation) {
         toast.error("Chỉ có thể cập nhật các lỗi đang chờ duyệt");
-        onOpenChange(false);
+        handleModalClose(false); // ✅ Use handleModalClose instead of onOpenChange
         return;
       }
 
@@ -187,7 +196,7 @@ export default function UpdateErrorModal({
     } else if (!open) {
       resetForm();
     }
-  }, [error, open]); // ✅ Fix: Remove onOpenChange from dependencies to avoid the warning
+  }, [error, open]); // ✅ FIXED: Remove onOpenChange from dependencies (causes the warning)
 
   // Update EstimatedRepairTime when time inputs change
   useEffect(() => {
@@ -412,7 +421,7 @@ export default function UpdateErrorModal({
 
       toast.success(`Cập nhật lỗi "${formData.Name}" thành công!`);
 
-      onOpenChange(false);
+      handleModalClose(false); // ✅ Use handleModalClose instead of onOpenChange
       onSuccess();
 
     } catch (error: any) {
@@ -454,8 +463,12 @@ export default function UpdateErrorModal({
 
   if (dataLoading) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleModalClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {/* ✅ FIX: Add DialogHeader and DialogTitle for accessibility */}
+          <DialogHeader>
+            <DialogTitle>Đang tải dữ liệu</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -468,7 +481,7 @@ export default function UpdateErrorModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleModalClose}> {/* ✅ Use handleModalClose */
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -482,7 +495,7 @@ export default function UpdateErrorModal({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Thông tin cơ bản</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Tên lỗi *</Label>
                 <Input
@@ -491,24 +504,6 @@ export default function UpdateErrorModal({
                   onChange={(e) => setFormData(prev => ({ ...prev, Name: e.target.value }))}
                   placeholder="Nhập tên lỗi..."
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="severity">Mức độ nghiêm trọng</Label>
-                <Select
-                  value={formData.Severity}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, Severity: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Thấp</SelectItem>
-                    <SelectItem value="Medium">Trung bình</SelectItem>
-                    <SelectItem value="High">Cao</SelectItem>
-                    <SelectItem value="Critical">Nghiêm trọng</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 
@@ -850,7 +845,7 @@ export default function UpdateErrorModal({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleModalClose(false)} // ✅ Use handleModalClose
             disabled={loading}
           >
             Hủy
@@ -865,7 +860,7 @@ export default function UpdateErrorModal({
             Cập nhật lỗi
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogContent>}
     </Dialog>
   );
 }

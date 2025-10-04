@@ -1130,7 +1130,8 @@ class APIClient {
     getErrors: (
       pageNumber: number = 1,
       pageSize: number = 10,
-      searchByName?: string
+      searchByName?: string, 
+      isPendingConfirmation?: boolean
     ): Promise<ErrorIncidentResponse> => {
       const params = new URLSearchParams({
         pageNumber: pageNumber.toString(),
@@ -1139,6 +1140,10 @@ class APIClient {
 
       if (searchByName) {
         params.append('searchByName', searchByName);
+      }
+
+      if (isPendingConfirmation !== undefined) {
+        params.append('isPendingConfirmation', isPendingConfirmation.toString());
       }
 
       console.log(`Fetching errors: ${params.toString()}`);
